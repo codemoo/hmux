@@ -1,0 +1,13 @@
+[Unit]
+Description=hmux control-plane health check
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/hmux-control health
+TimeoutStartSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadOnlyPaths=%h/.local/share/hmux-control

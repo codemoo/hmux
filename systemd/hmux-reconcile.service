@@ -1,0 +1,13 @@
+[Unit]
+Description=hmux inventory renderer and reconcile
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/hmux-control reconcile
+TimeoutStartSec=60
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.local/share/hmux-control

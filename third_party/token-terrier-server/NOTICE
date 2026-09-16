@@ -1,0 +1,5 @@
+The bundled Bedlington Terrier sprite and app icon assets are project-owned
+image assets:
+
+    Sources/token-run-menubar/Resources/BedlFrames/bedl-{1..8}.png
+    Sources/token-run-menubar/Resources/bedl-icon.png

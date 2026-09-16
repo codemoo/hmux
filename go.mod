@@ -1,0 +1,14 @@
+module github.com/codemoo/hmux
+
+go 1.24
+
+require (
+	github.com/BurntSushi/toml v1.5.0
+	github.com/codemoo/token-terrier/server-go v0.0.0
+	github.com/coder/websocket v1.8.14
+	github.com/creack/pty v1.1.24
+	golang.org/x/sys v0.33.0
+	golang.org/x/term v0.32.0
+)
+
+replace github.com/codemoo/token-terrier/server-go => ./third_party/token-terrier-server

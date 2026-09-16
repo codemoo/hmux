@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "seq": 7,
+  "generated_at_utc": "2026-07-24T03:00:00Z",
+  "producer_id": "fixture-host",
+  "producer_tz": "UTC",
+  "provider": "codex",
+  "burn_rate_per_min": 12.5,
+  "burn_state": "walk",
+  "today_total_tokens": 345,
+  "today_sessions": 2,
+  "rolling_5h": {"used_pct": 0.25, "remaining_seconds": 3600, "resets_at": "2026-07-24T04:00:00Z"},
+  "weekly": {"used_pct": 0.5, "remaining_seconds": 7200, "resets_at": "2026-07-24T05:00:00Z"},
+  "quota_windows": [],
+  "credits": null,
+  "extras": {"login_method": "codex-lb", "account_email": null, "rate_limit_tier": null, "extra_rate_windows": []},
+  "status": {
+    "state": "ok",
+    "data_source": "api+jsonl",
+    "quota_source": "codex_lb",
+    "activity_sources": ["hermes", "jsonl"],
+    "stale": false,
+    "quota_observed_at": "2026-07-24T02:59:30Z"
+  }
+}
