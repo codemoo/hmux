@@ -1,0 +1,36 @@
+name: Checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  go-and-native:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: make fmt-check
+      - run: go test ./...
+      - run: go vet ./...
+      - run: go test -race ./...
+      - run: go test ./...
+        working-directory: third_party/token-terrier-server
+      - run: make native-smoke
+      - run: brew install shellcheck
+      - run: make shellcheck
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci --prefix web
+      - run: npm run check --prefix web
+      - run: npm test --prefix web
+      - run: npm run build --prefix web
