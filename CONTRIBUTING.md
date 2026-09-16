@@ -8,6 +8,9 @@ lifecycle or terminal input. Report vulnerabilities through [SECURITY.md](SECURI
 
 Use Go 1.24 or newer and Node.js 22 or newer. Native UI work needs an Apple Silicon
 Mac and the pinned build prerequisites in [macos/HMux/README.md](macos/HMux/README.md).
+Release verification requires OpenSSL 3 (`brew install openssl@3 jq shellcheck`
+on macOS). Put `$(brew --prefix openssl@3)/bin` before the system LibreSSL in PATH;
+LibreSSL does not support the Ed25519 `pkeyutl -rawin` verification used here.
 Examples under `config/` and `deploy/web/` are templates, not production settings.
 
 ```sh
