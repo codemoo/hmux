@@ -1,0 +1,208 @@
+diff --git a/macos/Sources/App/macOS/AppDelegate.swift b/macos/Sources/App/macOS/AppDelegate.swift
+--- a/macos/Sources/App/macOS/AppDelegate.swift
++++ b/macos/Sources/App/macOS/AppDelegate.swift
+@@ -343,6 +343,15 @@ class AppDelegate: NSObject,
+                 NSApp.arrangeInFront(nil)
+             }
+         }
++
++        if Bundle.main.bundleIdentifier == "dev.hmux.app",
++           HMuxRestartReadiness.request() != nil,
++           !applicationHasBecomeActive {
++            applicationDidBecomeActive(.init(name: NSApplication.didBecomeActiveNotification))
++            DispatchQueue.main.async {
++                NSApp.activate(ignoringOtherApps: true)
++            }
++        }
+     }
+ 
+     func applicationDidHide(_ notification: Notification) {
+@@ -361,6 +361,31 @@ class AppDelegate: NSObject,
+             hmuxWindowController = controller
+             controller.showWindow(nil)
+             controller.window?.makeKeyAndOrderFront(nil)
++            if let applicationMenu = NSApp.mainMenu?.items.first {
++                applicationMenu.title = "HMux"
++                applicationMenu.submenu?.title = "HMux"
++            }
++            menuAbout?.title = "About HMux"
++            menuQuit?.title = "Quit HMux"
++            for menu in NSApp.mainMenu?.items.compactMap(\.submenu) ?? [] {
++                for item in menu.items where item.action == #selector(showHelp(_:)) {
++                    item.isEnabled = false
++                    item.isHidden = true
++                }
++            }
++            for item in [menuCheckForUpdates, menuOpenConfig, menuReloadConfig,
++                         menuSecureInput, menuNewWindow, menuNewTab,
++                         menuSplitRight, menuSplitLeft, menuSplitDown, menuSplitUp,
++                         menuCloseAllWindows, menuZoomSplit, menuPreviousSplit,
++                         menuNextSplit, menuSelectSplitAbove, menuSelectSplitBelow,
++                         menuSelectSplitLeft, menuSelectSplitRight,
++                         menuReturnToDefaultSize, menuFloatOnTop, menuUseAsDefault,
++                         menuSetAsDefaultTerminal, menuChangeTitle, menuChangeTabTitle,
++                         menuReadonly, menuQuickTerminal, menuTerminalInspector,
++                         menuCommandPalette, menuEqualizeSplits,
++                         menuMoveSplitDividerUp, menuMoveSplitDividerDown,
++                         menuMoveSplitDividerLeft, menuMoveSplitDividerRight] {
++                item?.isEnabled = false
++                item?.isHidden = true
++            }
++            DispatchQueue.main.async { [weak controller] in
++                guard let window = controller?.window,
++                      window.isVisible,
++                      window.contentView != nil else { return }
++                window.contentView?.layoutSubtreeIfNeeded()
++                window.displayIfNeeded()
++                HMuxRestartReadiness.signalIfRequested()
++            }
+         }
+     }
+ 
+@@ -438,6 +444,10 @@ class AppDelegate: NSObject,
+     /// or clicks the dock icon.
+     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
++        if hmuxWindowController != nil {
++            hmuxWindowController?.showWindow(nil)
++            return true
++        }
+         // If we have visible windows then we allow macOS to do its default behavior
+         // of focusing one of them.
+         guard !flag else { return true }
+@@ -459,6 +469,7 @@ class AppDelegate: NSObject,
+     }
+ 
+     func application(_ sender: NSApplication, openFile filename: String) -> Bool {
++        if Bundle.main.bundleIdentifier == "dev.hmux.app" { return false }
+         // Ghostty will validate as well but we can avoid creating an entirely new
+         // surface by doing our own validation here. We can also show a useful error
+         // this way.
+@@ -724,6 +735,7 @@ class AppDelegate: NSObject,
+     }
+ 
+     @objc private func ghosttyNewWindow(_ notification: Notification) {
++        if Bundle.main.bundleIdentifier == "dev.hmux.app" { return }
+         let configAny = notification.userInfo?[Ghostty.Notification.NewSurfaceConfigKey]
+         let config = configAny as? Ghostty.SurfaceConfiguration
+         _ = TerminalController.newWindow(ghostty, withBaseConfig: config)
+@@ -943,38 +968,51 @@ class AppDelegate: NSObject,
+     // MARK: - IB Actions
+ 
+     @IBAction func openConfig(_ sender: Any?) {
++        if Bundle.main.bundleIdentifier == "dev.hmux.app" { return }
+         Ghostty.App.openConfig()
+     }
+ 
+     @IBAction func reloadConfig(_ sender: Any?) {
++        if Bundle.main.bundleIdentifier == "dev.hmux.app" { return }
+         ghostty.reloadConfig()
+     }
+ 
+     @IBAction func checkForUpdates(_ sender: Any?) {
++        if Bundle.main.bundleIdentifier == "dev.hmux.app" { return }
+         updateController.checkForUpdates()
+         // UpdateSimulator.happyPath.simulate(with: updateViewModel)
+     }
+ 
+     @IBAction func newWindow(_ sender: Any?) {
++        if Bundle.main.bundleIdentifier == "dev.hmux.app" { return }
+         _ = TerminalController.newWindow(ghostty)
+     }
+ 
+     @IBAction func newTab(_ sender: Any?) {
++        if Bundle.main.bundleIdentifier == "dev.hmux.app" { return }
+         _ = TerminalController.newTab(
+             ghostty,
+             from: TerminalController.preferredParent?.window
+         )
+     }
+ 
+     @IBAction func closeAllWindows(_ sender: Any?) {
++        if Bundle.main.bundleIdentifier == "dev.hmux.app" { return }
+         TerminalController.closeAllWindows()
+         AboutController.shared.hide()
+     }
+ 
+     @IBAction func showAbout(_ sender: Any?) {
++        if Bundle.main.bundleIdentifier == "dev.hmux.app" {
++            NSApp.orderFrontStandardAboutPanel(options: [.applicationName: "HMux"])
++            return
++        }
+         AboutController.shared.show()
+     }
+ 
+     @IBAction func showHelp(_ sender: Any) {
++        if Bundle.main.bundleIdentifier == "dev.hmux.app" { return }
+         guard let url = URL(string: "https://ghostty.org/docs") else { return }
+         NSWorkspace.shared.open(url)
+     }
+ 
+     @IBAction func toggleSecureInput(_ sender: Any) {
++        if Bundle.main.bundleIdentifier == "dev.hmux.app" { return }
+         setSecureInput(.toggle)
+     }
+ 
+     @IBAction func toggleQuickTerminal(_ sender: Any) {
++        if Bundle.main.bundleIdentifier == "dev.hmux.app" { return }
+         quickController.toggle()
+     }
+ 
+@@ -1101,6 +1116,7 @@ extension AppDelegate {
+     /// This is called for the dock right-click menu.
+     func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
++        if Bundle.main.bundleIdentifier == "dev.hmux.app" { return nil }
+         return dockMenu
+     }
+ 
+@@ -1353,6 +1369,7 @@ extension AppDelegate {
+     }
+ 
+     @IBAction func setAsDefaultTerminal(_ sender: NSMenuItem) {
++        if Bundle.main.bundleIdentifier == "dev.hmux.app" { return }
+         NSWorkspace.shared.setDefaultApplication(at: Bundle.main.bundleURL, toOpen: .unixExecutable) { error in
+             guard let error else { return }
+             Task { @MainActor in
+diff --git a/macos/Sources/Features/App Intents/IntentPermission.swift b/macos/Sources/Features/App Intents/IntentPermission.swift
+--- a/macos/Sources/Features/App Intents/IntentPermission.swift
++++ b/macos/Sources/Features/App Intents/IntentPermission.swift
+@@ -25,6 +25,7 @@ import AppKit
+ /// ```
+ func requestIntentPermission() async -> Bool {
++    if Bundle.main.bundleIdentifier == "dev.hmux.app" { return false }
+-    await withCheckedContinuation { continuation in
++    return await withCheckedContinuation { continuation in
+         Task { @MainActor in
+             if let delegate = NSApp.delegate as? AppDelegate {
+diff --git a/macos/Sources/Ghostty/Surface View/SurfaceView_AppKit.swift b/macos/Sources/Ghostty/Surface View/SurfaceView_AppKit.swift
+--- a/macos/Sources/Ghostty/Surface View/SurfaceView_AppKit.swift
++++ b/macos/Sources/Ghostty/Surface View/SurfaceView_AppKit.swift
+@@ -657,9 +657,15 @@
+                   event.window != nil,
+                   window == event.window else { return event }
+ 
+-            // The clicked location in this window should be this view.
+-            let location = convert(event.locationInWindow, from: nil)
+-            guard hitTest(location) == self else { return event }
++            // Retained HMux tabs share a window and overlapping bounds. A
++            // per-surface hitTest cannot establish which tab owns this click.
++            // Use the visible window hierarchy, including overlays and sheets.
++            guard !isHiddenOrHasHiddenAncestor, window.attachedSheet == nil,
++                  let contentView = window.contentView else { return event }
++            let location = contentView.superview?.convert(event.locationInWindow, from: nil)
++                ?? event.locationInWindow
++            guard let hit = contentView.hitTest(location),
++                  hit === self || hit.isDescendant(of: self) else { return event }
+ 
+             // We always assume that we're resetting our mouse suppression
+             // unless we see the specific scenario below to set it.
+@@ -696,7 +702,9 @@
+ 
+             // Command keyUp events are never sent to the normal responder chain
+             // so we send them here.
+-            guard focused else { return event }
++            guard focused, !isHiddenOrHasHiddenAncestor,
++                  let window, event.window === window,
++                  window.firstResponder === self else { return event }
+             self.keyUp(with: event)
+             return nil
+         }

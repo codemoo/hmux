@@ -1,0 +1,437 @@
+diff --git a/macos/Sources/App/macOS/AppDelegate+Ghostty.swift b/macos/Sources/App/macOS/AppDelegate+Ghostty.swift
+index fc9a490..c7acb3f 100644
+--- a/macos/Sources/App/macOS/AppDelegate+Ghostty.swift
++++ b/macos/Sources/App/macOS/AppDelegate+Ghostty.swift
+@@ -6,6 +6,10 @@ import AppKit
+ /// APIs for app-global information.
+ extension AppDelegate: Ghostty.Delegate {
+     func ghosttySurface(id: UUID) -> Ghostty.SurfaceView? {
++        if let surface = HMuxSurfaceRegistry.shared.surface(id: id) {
++            return surface
++        }
++
+         for window in NSApp.windows {
+             guard let controller = window.windowController as? BaseTerminalController else {
+                 continue
+diff --git a/macos/Sources/App/macOS/AppDelegate.swift b/macos/Sources/App/macOS/AppDelegate.swift
+index b02337e..0b8c3d2 100644
+--- a/macos/Sources/App/macOS/AppDelegate.swift
++++ b/macos/Sources/App/macOS/AppDelegate.swift
+@@ -145,6 +145,8 @@ class AppDelegate: NSObject,
+     /// Tracks the windows that we hid for toggleVisibility.
+     private(set) var hiddenState: ToggleVisibilityState?
+ 
++    private var hmuxWindowController: HMuxWindowController?
++
+     /// The observer for the app appearance.
+     private var appearanceObserver: NSKeyValueObservation?
+ 
+@@ -162,11 +164,16 @@ class AppDelegate: NSObject,
+     private var menuItemsByShortcut: [MenuShortcutKey: Weak<NSMenuItem>] = [:]
+ 
+     override init() {
++        if Bundle.main.bundleIdentifier == "dev.hmux.app",
++           let configPath = Bundle.main.resourceURL?.appendingPathComponent("HMuxGhostty.config").path {
++            ghostty = Ghostty.App(configPath: configPath)
++        } else {
+ #if DEBUG
+-        ghostty = Ghostty.App(configPath: ProcessInfo.processInfo.environment["GHOSTTY_CONFIG_PATH"])
++            ghostty = Ghostty.App(configPath: ProcessInfo.processInfo.environment["GHOSTTY_CONFIG_PATH"])
+ #else
+-        ghostty = Ghostty.App()
++            ghostty = Ghostty.App()
+ #endif
++        }
+         super.init()
+ 
+         ghostty.delegate = self
+@@ -218,8 +225,7 @@ class AppDelegate: NSObject,
+         // Initial config loading
+         ghosttyConfigDidChange(config: ghostty.config)
+ 
+-        // Start our update checker.
+-        updateController.startUpdater()
++        // HMux owns its release lifecycle; never run Ghostty's updater here.
+ 
+         // Register our service provider. This must happen after everything is initialized.
+         NSApp.servicesProvider = ServiceProvider()
+@@ -352,23 +358,19 @@ class AppDelegate: NSObject,
+         if !applicationHasBecomeActive {
+             applicationHasBecomeActive = true
+ 
+-            // Let's launch our first window. We only do this if we have no other windows. It
+-            // is possible to have other windows in a few scenarios:
+-            //   - if we're opening a URL since `application(_:openFile:)` is called before this.
+-            //   - if we're restoring from persisted state
+-            if TerminalController.all.isEmpty && derivedConfig.initialWindow {
+-                undoManager.disableUndoRegistration()
+-                _ = TerminalController.newWindow(ghostty)
+-                undoManager.enableUndoRegistration()
+-            }
++            let controller = HMuxWindowController(ghostty)
++            hmuxWindowController = controller
++            controller.showWindow(nil)
++            controller.window?.makeKeyAndOrderFront(nil)
+         }
+     }
+ 
+     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+-        return derivedConfig.shouldQuitAfterLastWindowClosed
++        return true
+     }
+ 
+     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
++        if hmuxWindowController != nil { return .terminateNow }
+         let windows = NSApplication.shared.windows
+         if windows.isEmpty { return .terminateNow }
+ 
+@@ -679,6 +681,10 @@ class AppDelegate: NSObject,
+     }
+ 
+     private func syncDockBadge() {
++        if Bundle.main.bundleIdentifier == "dev.hmux.app" {
++            NSApp.dockTile.badgeLabel = nil
++            return
++        }
+         let center = UNUserNotificationCenter.current()
+         center.getNotificationSettings { settings in
+             switch settings.authorizationStatus {
+@@ -804,6 +810,10 @@ class AppDelegate: NSObject,
+             NSApp.setActivationPolicy(.accessory)
+         }
+ 
++        if Bundle.main.bundleIdentifier == "dev.hmux.app" {
++            return
++        }
++
+         // If we have configuration errors, we need to show them.
+         let c = ConfigurationErrorsController.sharedInstance
+         c.errors = config.errors
+@@ -911,6 +921,10 @@ class AppDelegate: NSObject,
+     // MARK: - GhosttyAppDelegate
+ 
+     func findSurface(forUUID uuid: UUID) -> Ghostty.SurfaceView? {
++        if let surface = HMuxSurfaceRegistry.shared.surface(id: uuid) {
++            return surface
++        }
++
+         for c in TerminalController.all {
+             for view in c.surfaceTree where view.id == uuid {
+                 return view
+diff --git a/macos/Sources/Features/App Intents/CloseTerminalIntent.swift b/macos/Sources/Features/App Intents/CloseTerminalIntent.swift
+index c3cca25..174d844 100644
+--- a/macos/Sources/Features/App Intents/CloseTerminalIntent.swift
++++ b/macos/Sources/Features/App Intents/CloseTerminalIntent.swift
+@@ -8,7 +8,7 @@ struct CloseTerminalIntent: AppIntent {
+ 
+     @Parameter(
+         title: "Terminal",
+-        description: "The terminal to close.",
++        description: "The terminal to close."
+     )
+     var terminal: TerminalEntity
+ 
+diff --git a/macos/Sources/Features/App Intents/FocusTerminalIntent.swift b/macos/Sources/Features/App Intents/FocusTerminalIntent.swift
+index 21dd71b..4814672 100644
+--- a/macos/Sources/Features/App Intents/FocusTerminalIntent.swift
++++ b/macos/Sources/Features/App Intents/FocusTerminalIntent.swift
+@@ -8,7 +8,7 @@ struct FocusTerminalIntent: AppIntent {
+ 
+     @Parameter(
+         title: "Terminal",
+-        description: "The terminal to focus.",
++        description: "The terminal to focus."
+     )
+     var terminal: TerminalEntity
+ 
+diff --git a/macos/Sources/Features/App Intents/NewTerminalIntent.swift b/macos/Sources/Features/App Intents/NewTerminalIntent.swift
+index 858d5ce..b04bc48 100644
+--- a/macos/Sources/Features/App Intents/NewTerminalIntent.swift
++++ b/macos/Sources/Features/App Intents/NewTerminalIntent.swift
+@@ -19,7 +19,7 @@ struct NewTerminalIntent: AppIntent {
+ 
+     @Parameter(
+         title: "Command",
+-        description: "Command to execute within your configured shell.",
++        description: "Command to execute within your configured shell."
+     )
+     var command: String?
+ 
+diff --git a/macos/Sources/Features/Terminal/TerminalController.swift b/macos/Sources/Features/Terminal/TerminalController.swift
+index 56b0b40..53b7a83 100644
+--- a/macos/Sources/Features/Terminal/TerminalController.swift
++++ b/macos/Sources/Features/Terminal/TerminalController.swift
+@@ -312,7 +312,7 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
+         _ ghostty: Ghostty.App,
+         tree: SplitTree<Ghostty.SurfaceView>,
+         position: NSPoint? = nil,
+-        confirmUndo: Bool = true,
++        confirmUndo: Bool = true
+     ) -> TerminalController {
+         let c = TerminalController.init(ghostty, withSurfaceTree: tree)
+ 
+@@ -1095,11 +1095,11 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
+         let originChanged = terminalWindow.setInitialWindowPosition(
+             x: derivedConfig.windowPositionX,
+-            y: derivedConfig.windowPositionY,
++            y: derivedConfig.windowPositionY
+         )
+         let restored = LastWindowPosition.shared.restore(
+             terminalWindow,
+             origin: !originChanged,
+-            size: defaultSize == nil,
++            size: defaultSize == nil
+         )
+ 
+         // If nothing is changed for the frame,
+@@ -1335,7 +1335,7 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
+         // attached to the window that needs confirmation.
+         confirmController.confirmClose(
+             messageText: "Close Window?",
+-            informativeText: "All terminal sessions in this window will be terminated.",
++            informativeText: "All terminal sessions in this window will be terminated."
+         ) {
+             self.closeWindowImmediately()
+         }
+diff --git a/macos/Sources/Features/App Intents/IntentPermission.swift b/macos/Sources/Features/App Intents/IntentPermission.swift
+index 48e4ddf..1424b41 100644
+--- a/macos/Sources/Features/App Intents/IntentPermission.swift
++++ b/macos/Sources/Features/App Intents/IntentPermission.swift
+@@ -47,7 +47,7 @@ func requestIntentPermission() async -> Bool {
+                 "com.mitchellh.ghostty.shortcutsPermission",
+                 message: "Allow Shortcuts to interact with Ghostty?",
+                 allowDuration: .forever,
+-                rememberDuration: nil,
++                rememberDuration: nil
+             ) { response in
+                 continuation.resume(returning: response)
+             }
+diff --git a/macos/Sources/Features/App Intents/Entities/CommandEntity.swift b/macos/Sources/Features/App Intents/Entities/CommandEntity.swift
+index d3fce6c..1087d52 100644
+--- a/macos/Sources/Features/App Intents/Entities/CommandEntity.swift
++++ b/macos/Sources/Features/App Intents/Entities/CommandEntity.swift
+@@ -34,7 +34,7 @@ struct CommandEntity: AppEntity, Identifiable {
+     var displayRepresentation: DisplayRepresentation {
+         DisplayRepresentation(
+             title: LocalizedStringResource(stringLiteral: command.title),
+-            subtitle: LocalizedStringResource(stringLiteral: command.description),
++            subtitle: LocalizedStringResource(stringLiteral: command.description)
+         )
+     }
+ 
+diff --git a/macos/Sources/Features/QuickTerminal/QuickTerminalController.swift b/macos/Sources/Features/QuickTerminal/QuickTerminalController.swift
+index 0a55f3b..b7a0175 100644
+--- a/macos/Sources/Features/QuickTerminal/QuickTerminalController.swift
++++ b/macos/Sources/Features/QuickTerminal/QuickTerminalController.swift
+@@ -41,7 +41,7 @@ class QuickTerminalController: BaseTerminalController {
+     init(_ ghostty: Ghostty.App,
+          position: QuickTerminalPosition = .top,
+          baseConfig base: Ghostty.SurfaceConfiguration? = nil,
+-         restorationState: QuickTerminalRestorableState? = nil,
++         restorationState: QuickTerminalRestorableState? = nil
+     ) {
+         self.position = position
+         self.derivedConfig = DerivedConfig(ghostty.config)
+diff --git a/macos/Sources/Helpers/Backport.swift b/macos/Sources/Helpers/Backport.swift
+index 65b52e0..e59301e 100644
+--- a/macos/Sources/Helpers/Backport.swift
++++ b/macos/Sources/Helpers/Backport.swift
+@@ -121,7 +121,7 @@ enum BackportPointerStyle {
+ enum BackportNSGlassStyle {
+     case regular, clear
+ 
+-    #if canImport(AppKit)
++    #if compiler(>=6.2) && canImport(AppKit)
+     @available(macOS 26, *)
+     var official: NSGlassEffectView.Style {
+         switch self {
+diff --git a/src/build/MetallibStep.zig b/src/build/MetallibStep.zig
+index fcf3055..faba142 100644
+--- a/src/build/MetallibStep.zig
++++ b/src/build/MetallibStep.zig
+@@ -55,7 +55,10 @@ pub fn create(b: *std.Build, opts: Options) ?*MetallibStep {
+         b,
+         b.fmt("metal {s}", .{opts.name}),
+     );
+-    run_ir.addArgs(&.{ "/usr/bin/xcrun", "-sdk", sdk, "metal", "-o" });
++    run_ir.addArgs(&.{
++        "/usr/bin/xcrun", "-sdk", sdk, "metal",
++        "-fmodules-cache-path=.zig-cache/metal-modules", "-o",
++    });
+     const output_ir = run_ir.addOutputFileArg(b.fmt("{s}.ir", .{opts.name}));
+     run_ir.addArgs(&.{"-c"});
+     for (opts.sources) |source| run_ir.addFileArg(source);
+diff --git a/macos/Sources/Ghostty/Surface View/SurfaceView.swift b/macos/Sources/Ghostty/Surface View/SurfaceView.swift
+index 47503dc..a3eb71b 100644
+--- a/macos/Sources/Ghostty/Surface View/SurfaceView.swift	
++++ b/macos/Sources/Ghostty/Surface View/SurfaceView.swift	
+@@ -411,7 +411,36 @@ extension Ghostty {
+ 
+         var body: some View {
+             GeometryReader { geo in
+-                HStack(spacing: 4) {
++                searchControls
++                .padding(8)
++                .background(.background)
++                .clipShape(clipShape)
++                .shadow(radius: 4)
++                .onAppear {
++                    isSearchFieldFocused = true
++                }
++                .onReceive(NotificationCenter.default.publisher(for: .ghosttySearchFocus)) { notification in
++                    guard notification.object as? SurfaceView === surfaceView else { return }
++                    DispatchQueue.main.async {
++                        isSearchFieldFocused = true
++                    }
++                }
++                .background(
++                    GeometryReader { barGeo in
++                        Color.clear.onAppear {
++                            barSize = barGeo.size
++                        }
++                    }
++                )
++                .padding(padding)
++                .offset(dragOffset)
++                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: corner.alignment)
++                .gesture(dragGesture(in: geo.size))
++            }
++        }
++
++        private var searchControls: some View {
++            HStack(spacing: 4) {
+                     TextField("Search", text: $searchState.needle)
+                     .textFieldStyle(.plain)
+                     .frame(width: 180)
+@@ -422,7 +451,7 @@ extension Ghostty {
+                     .focused($isSearchFieldFocused)
+                     .overlay(alignment: .trailing) {
+                         if let selected = searchState.selected {
+-                            Text("\(selected + 1)/\(searchState.total, default: "?")")
++                            Text("\(selected + 1)/\(searchState.total.map(String.init) ?? "?")")
+                                 .font(.caption)
+                                 .foregroundColor(.secondary)
+                                 .monospacedDigit()
+@@ -476,57 +505,30 @@ extension Ghostty {
+                         Image(systemName: "xmark")
+                     }
+                     .buttonStyle(SearchButtonStyle())
++            }
++        }
++
++        private func dragGesture(in containerSize: CGSize) -> some Gesture {
++            DragGesture()
++                .onChanged { value in
++                    dragOffset = value.translation
+                 }
+-                .padding(8)
+-                .background(.background)
+-                .clipShape(clipShape)
+-                .shadow(radius: 4)
+-                .onAppear {
+-                    isSearchFieldFocused = true
+-                }
+-                .onReceive(NotificationCenter.default.publisher(for: .ghosttySearchFocus)) { notification in
+-                    guard notification.object as? SurfaceView === surfaceView else { return }
+-                    DispatchQueue.main.async {
+-                        isSearchFieldFocused = true
++                .onEnded { value in
++                    let centerPos = centerPosition(for: corner, in: containerSize, barSize: barSize)
++                    let newCenter = CGPoint(
++                        x: centerPos.x + value.translation.width,
++                        y: centerPos.y + value.translation.height
++                    )
++                    let newCorner = closestCorner(to: newCenter, in: containerSize)
++                    withAnimation(.easeOut(duration: 0.2)) {
++                        corner = newCorner
++                        dragOffset = .zero
+                     }
+                 }
+-                .background(
+-                    GeometryReader { barGeo in
+-                        Color.clear.onAppear {
+-                            barSize = barGeo.size
+-                        }
+-                    }
+-                )
+-                .padding(padding)
+-                .offset(dragOffset)
+-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: corner.alignment)
+-                .gesture(
+-                    DragGesture()
+-                        .onChanged { value in
+-                            dragOffset = value.translation
+-                        }
+-                        .onEnded { value in
+-                            let centerPos = centerPosition(for: corner, in: geo.size, barSize: barSize)
+-                            let newCenter = CGPoint(
+-                                x: centerPos.x + value.translation.width,
+-                                y: centerPos.y + value.translation.height
+-                            )
+-                            let newCorner = closestCorner(to: newCenter, in: geo.size)
+-                            withAnimation(.easeOut(duration: 0.2)) {
+-                                corner = newCorner
+-                                dragOffset = .zero
+-                            }
+-                        }
+-                )
+-            }
+         }
+ 
+-        private var clipShape: some Shape {
+-            if #available(iOS 26.0, macOS 26.0, *) {
+-                return ConcentricRectangle(corners: .concentric(minimum: 8), isUniform: true)
+-            } else {
+-                return RoundedRectangle(cornerRadius: 8)
+-            }
++        private var clipShape: RoundedRectangle {
++            RoundedRectangle(cornerRadius: 8)
+         }
+ 
+         enum Corner {
+diff --git a/macos/Sources/App/macOS/MainMenu.xib b/macos/Sources/App/macOS/MainMenu.xib
+index 73c1e59..bf7d941 100644
+--- a/macos/Sources/App/macOS/MainMenu.xib
++++ b/macos/Sources/App/macOS/MainMenu.xib
+@@ -58,7 +58,7 @@
+                 <outlet property="menuSelectSplitBelow" destination="QDz-d9-CBr" id="FsH-Dq-jij"/>
+                 <outlet property="menuSelectSplitLeft" destination="cTK-oy-KuV" id="Jpr-5q-dqz"/>
+                 <outlet property="menuSelectSplitRight" destination="upj-mc-L7X" id="nLY-o1-lky"/>
+-                <outlet property="menuSelectionForSearch" destination="TDN-42-Bu7" id="M04-1K-vze"/>
++                <outlet property="menuSelectionForFind" destination="TDN-42-Bu7" id="M04-1K-vze"/>
+                 <outlet property="menuServices" destination="aQe-vS-j8Q" id="uWQ-Wo-T1L"/>
+                 <outlet property="menuSetAsDefaultTerminal" destination="b1t-oB-7MI" id="6Eu-5G-OPo"/>
+                 <outlet property="menuSplitDown" destination="UDZ-4y-6xL" id="ptr-mj-Azh"/>
+diff --git "a/macos/Sources/Ghostty/Surface View/SurfaceView_AppKit.swift" "b/macos/Sources/Ghostty/Surface View/SurfaceView_AppKit.swift"
+--- "a/macos/Sources/Ghostty/Surface View/SurfaceView_AppKit.swift"
++++ "b/macos/Sources/Ghostty/Surface View/SurfaceView_AppKit.swift"
+@@ -2161,6 +2161,24 @@ extension Ghostty.SurfaceView {
+     override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
+         let pb = sender.draggingPasteboard
+ 
++        if Bundle.main.bundleIdentifier == "dev.hmux.app",
++           pb.availableType(from: [.fileURL]) != nil {
++            let operationID = UUID()
++            guard let urls = pb.readObjects(forClasses: [NSURL.self]) as? [URL],
++                  !urls.isEmpty,
++                  urls.allSatisfy(\.isFileURL) else {
++                // Never leak a local path into an HMux remote terminal when a
++                // malformed file pasteboard cannot be decoded safely.
++                NotificationCenter.default.post(
++                    name: Notification.Name("dev.hmux.file-drop-failed"),
++                    object: self,
++                    userInfo: ["operation_id": operationID]
++                )
++                return true
++            }
++            NotificationCenter.default.post(
++                name: Notification.Name("dev.hmux.file-drop"),
++                object: self,
++                userInfo: ["operation_id": operationID, "urls": urls]
++            )
++            return true
++        }
++
+         let content: String?
+         if let url = pb.string(forType: .URL) {
+             // URLs first, they get escaped as-is.

@@ -1,0 +1,428 @@
+diff --git a/src/surface_mouse.zig b/src/surface_mouse.zig
+--- a/src/surface_mouse.zig
++++ b/src/surface_mouse.zig
+@@ -11,6 +11,71 @@ const input = @import("input.zig");
+ const terminal = @import("terminal/main.zig");
+ const MouseShape = @import("terminal/mouse_shape.zig").MouseShape;
+ 
++/// A Command/Ctrl-click that started on a link while terminal mouse reporting
++/// was active. The terminal must not receive any part of this gesture: sending
++/// only a press or only a release leaves mouse-aware applications in a broken
++/// state.
++pub const PendingLinkClick = struct {
++    origin: terminal.point.Coordinate,
++    fingerprint: LinkFingerprint,
++    valid: bool = true,
++
++    /// Update the gesture for pointer movement. Once invalidated, a gesture
++    /// stays invalid until its release is consumed.
++    pub fn update(
++        self: *PendingLinkClick,
++        point: ?terminal.point.Coordinate,
++        exact_modifier: bool,
++    ) void {
++        if (!self.valid) return;
++        const current = point orelse {
++            self.valid = false;
++            return;
++        };
++        if (!exact_modifier or !self.origin.eql(current)) self.valid = false;
++    }
++
++    pub fn cancel(self: *PendingLinkClick) void {
++        self.valid = false;
++    }
++
++    pub fn gestureIsValid(
++        self: PendingLinkClick,
++        point: ?terminal.point.Coordinate,
++        exact_modifier: bool,
++    ) bool {
++        if (!self.valid or !exact_modifier) return false;
++        const current = point orelse return false;
++        return self.origin.eql(current);
++    }
++
++    pub fn shouldActivate(
++        self: PendingLinkClick,
++        point: ?terminal.point.Coordinate,
++        exact_modifier: bool,
++        fingerprint: ?LinkFingerprint,
++    ) bool {
++        if (!self.gestureIsValid(point, exact_modifier)) return false;
++        const current = fingerprint orelse return false;
++        return std.mem.eql(u8, &self.fingerprint, &current);
++    }
++};
++
++pub const LinkFingerprint = [32]u8;
++
++pub fn linkFingerprint(value: []const u8) LinkFingerprint {
++    var result: LinkFingerprint = undefined;
++    std.crypto.hash.Blake3.hash(value, &result, .{});
++    return result;
++}
++
++/// Links use the platform's primary shortcut modifier and no other binding
++/// modifier. Lock state and left/right modifier identity are intentionally
++/// ignored, matching Ghostty's existing link configuration behavior.
++pub fn exactLinkModifier(mods: input.Mods) bool {
++    return mods.binding().equal(input.ctrlOrSuper(.{}));
++}
++
+ /// For processing key events; the key that was physically pressed on the
+ /// keyboard.
+ physical_key: input.Key,
+@@ -125,6 +190,61 @@ pub fn isRectangleSelectState(mods: input.Mods) bool {
+         mods.ctrlOrSuper() and mods.alt;
+ }
+ 
++test "pending link click activates only in its origin cell" {
++    const testing = std.testing;
++    const origin: terminal.point.Coordinate = .{ .x = 3, .y = 7 };
++    const fingerprint = linkFingerprint("https://example.com/a");
++
++    var click: PendingLinkClick = .{ .origin = origin, .fingerprint = fingerprint };
++    click.update(origin, true);
++    try testing.expect(click.shouldActivate(origin, true, fingerprint));
++    try testing.expect(!click.shouldActivate(origin, false, fingerprint));
++    try testing.expect(!click.shouldActivate(null, true, fingerprint));
++    try testing.expect(!click.shouldActivate(
++        origin,
++        true,
++        linkFingerprint("https://example.com/b"),
++    ));
++}
++
++test "pending link click remains cancelled after movement" {
++    const testing = std.testing;
++    const origin: terminal.point.Coordinate = .{ .x = 3, .y = 7 };
++    const fingerprint = linkFingerprint("https://example.com");
++
++    var click: PendingLinkClick = .{ .origin = origin, .fingerprint = fingerprint };
++    click.update(.{ .x = 4, .y = 7 }, true);
++    try testing.expect(!click.valid);
++
++    click.update(origin, true);
++    try testing.expect(!click.shouldActivate(origin, true, fingerprint));
++}
++
++test "pending link click is cancelled when its modifier changes" {
++    const testing = std.testing;
++    const origin: terminal.point.Coordinate = .{ .x = 3, .y = 7 };
++    const fingerprint = linkFingerprint("https://example.com");
++
++    var click: PendingLinkClick = .{ .origin = origin, .fingerprint = fingerprint };
++    click.update(origin, false);
++    try testing.expect(!click.shouldActivate(origin, true, fingerprint));
++}
++
++test "exact link modifier rejects additional binding modifiers" {
++    const testing = std.testing;
++    const expected = input.ctrlOrSuper(.{});
++
++    try testing.expect(exactLinkModifier(expected));
++
++    var extra = expected;
++    extra.shift = true;
++    try testing.expect(!exactLinkModifier(extra));
++
++    extra = expected;
++    extra.alt = true;
++    try testing.expect(!exactLinkModifier(extra));
++}
++
+ test "keyToMouseShape" {
+     const testing = std.testing;
+ 
+diff --git a/src/Surface.zig b/src/Surface.zig
+--- a/src/Surface.zig
++++ b/src/Surface.zig
+@@ -253,6 +253,10 @@ const Mouse = struct {
+     /// The last x/y in the cursor position for links. We use this to
+     /// only process link hover events when the mouse actually moves cells.
+     link_point: ?terminal.point.Coordinate = null,
++
++    /// A link click whose press was intentionally withheld from a mouse-aware
++    /// terminal. Its release must also be consumed, even after cancellation.
++    pending_link_click: ?SurfaceMouse.PendingLinkClick = null,
+ };
+ 
+ /// Keyboard state for the surface.
+@@ -1513,6 +1517,13 @@ fn modsChanged(self: *Surface, mods: input.Mods) void {
+         // want caps/num lock or sided modifiers to affect the mouse.
+         self.mouse.mods = mods.binding();
+ 
++        // A link gesture stays cancelled if its exact modifier is released or
++        // combined with another binding modifier, even if Command/Ctrl is
++        // pressed again before the mouse button is released.
++        if (self.mouse.pending_link_click) |*pending| {
++            if (!SurfaceMouse.exactLinkModifier(self.mouse.mods)) pending.cancel();
++        }
++
+         // We also need to update the renderer so it knows if it should
+         // highlight links. Additionally, mark the screen as dirty so
+         // that the highlight state of all links is properly updated.
+@@ -1545,8 +1556,28 @@ fn mouseRefreshLinks(
+     pos_vp: terminal.point.Coordinate,
+     over_link: bool,
+ ) !void {
+-    // If the position is outside our viewport, do nothing
+-    if (pos.x < 0 or pos.y < 0) return;
++    // Positive overflow is clamped by the grid conversion, so bounds must be
++    // checked in pixel space before looking up a link.
++    if (!self.cursorPosInBounds(pos)) {
++        self.mouse.link_point = null;
++        self.mouse.over_link = false;
++        self.renderer_state.mouse.point = null;
++        self.renderer_state.terminal.screens.active.dirty.hyperlink_hover = true;
++        if (over_link) {
++            _ = try self.rt_app.performAction(
++                .{ .surface = self },
++                .mouse_shape,
++                self.io.terminal.mouse_shape,
++            );
++            _ = try self.rt_app.performAction(
++                .{ .surface = self },
++                .mouse_over_link,
++                .{ .url = "" },
++            );
++            try self.queueRender();
++        }
++        return;
++    }
+ 
+     // Update the last point that we checked for links so we don't
+     // recheck if the mouse moves some pixels to the same point.
+@@ -2679,7 +2710,8 @@ pub fn keyCallback(
+         // OR
+         // 2. mouse reporting is on and we are not reporting shift to the terminal
+         if (self.io.terminal.flags.mouse_event == .none or
+-            (self.mouse.mods.shift and !self.mouseShiftCapture(false)))
++            (self.mouse.mods.shift and !self.mouseShiftCapture(false)) or
++            SurfaceMouse.exactLinkModifier(self.mouse.mods))
+         {
+             // Refresh our link state
+             const pos = self.rt_surface.getCursorPos() catch break :mouse_mods;
+@@ -2695,6 +2727,14 @@ pub fn keyCallback(
+             };
+         } else if (self.io.terminal.flags.mouse_event != .none and !self.mouse.mods.shift) {
+             // If we have mouse reports on and we don't have shift pressed, we reset state
++            self.mouse.over_link = false;
++            self.mouse.link_point = null;
++            {
++                self.renderer_state.mutex.lock();
++                defer self.renderer_state.mutex.unlock();
++                self.renderer_state.mouse.point = null;
++                self.renderer_state.terminal.screens.active.dirty.hyperlink_hover = true;
++            }
+             _ = try self.rt_app.performAction(
+                 .{ .surface = self },
+                 .mouse_shape,
+@@ -3889,6 +3929,82 @@ pub fn mouseButtonCallback(
+     // Update our modifiers if they changed
+     self.modsChanged(mods);
+ 
++    // A new press supersedes any stale gesture state. If this exact
++    // Command/Ctrl-left press starts on a link, withhold it from the terminal
++    // and wait for a same-cell release before opening the URL.
++    if (button == .left and action == .press) {
++        self.mouse.pending_link_click = null;
++        if (SurfaceMouse.exactLinkModifier(self.mouse.mods)) link_click: {
++            const pos = self.rt_surface.getCursorPos() catch |err| {
++                log.warn("failed to get cursor position for link press err={}", .{err});
++                break :link_click;
++            };
++            if (!self.cursorPosInBounds(pos)) break :link_click;
++
++            const target = target: {
++                self.renderer_state.mutex.lock();
++                defer self.renderer_state.mutex.unlock();
++                break :target self.linkTargetAtPos(pos) catch |err| {
++                    log.warn("error resolving link press err={}", .{err});
++                    break :target null;
++                };
++            };
++            const link_target = target orelse break :link_click;
++            defer link_target.deinit(self.alloc);
++
++            self.mouse.pending_link_click = .{
++                .origin = self.posToViewport(pos.x, pos.y),
++                .fingerprint = link_target.fingerprint,
++            };
++            return true;
++        }
++    }
++
++    // The press for a pending link gesture was never sent to the terminal, so
++    // every completion path consumes its release. Only an unchanged gesture
++    // over the original cell activates the link.
++    if (button == .left and action == .release) {
++        if (self.mouse.pending_link_click) |pending| {
++            self.mouse.pending_link_click = null;
++            const pos = self.rt_surface.getCursorPos() catch |err| {
++                log.warn("failed to get cursor position for pending link click err={}", .{err});
++                return true;
++            };
++            const point: ?terminal.point.Coordinate = if (!self.cursorPosInBounds(pos))
++                null
++            else
++                self.posToViewport(pos.x, pos.y);
++
++            const exact_modifier = SurfaceMouse.exactLinkModifier(self.mouse.mods);
++            if (pending.gestureIsValid(point, exact_modifier)) {
++                const target = target: {
++                    self.renderer_state.mutex.lock();
++                    defer self.renderer_state.mutex.unlock();
++                    break :target self.linkTargetAtPos(pos) catch |err| {
++                        log.warn("error resolving pending link click err={}", .{err});
++                        break :target null;
++                    };
++                };
++                const link_target = target orelse return true;
++                defer link_target.deinit(self.alloc);
++
++                if (!pending.shouldActivate(point, exact_modifier, link_target.fingerprint)) {
++                    return true;
++                }
++
++                // Link lookup and copying are complete. Never hold the renderer
++                // mutex while entering the platform URL opener.
++                self.openUrl(.{
++                    .kind = .unknown,
++                    .url = link_target.url,
++                }) catch |err| {
++                    log.warn("error opening pending link click err={}", .{err});
++                };
++            }
++            return true;
++        }
++    }
++
+     // This is set to true if the terminal is allowed to capture the shift
+     // modifier. Note we can do this more efficiently probably with less
+     // locking/unlocking but clicking isn't that frequent enough to be a
+@@ -4492,35 +4608,60 @@ fn mouseModsWithCapture(self: *Surface, mods: input.Mods) input.Mods {
+     return final;
+ }
+ 
+-/// Attempt to invoke the action of any link that is under the
+-/// given position.
+-///
++const LinkTarget = struct {
++    url: []const u8,
++    fingerprint: SurfaceMouse.LinkFingerprint,
++
++    fn deinit(self: LinkTarget, alloc: Allocator) void {
++        alloc.free(self.url);
++    }
++};
++
++/// Resolve and copy the URL for a link under the given position.
+ /// Requires the renderer state mutex is held.
+-fn processLinks(self: *Surface, pos: apprt.CursorPos) !bool {
+-    const link = try self.linkAtPos(pos) orelse return false;
+-    switch (link.action) {
+-        .open => {
++fn linkTargetAtPos(self: *Surface, pos: apprt.CursorPos) !?LinkTarget {
++    const link = try self.linkAtPos(pos) orelse return null;
++    const url: []const u8 = switch (link.action) {
++        .open => open: {
+             const str = try self.io.terminal.screens.active.selectionString(self.alloc, .{
+                 .sel = link.selection,
+                 .trim = false,
+             });
+-            defer self.alloc.free(str);
++            errdefer self.alloc.free(str);
+ 
+             const resolved_path = try self.resolvePathForOpening(str);
+-            defer if (resolved_path) |p| self.alloc.free(p);
+-
+-            const url_to_open = resolved_path orelse str;
+-            try self.openUrl(.{ .kind = .unknown, .url = url_to_open });
++            if (resolved_path) |resolved| {
++                self.alloc.free(str);
++                break :open resolved;
++            }
++            break :open str;
+         },
+ 
+-        ._open_osc8 => {
++        ._open_osc8 => osc8: {
+             const uri = self.osc8URI(link.selection.start()) orelse {
+                 log.warn("failed to get URI for OSC8 hyperlink", .{});
+-                return false;
++                return null;
+             };
+-            try self.openUrl(.{ .kind = .unknown, .url = uri });
++            break :osc8 try self.alloc.dupe(u8, uri);
+         },
+-    }
++    };
++
++    return .{
++        .url = url,
++        .fingerprint = SurfaceMouse.linkFingerprint(url),
++    };
++}
++
++/// Attempt to invoke the action of any link that is under the given position.
++fn processLinks(self: *Surface, pos: apprt.CursorPos) !bool {
++    const target = target: {
++        self.renderer_state.mutex.lock();
++        defer self.renderer_state.mutex.unlock();
++        break :target try self.linkTargetAtPos(pos);
++    } orelse return false;
++    defer target.deinit(self.alloc);
++
++    try self.openUrl(.{ .kind = .unknown, .url = target.url });
+ 
+     return true;
+ }
+@@ -4664,6 +4805,13 @@ pub fn cursorPosCallback(
+     // The mouse position in the viewport
+     const pos_vp = self.posToViewport(pos.x, pos.y);
+ 
++    if (self.mouse.pending_link_click) |*pending| {
++        pending.update(
++            if (!self.cursorPosInBounds(pos)) null else pos_vp,
++            SurfaceMouse.exactLinkModifier(self.mouse.mods),
++        );
++    }
++
+     // We always reset the over link status because it will be reprocessed
+     // below. But we need the old value to know if we need to undo mouse
+     // shape changes.
+@@ -4715,13 +4863,18 @@ pub fn cursorPosCallback(
+         self.mouse.link_point == null or
+         (self.mouse.link_point != null and !self.mouse.link_point.?.eql(pos_vp))) and
+         (self.io.terminal.flags.mouse_event == .none or
+-            (self.mouse.mods.shift and !self.mouseShiftCapture(false))))
++            (self.mouse.mods.shift and !self.mouseShiftCapture(false)) or
++            SurfaceMouse.exactLinkModifier(self.mouse.mods)))
+     {
+         // If we were previously over a link, we always update. We do this so that if the text
+         // changed underneath us, even if the mouse didn't move, we update the URL hints and state
+         try self.mouseRefreshLinks(pos, pos_vp, over_link);
+     }
+ 
++    // A pending link gesture is fully owned by Ghostty. Keep refreshing its
++    // hover feedback above, but never report motion or start a selection.
++    if (self.mouse.pending_link_click != null) return;
++
+     // Do a mouse report
+     if (self.isMouseReporting()) report: {
+         // Shift overrides mouse "grabbing" in the window, taken from Kitty.
+@@ -5071,6 +5224,12 @@ pub fn posToViewport(self: Surface, xpos: f64, ypos: f64) terminal.point.Coordin
+     return .{ .x = grid.x, .y = grid.y };
+ }
+ 
++fn cursorPosInBounds(self: Surface, pos: apprt.CursorPos) bool {
++    const width: f32 = @floatFromInt(self.size.screen.width);
++    const height: f32 = @floatFromInt(self.size.screen.height);
++    return pos.x >= 0 and pos.y >= 0 and pos.x < width and pos.y < height;
++}
++
+ /// Scroll to the bottom of the viewport.
+ ///
+ /// Precondition: the render_state mutex must be held.
