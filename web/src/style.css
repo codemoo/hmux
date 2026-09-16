@@ -1,0 +1,1276 @@
+@font-face {
+  font-family: "HMux Mono";
+  src: url("/fonts/MonatendardNFM-Regular.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "HMux Mono";
+  src: url("/fonts/MonatendardNFM-Bold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+:root {
+  /* HMux already supplies a dark palette; opt out of UA auto-dark recoloring. */
+  color-scheme: only dark;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #cecdc3;
+  background: #100f0f;
+  font-synthesis: none;
+  font-size: 13px;
+  --base: #100f0f;
+  --panel: #1c1b1a;
+  --raised: #282726;
+  --border: #343331;
+  --muted: #9f9d96;
+  --blue: #4385be;
+  --green: #879a39;
+  --safe-top: max(env(safe-area-inset-top, 0px), var(--device-safe-top, 0px));
+  --safe-bottom: var(--device-safe-bottom, env(safe-area-inset-bottom, 0px));
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+input,
+select {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+button,
+a,
+input,
+select {
+  outline-offset: 3px;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--blue);
+}
+button {
+  color: inherit;
+  border: 0;
+}
+button svg {
+  flex-shrink: 0;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+button,
+input,
+select {
+  touch-action: manipulation;
+}
+input,
+select {
+  color: inherit;
+  background: #100f0f;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  min-width: 0;
+  width: 100%;
+}
+input::placeholder {
+  color: #6f6e69;
+}
+input[type="checkbox"] {
+  width: auto;
+  accent-color: var(--blue);
+}
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 500;
+}
+small,
+.muted {
+  color: var(--muted);
+}
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+h2 {
+  font-size: 23px;
+  letter-spacing: -0.7px;
+  font-weight: 550;
+}
+h3 {
+  font-size: 16px;
+}
+p {
+  line-height: 1.7;
+}
+strong {
+  font-weight: 550;
+}
+[hidden] {
+  display: none !important;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 650;
+  font-size: 19px;
+  letter-spacing: -0.5px;
+}
+.brandmark {
+  width: 33px;
+  height: 33px;
+}
+.brand small {
+  font: 9px monospace;
+  letter-spacing: 1px;
+  color: var(--muted);
+  margin-left: auto;
+}
+.eyebrow {
+  display: block;
+  font: 10px/1.5 monospace;
+  letter-spacing: 2px;
+  color: #879a39;
+  margin-bottom: 22px;
+}
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--muted);
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  padding: 0;
+}
+.icon-button:hover {
+  color: #cecdc3;
+  background: var(--raised);
+}
+.icon-button[aria-pressed="true"] {
+  color: #6ba4d0;
+  background: #203247;
+}
+.primary,
+.secondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 18px;
+  border-radius: 8px;
+  font-weight: 550;
+  background: var(--blue);
+  color: #fff;
+}
+.primary:hover {
+  background: #4e91cb;
+}
+.secondary {
+  background: var(--raised);
+  color: #cecdc3;
+  border: 1px solid var(--border);
+}
+.error {
+  min-height: 18px;
+  color: #d14d41;
+  font-size: 12px;
+  margin: 10px 0;
+}
+.login {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  min-height: 100dvh;
+}
+.login-story {
+  display: flex;
+  flex-direction: column;
+  padding: 42px 54px;
+  background:
+    radial-gradient(ellipse at 10% 45%, #26302250, transparent 70%), #161615;
+  border-right: 1px solid #282726;
+}
+.story-copy {
+  margin: auto 0;
+  padding: 70px 0;
+  max-width: 490px;
+}
+.story-copy h1 {
+  font-size: clamp(32px, 3.5vw, 52px);
+  font-weight: 550;
+  letter-spacing: -2px;
+  line-height: 1.3;
+  margin-bottom: 25px;
+}
+.story-copy h1 span {
+  color: var(--muted);
+}
+.story-copy > p {
+  font-size: 15px;
+  color: #9f9d96;
+  line-height: 1.9;
+}
+.story-terminal {
+  margin-top: 44px;
+  border: 1px solid #343331;
+  border-radius: 10px;
+  padding: 0 20px 18px;
+  background: #100f0f;
+  box-shadow: 0 15px 45px #0002;
+  font: 12px/1.8 monospace;
+}
+.story-terminal > div {
+  height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border-bottom: 1px solid #282726;
+  margin-bottom: 16px;
+}
+.story-terminal i {
+  display: block;
+  width: 6px;
+  height: 6px;
+  background: #575653;
+  border-radius: 50%;
+}
+.story-terminal div span {
+  margin-left: auto;
+  font-size: 10px;
+  color: #6f6e69;
+}
+.story-terminal p {
+  margin: 8px 0;
+}
+.story-terminal b {
+  color: var(--green);
+  margin-right: 8px;
+}
+.cursor {
+  color: var(--blue);
+  margin-left: 5px;
+}
+.story-foot {
+  font: 9px monospace;
+  letter-spacing: 2px;
+  color: #6f6e69;
+  margin: 0;
+}
+.login-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 50px 40px;
+}
+.login-panel form {
+  width: 100%;
+  max-width: 355px;
+}
+.lock-badge {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #343331;
+  border-radius: 12px;
+  background: #1c1b1a;
+  margin-bottom: 32px;
+  color: #9f9d96;
+}
+.login-panel .eyebrow {
+  color: #9f9d96;
+  margin-bottom: 12px;
+}
+.login-panel form > p.muted {
+  margin-bottom: 32px;
+  font-size: 12px;
+}
+.login-panel label {
+  margin-top: 19px;
+}
+.login-panel input {
+  height: 45px;
+  background: #1c1b1a;
+}
+.login-panel label small {
+  font-weight: 400;
+  font-size: 11px;
+}
+.code-input {
+  letter-spacing: 8px;
+  font-family: monospace;
+}
+.login-note {
+  text-align: center;
+  font-size: 11px;
+  color: #6f6e69;
+  margin-top: 20px;
+}
+.workspace {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  height: 100dvh;
+  overflow: hidden;
+}
+.sidebar {
+  background: var(--panel);
+  border-right: 1px solid var(--raised);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 12px;
+}
+.sidebar-head {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  gap: 10px;
+}
+.sidebar-head .brand {
+  width: 100%;
+}
+.home-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 7px 0 21px;
+  padding: 12px;
+  background: #222220;
+  border: 1px solid #30302b;
+  border-radius: 8px;
+}
+.home-card strong {
+  font-size: 12px;
+}
+.home-card small {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+}
+.status-dot {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #6f6e69;
+}
+.status-dot.online {
+  background: var(--green);
+  box-shadow: 0 0 0 3px #879a3914;
+}
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #343331;
+  border-radius: 7px;
+  background: #100f0f;
+  padding: 0 9px;
+  height: 35px;
+  color: #878580;
+}
+.search-box input {
+  border: 0;
+  background: none;
+  padding: 0;
+  height: 100%;
+  font-size: 11px;
+}
+.search-box input:focus {
+  outline: none;
+}
+.search-box:focus-within {
+  outline: 1px solid #4385be;
+}
+.search-box svg {
+  width: 14px;
+  flex-shrink: 0;
+}
+.search-box kbd {
+  font-size: 9px;
+  white-space: nowrap;
+  color: #6f6e69;
+}
+.list-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font: 9px monospace;
+  letter-spacing: 1px;
+  color: #878580;
+  padding: 17px 4px 7px;
+}
+.list-heading b {
+  background: #282726;
+  color: #9f9d96;
+  border-radius: 4px;
+  padding: 2px 5px;
+  margin-left: 5px;
+  font-weight: 400;
+}
+.session-list {
+  flex: 1;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #343331 transparent;
+}
+.session-row {
+  display: flex;
+  align-items: center;
+  height: 59px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  margin: 2px 0;
+  padding-right: 4px;
+}
+.session-row:hover {
+  background: #282726;
+}
+.session-row.selected {
+  background: #24303a;
+  border-color: #4385be33;
+}
+.session-open {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 8px 10px;
+  background: transparent;
+  text-align: left;
+}
+.session-icon {
+  width: 23px;
+  flex-shrink: 0;
+  font: 19px monospace;
+  color: #b7b5ac;
+}
+.selected .session-icon {
+  color: #6ba4d0;
+}
+.session-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.session-info strong {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.session-info small {
+  font-size: 10px;
+  color: #878580;
+}
+.session-row > .icon-button {
+  width: 26px;
+  opacity: 0;
+}
+.session-row:hover > .icon-button,
+.session-row:focus-within > .icon-button,
+.selected > .icon-button {
+  opacity: 1;
+}
+.session-row.is-hidden {
+  opacity: 0.6;
+}
+.list-empty {
+  padding: 15px 8px;
+  color: #878580;
+  font-size: 12px;
+}
+.hidden-toggle {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: #878580;
+  padding: 12px 4px;
+}
+.sidebar-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid #282726;
+  height: 55px;
+  color: #9f9d96;
+  font-size: 11px;
+  padding: 0 4px;
+}
+.workarea {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.tabbar {
+  display: flex;
+  height: 47px;
+  min-height: 47px;
+  background: #161615;
+  border-bottom: 1px solid #282726;
+  padding: 0 10px 0 5px;
+  align-items: center;
+  gap: 5px;
+}
+#tabs {
+  display: flex;
+  align-items: stretch;
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex: 1;
+  height: 100%;
+  min-width: 0;
+}
+.tab {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  border-bottom: 2px solid transparent;
+  border-right: 1px solid #282726;
+  padding: 0 4px 0 10px;
+  min-width: 125px;
+  max-width: 220px;
+  flex-shrink: 0;
+}
+.tab.active {
+  border-bottom-color: #4385be;
+  background: #100f0f;
+}
+.tab > button:first-child {
+  background: transparent;
+  text-align: left;
+  color: #878580;
+  font-size: 11px;
+  height: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  padding-right: 12px;
+}
+.tab.active > button:first-child {
+  color: #cecdc3;
+}
+.tab .icon-button {
+  width: 23px;
+  height: 26px;
+}
+.tab .icon-button svg {
+  width: 12px;
+}
+.toolbar {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+#terminal-state {
+  margin-left: auto;
+  color: #6f6e69;
+  white-space: nowrap;
+}
+.subtle-button {
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #6ba4d0;
+  font-size: 10px;
+}
+.subtle-button svg {
+  width: 12px;
+}
+.notice {
+  font-size: 12px;
+  padding: 10px 16px;
+  background: #3a3020;
+  color: #dab979;
+  border-bottom: 1px solid #57452c;
+}
+#stage {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+.terminal-host {
+  position: absolute;
+  inset: 12px 12px 6px 16px;
+}
+.xterm {
+  height: 100%;
+  /* ANSI colors carry terminal semantics. Keep browser forced colors from
+     independently recoloring token spans, while leaving app controls adaptive. */
+  forced-color-adjust: none;
+}
+.xterm .xterm-viewport {
+  scrollbar-width: thin;
+  scrollbar-color: #403e3c transparent;
+}
+#empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 30px;
+}
+#empty .empty-mark {
+  border: 1px solid #343331;
+  background: #1c1b1a;
+  border-radius: 17px;
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  color: #878580;
+  margin-bottom: 30px;
+}
+#empty .empty-mark svg {
+  width: 28px;
+  height: 28px;
+}
+#empty .eyebrow {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: #6f6e69;
+  margin-bottom: 12px;
+}
+#empty h2 {
+  font-size: 22px;
+}
+#empty p {
+  font-size: 12px;
+  color: #878580;
+  line-height: 1.9;
+}
+#empty .secondary {
+  font-size: 11px;
+  width: auto;
+  margin-top: 12px;
+}
+.keybar {
+  display: none;
+  padding: 6px 10px;
+  border-top: 1px solid #282726;
+  gap: 6px;
+  overflow: auto;
+  background: #161615;
+}
+.keybar button {
+  font-family: monospace;
+  border: 1px solid #343331;
+  background: #222220;
+  border-radius: 5px;
+  min-width: 37px;
+  height: 31px;
+  font-size: 11px;
+  flex: 1;
+  white-space: nowrap;
+  padding: 0 6px;
+}
+.keybar button[aria-pressed="true"] {
+  background: #24303a;
+  color: #6ba4d0;
+}
+footer {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-height: 35px;
+  padding: 7px 16px;
+  background: #161615;
+  border-top: 1px solid #282726;
+  font-size: 10px;
+  color: #878580;
+  flex-wrap: wrap;
+}
+.footer-button {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  font-size: 10px;
+  background: transparent;
+  padding: 0;
+  color: #9f9d96;
+}
+.footer-button strong {
+  color: #b7b5ac;
+  font-size: 10px;
+}
+.footer-button i {
+  height: 10px;
+  width: 1px;
+  background: #343331;
+  margin: 0 5px;
+}
+dialog {
+  background: #1c1b1a;
+  color: #cecdc3;
+  border: 1px solid #403e3c;
+  border-radius: 13px;
+  width: min(440px, calc(100% - 28px));
+  padding: 23px;
+  box-shadow: 0 24px 90px #0009;
+  max-height: 85dvh;
+}
+dialog::backdrop {
+  background: #0008;
+}
+.dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.dialog-head h2 {
+  font-size: 18px;
+  margin: 0;
+}
+#dialog-body label {
+  margin-bottom: 17px;
+}
+#dialog-body p {
+  font-size: 12px;
+}
+#dialog-body > .secondary {
+  margin-top: 15px;
+}
+#dialog-body > .muted:last-child {
+  margin: 15px 0 0;
+  font-size: 11px;
+}
+.account {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  border-bottom: 1px solid #343331;
+  padding: 14px 0;
+  margin-bottom: 12px;
+}
+.account strong {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.account small {
+  color: #879a39;
+  font-size: 10px;
+}
+.account span {
+  display: block;
+  width: 100%;
+  font-size: 11px;
+  color: #9f9d96;
+}
+#reader {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  padding: 30px max(22px, calc((100% - 760px) / 2));
+  background: #100f0f;
+}
+.reader-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
+.reader-controls h2 {
+  font-size: 18px;
+  margin: 0 auto 0 0;
+}
+.reader-controls label {
+  flex-direction: row;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #9f9d96;
+}
+article {
+  padding-bottom: 28px;
+  margin-bottom: 28px;
+  border-bottom: 1px solid #282726;
+}
+article small {
+  display: block;
+  font: 10px monospace;
+  letter-spacing: 1px;
+  color: #879a39;
+  margin-bottom: 12px;
+}
+.message-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.85;
+  font-size: 14px;
+}
+#scrim {
+  display: none;
+}
+@media (max-width: 1000px) {
+  .workspace {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+  .login-story {
+    padding: 35px;
+  }
+  footer {
+    gap: 8px 16px;
+  }
+  .search-box kbd {
+    display: none;
+  }
+}
+@media (max-width: 700px), (pointer: coarse) and (max-height: 500px) {
+  .login {
+    display: block;
+  }
+  .login-story {
+    padding: 24px;
+    border-right: 0;
+    background: #161615;
+  }
+  .story-copy,
+  .story-foot {
+    display: none;
+  }
+  .login-panel {
+    padding: 38px 24px;
+  }
+  .login-panel form {
+    max-width: 390px;
+  }
+  .lock-badge {
+    display: none;
+  }
+  .login-panel h2 {
+    font-size: 25px;
+  }
+  .login-panel input {
+    font-size: 16px;
+    height: 49px;
+  }
+  .workspace {
+    display: block;
+  }
+  .workarea {
+    height: 100dvh;
+  }
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: 280px;
+    z-index: 30;
+    transform: translateX(-100%);
+    box-shadow: 12px 0 40px #0004;
+    transition: transform 0.18s ease;
+  }
+  .show-sessions .sidebar {
+    transform: none;
+  }
+  .show-sessions #scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: #0007;
+    z-index: 25;
+  }
+  .sidebar-head .brand {
+    flex: 1;
+  }
+  .brand small {
+    margin-right: 12px;
+  }
+  .session-row > .icon-button {
+    opacity: 1;
+  }
+  .session-row {
+    height: 64px;
+  }
+  .search-box {
+    height: 41px;
+  }
+  .search-box input {
+    font-size: 16px;
+  }
+  .tabbar {
+    height: 48px;
+    min-height: 48px;
+    padding: 0 5px;
+  }
+  .tab {
+    min-width: 105px;
+    padding-left: 8px;
+  }
+  .toolbar .icon-button {
+    width: 30px;
+  }
+  .terminal-host {
+    inset: 8px 5px 4px 7px;
+  }
+  .keybar {
+    display: flex;
+  }
+  .workarea footer {
+    padding: 4px 10px;
+    gap: 3px 14px;
+    font-size: 9px;
+    min-height: 24px;
+  }
+  #metrics {
+    font-size: 9px;
+  }
+  #empty h2 {
+    font-size: 20px;
+  }
+  #empty p {
+    font-size: 12px;
+  }
+  #reader {
+    padding: 22px 18px;
+  }
+  dialog input,
+  dialog select {
+    font-size: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+#terminal-state {
+  margin-left: 0;
+}
+
+@media (min-width: 701px) and (min-height: 501px),
+  (min-width: 701px) and (pointer: fine) {
+  .sidebar-collapsed .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sidebar-collapsed .sidebar {
+    display: none;
+  }
+}
+
+/* The keyboard owns the home-indicator region while it is visible. */
+html.keyboard-visible {
+  --safe-bottom: 0px;
+}
+html,
+body {
+  overscroll-behavior: none;
+  touch-action: pan-x pan-y;
+}
+@media (max-width: 700px), (pointer: coarse) and (max-height: 500px) {
+  #app {
+    position: fixed;
+    inset: var(--viewport-top, 0px) 0 auto;
+    height: var(--viewport-height, 100dvh);
+    overflow: hidden;
+    /* Reserve device insets once, including when the normal tabbar is hidden. */
+    padding: var(--safe-top) env(safe-area-inset-right, 0px) var(--safe-bottom)
+      env(safe-area-inset-left, 0px);
+  }
+  /* Keep the home indicator clear without a full extra blank strip below
+     the compact footer. Login, sidebar and dialogs retain their full inset. */
+  html:not(.keyboard-visible) #app:has(> .workspace) {
+    padding-bottom: max(0px, calc(var(--safe-bottom) - 12px));
+    background: #161615;
+  }
+  .workspace,
+  .workarea {
+    height: 100%;
+  }
+  .login {
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .sidebar {
+    top: var(--viewport-top, 0px);
+    bottom: auto;
+    height: var(--viewport-height, 100dvh);
+    width: min(100%, calc(280px + env(safe-area-inset-left, 0px)));
+    padding-top: var(--safe-top);
+    padding-bottom: var(--safe-bottom);
+    padding-left: calc(12px + env(safe-area-inset-left, 0px));
+  }
+  dialog {
+    inset: calc(var(--viewport-top, 0px) + var(--safe-top))
+      env(safe-area-inset-right, 0px) auto env(safe-area-inset-left, 0px);
+    margin: 12px auto;
+    max-height: calc(
+      var(--viewport-height, 100dvh) - var(--safe-top) - var(--safe-bottom) -
+        24px
+    );
+    max-width: calc(
+      100% - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px) -
+        28px
+    );
+  }
+  .tabbar,
+  .keybar,
+  .workarea footer {
+    flex-shrink: 0;
+  }
+  .tabbar {
+    height: 44px;
+    min-height: 44px;
+  }
+  .keyboard-visible .workarea footer {
+    padding-bottom: 5px;
+    min-height: 28px;
+  }
+  .xterm .xterm-helper-textarea {
+    font-size: 16px !important;
+  }
+}
+
+@media (max-width: 700px), (pointer: coarse) and (max-height: 500px) {
+  .terminal-host {
+    inset: 2px 2px 0 3px;
+  }
+  .keybar {
+    padding: 2px 4px;
+    gap: 3px;
+    overflow-x: auto;
+    min-height: 26px;
+  }
+  .keybar button {
+    height: 23px;
+    min-width: 0;
+    padding: 0 4px;
+    font-size: 10px;
+    border-radius: 3px;
+  }
+  .keyboard-visible .workarea footer {
+    display: none;
+  }
+  .keyboard-visible .tabbar {
+    padding-top: 0;
+    height: 34px;
+    min-height: 34px;
+  }
+  .keyboard-visible .tabbar .icon-button {
+    height: 30px;
+  }
+  .keyboard-visible .keybar {
+    margin-bottom: 0;
+    padding-bottom: 2px;
+  }
+}
+
+/* Touch scrolling is translated into tmux wheel events; page panning must not
+   cancel that gesture. This applies only to terminal surfaces, not the reader. */
+.terminal-host {
+  touch-action: none;
+}
+
+#floating-tabs {
+  display: none;
+}
+.workarea {
+  position: relative;
+}
+@media (max-width: 700px), (pointer: coarse) and (max-height: 500px) {
+  .keyboard-visible .tabbar {
+    display: none;
+  }
+  .keyboard-visible #floating-tabs {
+    display: inline-flex;
+    position: absolute;
+    z-index: 45;
+    right: 5px;
+    top: 4px;
+    width: 28px;
+    height: 28px;
+    padding: 4px;
+    background: #282726ee;
+    border: 1px solid #403e3c;
+    border-radius: 7px;
+    box-shadow: 0 2px 6px #0005;
+  }
+  .keyboard-visible .floating-tabs-open .tabbar {
+    display: flex;
+    position: absolute;
+    z-index: 44;
+    top: 36px;
+    left: 4px;
+    right: 4px;
+    border: 1px solid #403e3c;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px #0006;
+  }
+}
+
+/* Keep native text composition on the terminal's dark surface. */
+.xterm .xterm-helper-textarea {
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+  border: 0;
+  outline: none;
+  box-shadow: none;
+}
+.xterm .composition-view {
+  background: var(--base);
+  color: #cecdc3;
+}
+
+dialog.settings-dialog {
+  box-shadow: none;
+}
+dialog.settings-dialog::backdrop {
+  background: transparent;
+}
+
+/* Self-contained colored SVG frames use the same ink as the usage labels. */
+.bedl {
+  display: block;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 22px;
+  background: transparent url("/bedl/bedl-vector-8.svg") center / contain
+    no-repeat;
+}
+.bedl.running {
+  animation: bedl-run var(--bedl-cycle) steps(1, end) infinite;
+}
+@keyframes bedl-run {
+  0.0000% {
+    background-image: url("/bedl/bedl-vector-6.svg");
+  }
+  7.1429% {
+    background-image: url("/bedl/bedl-vector-5.svg");
+  }
+  14.2857% {
+    background-image: url("/bedl/bedl-vector-2.svg");
+  }
+  21.4286% {
+    background-image: url("/bedl/bedl-vector-1.svg");
+  }
+  28.5714% {
+    background-image: url("/bedl/bedl-vector-7.svg");
+  }
+  35.7143% {
+    background-image: url("/bedl/bedl-vector-8.svg");
+  }
+  42.8571% {
+    background-image: url("/bedl/bedl-vector-3.svg");
+  }
+  50.0000% {
+    background-image: url("/bedl/bedl-vector-8.svg");
+  }
+  57.1429% {
+    background-image: url("/bedl/bedl-vector-7.svg");
+  }
+  64.2857% {
+    background-image: url("/bedl/bedl-vector-1.svg");
+  }
+  71.4286% {
+    background-image: url("/bedl/bedl-vector-2.svg");
+  }
+  78.5714% {
+    background-image: url("/bedl/bedl-vector-5.svg");
+  }
+  85.7143% {
+    background-image: url("/bedl/bedl-vector-6.svg");
+  }
+  92.8571% {
+    background-image: url("/bedl/bedl-vector-4.svg");
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bedl.running {
+    animation: none;
+  }
+}
+
+.footer-connection {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  white-space: nowrap;
+  font-size: 10px;
+}
+.footer-connection #terminal-state {
+  margin: 0;
+  color: #9f9d96;
+}
+
+/* xterm moves this invisible input to the buffer cursor. After a tab switch,
+   that old row can make Android pan the page when its keyboard appears.
+   Only the browser focus anchor is pinned; composition and input stay native. */
+.android .xterm .xterm-helper-textarea {
+  top: 0 !important;
+  left: 0 !important;
+}
+
+/* Preserve the top-left keyboard-opening anchor above. Once the keyboard is
+   visible, expose the same editable input across the input row for native Paste.
+   Blur or keyboard dismissal immediately restores the pinned focus geometry. */
+.android.keyboard-visible .xterm .android-native-paste-target:focus {
+  transform: translate(var(--paste-x, 0px), var(--paste-y, 0px));
+  z-index: 6 !important;
+  opacity: 1;
+  width: var(--paste-width, 44px) !important;
+  height: var(--paste-height, 44px) !important;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  caret-color: transparent;
+  pointer-events: auto;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* Mobile browser selection and callout menus operate on the rendered text.
+   xterm's desktop selection canvas remains unchanged. */
+.native-clipboard.xterm,
+.native-clipboard .xterm-rows,
+.native-clipboard .xterm-rows > div,
+.native-clipboard .xterm-rows span {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -webkit-touch-callout: default !important;
+}
+.native-clipboard .xterm-rows {
+  pointer-events: auto !important;
+}
+.terminal-host:has(.native-clipboard) {
+  touch-action: pan-x pan-y;
+}

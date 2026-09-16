@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+<meta name="color-scheme" content="only dark" />
+<meta name="theme-color" content="#100f0f" />
+<title>HMux · 한글 입력 진단</title>
+</head>
+<body>
+<main>
+<h1>한글 입력 진단</h1>
+<p>실제 세션과 연결되지 않는 테스트 화면입니다. 비밀번호나 작업 내용 대신 아래 문장만 입력해주세요.</p>
+<ol><li>‘모든 자모’를 입력합니다.</li><li>‘값’을 입력하고 삭제를 여러 번 누릅니다.</li><li>‘한’을 입력하고 ‘하 → ㅎ’로 지운 뒤 다시 입력합니다.</li></ol>
+<section><h2>1. 아이폰 기본 입력</h2><textarea id="native" rows="2" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="기본 한글 입력"></textarea></section>
+<section><h2>2. 터미널 입력</h2><p>터미널에서 입력·삭제를 반복하고 마지막에 공백이나 Enter를 눌러주세요. 아이폰에서는 기본 입력칸의 한글 조합을 표시하고 확정 시 전송합니다. 아래에는 전송될 문자열을 표시합니다.</p><div id="terminal"></div><pre id="wire" aria-label="전송 문자열"></pre></section>
+<div class="actions"><button id="show-report" type="button">기록 표시·복사</button><button id="download" type="button">진단 기록 내려받기</button><button id="clear" type="button">기록 지우기</button></div>
+<textarea id="report" hidden readonly rows="8" aria-label="복사할 진단 기록" spellcheck="false"></textarea>
+<p id="status" role="status">입력 기록은 이 페이지 메모리에만 보관됩니다.</p>
+<details><summary>최근 이벤트</summary><pre id="events"></pre></details>
+</main>
+<script type="module" src="/src/diagnostics/input-diagnostic.ts"></script>
+</body></html>

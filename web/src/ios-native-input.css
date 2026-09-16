@@ -1,0 +1,26 @@
+.ios-native-composition {
+  position: absolute;
+  z-index: 10;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--base, #100f0f);
+  color: #cecdc3;
+  pointer-events: none;
+}
+
+/* Expose xterm's existing cursor-positioned textarea to native iOS hit testing.
+   Keep its native value/selection and xterm's top/left; no second input overlay. */
+.xterm .xterm-helper-textarea.ios-native-paste-target {
+  z-index: 6 !important;
+  opacity: 1;
+  min-width: 44px;
+  min-height: 24px;
+  background: transparent;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  caret-color: transparent;
+  pointer-events: auto;
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
+}

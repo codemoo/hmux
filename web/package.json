@@ -1,0 +1,25 @@
+{
+  "name": "hmux-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "format": "prettier --write src tests index.html public/sw.js public/manifest.json",
+    "check": "tsc --noEmit && prettier --check src tests index.html public/sw.js public/manifest.json",
+    "test": "node --experimental-strip-types --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "@xterm/addon-fit": "0.11.0",
+    "@xterm/addon-web-links": "0.12.0",
+    "@xterm/xterm": "6.0.0",
+    "es-hangul": "2.4.0"
+  },
+  "devDependencies": {
+    "prettier": "3.9.6",
+    "typescript": "5.9.3",
+    "vite": "7.3.6"
+  }
+}

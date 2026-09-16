@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <meta name="theme-color" content="#100f0f" />
+    <meta name="color-scheme" content="only dark" />
+    <link rel="icon" type="image/png" href="/icons/hmux-192.png" />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/icons/apple-touch-icon.png"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="HMux" />
+    <link rel="manifest" href="/manifest.json" />
+    <link
+      rel="preload"
+      href="/fonts/MonatendardNFM-Regular.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/MonatendardNFM-Bold.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <title>HMux · Your workspace, anywhere</title>
+  </head>
+  <body>
+    <div id="app">
+      <main class="boot-screen" role="status">
+        <img src="/icons/hmux-192.png" width="48" height="48" alt="" /><strong
+          >HMux</strong
+        >
+        <p>작업 공간에 연결하는 중…</p>
+        <a href="/">다시 열기</a>
+      </main>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

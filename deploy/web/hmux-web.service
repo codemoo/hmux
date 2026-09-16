@@ -1,0 +1,37 @@
+[Unit]
+Description=HMux authenticated web gateway
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hmux-web
+Group=hmux-web
+WorkingDirectory=/opt/hmux-web/current
+EnvironmentFile=/etc/hmux-web/runtime.env
+ExecStart=/opt/hmux-web/current/hmux-web serve --listen 127.0.0.1:8088 --origin ${HMUX_WEB_ORIGIN} --assets /opt/hmux-web/current/web --credentials /var/lib/hmux-web/credentials.json --token-file /var/lib/hmux-web/connector.token
+Restart=on-failure
+RestartSec=3
+UMask=0077
+StateDirectory=hmux-web
+StateDirectoryMode=0700
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LockPersonality=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+MemoryMax=256M
+TasksMax=128
+LimitNOFILE=512
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target
