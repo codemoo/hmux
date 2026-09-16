@@ -60,7 +60,14 @@ struct HMuxSurfaceDeckSmoke {
             RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.02))
             hosting.layoutSubtreeIfNeeded()
         }
-        settle()
+        func settleUntil(_ condition: () -> Bool) {
+            let deadline = Date(timeIntervalSinceNow: 3)
+            repeat {
+                settle()
+                if condition() { return }
+            } while Date() < deadline
+        }
+        settleUntil { Mounts.created.count == 3 }
         precondition(Mounts.created.count == 3, "Native fixture views did not mount")
         for index in 0..<120 {
             store.selectedID = index % 3
@@ -78,10 +85,12 @@ struct HMuxSurfaceDeckSmoke {
         precondition(Mounts.created.count == 3 && Mounts.removed.isEmpty, "Reordering remounted a native surface")
         let replaced = store.surfaces[1].rendererID
         store.surfaces[1].rendererID = UUID()
-        settle()
+        // SwiftUI schedules renderer replacement and dismantling asynchronously.
+        // A fixed 20ms delay is not sufficient on a cold CI host.
+        settleUntil { Mounts.created.count == 4 && Mounts.removed == [replaced] }
         precondition(Mounts.created.count == 4 && Mounts.removed == [replaced], "Reconnect must replace only its renderer")
         let closed = store.surfaces.removeFirst().rendererID
-        settle()
+        settleUntil { Mounts.removed == [replaced, closed] }
         precondition(Mounts.removed == [replaced, closed], "Closing must release only the removed renderer")
         print("surface-deck-ok switches=120 initial-mounts=3 reconnects=1 closes=1")
     }

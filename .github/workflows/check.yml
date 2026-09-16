@@ -5,7 +5,7 @@ on:
 permissions:
   contents: read
 jobs:
-  go-and-native:
+  go:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
@@ -22,8 +22,15 @@ jobs:
       - run: go test -race ./...
       - run: go test ./...
         working-directory: third_party/token-terrier-server
-      - run: make native-smoke
       - run: make shellcheck
+  native:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: make native-smoke
   web:
     runs-on: ubuntu-latest
     steps:
