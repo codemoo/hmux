@@ -24,7 +24,7 @@ jobs:
         working-directory: third_party/token-terrier-server
       - run: make shellcheck
   native:
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5

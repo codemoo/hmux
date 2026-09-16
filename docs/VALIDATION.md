@@ -41,3 +41,11 @@ separate from these checks. GitHub CI results are visible on the repository Acti
 
 Source publication does not redeploy the running web service or restart existing
 terminal sessions.
+
+### Public CI follow-up
+
+The first macOS CI run used system LibreSSL, which lacks the Ed25519 verification
+option. CI now installs OpenSSL 3 explicitly. Core Go tests/vet/race and web checks
+passed on GitHub. The optional native surface-deck contract failed on macOS 14 even
+after replacing a fixed 20ms sleep with a bounded condition wait. Native CI targets
+the locally validated macOS 15 baseline; this is not a claim that macOS 14 is fixed.

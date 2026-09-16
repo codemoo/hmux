@@ -9,7 +9,10 @@ It uses the same host services and session identity rules as the web client.
 - [Native third-party notices](HMux/ThirdPartyNotices.md)
 - [Build/install operations](../docs/OPERATIONS.md)
 
-Build from source on an Apple Silicon Mac with the documented Xcode/toolchain.
+Build from source on an Apple Silicon Mac running macOS 15 with the documented
+Xcode/toolchain. Native CI targets macOS 15, matching the local validation baseline.
+macOS 14 is not currently validated: its SwiftUI renderer lifecycle fails the native
+surface-deck contract test even with bounded asynchronous waiting.
 `make native-smoke` checks native contracts. The Go bridge remains at `cmd/hmux/`;
 shared host services stay in `internal/`. Do not move or duplicate those services
 into the UI. The old standalone terminal interface is in `archive/terminal/`.
