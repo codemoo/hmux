@@ -5,6 +5,29 @@ private-deployment checkpoints are preserved in
 [the historical validation log](archive/VALIDATION_PRE_PUBLICATION.md).
 They are not claims about a user's independent deployment.
 
+## 2026-09-17 — component cleanup
+
+Web presentation is separated into conversation and usage views, with shared typed
+DOM helpers and fixed SVG icons. `main.ts` retains connection/request lifecycle,
+abort and session-identity guards. Account settings retain their own disposal guards.
+The gateway centralizes session persistence failures in a locked helper that
+invalidates active connections; startup session loading keeps its separate path.
+
+Checks completed locally:
+
+- Web type/style checks, 95 tests and production build.
+- Full Go tests and vet; race tests for `internal/webgateway`, including existing
+  session persistence, revocation, account isolation and storage-failure coverage.
+- Chromium with synthetic API/WebSocket responses: usage values and unknown/zero
+  distinction, literal external text, conversation question/code filters and return
+  controls, and TOTP/login-session settings rendering. Usage-dialog screenshots
+  were inspected at 1280×900 and 390×844.
+- Independent review of the frozen implementation found no material defects.
+
+Browser checks used no live host or tmux sessions. Responsive Chromium checks do
+not establish physical iPhone/Android or Safari IME behavior. This cleanup preserves
+existing input code and does not redeploy the running service.
+
 ## 2026-09-16 — initial public-source preparation
 
 The repository now presents HMux as one persistent host for Codex, Claude and

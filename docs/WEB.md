@@ -254,7 +254,7 @@ The input caret area on iPhone and current input row on Android expose the real
 editable control. Output elsewhere remains browser-selectable terminal text.
 No custom clipboard menu or silent clipboard access is used. See
 [mobile input troubleshooting](TROUBLESHOOTING.md#mobile-input-and-native-clipboard)
-for regressions and [current evidence](VALIDATION.md#current-web-verification-2026-09-09)
+for regressions and [current evidence](VALIDATION.md)
 for build/deployment details.
 
 ## Source ownership
@@ -262,6 +262,10 @@ for build/deployment details.
 | File/module | Responsibility |
 | --- | --- |
 | `web/src/main.ts` | UI composition, tab/connection lifecycle, API and workspace coordination |
+| `dom.ts`, `icons.ts` | Typed text-only DOM construction and fixed local SVG icons |
+| `conversation-view.ts` | Conversation display, question/code filters and return controls; request/epoch ownership stays in `main.ts` |
+| `usage-view.ts` | Usage footer, account gauges and usage dialog; quota interpretation stays in `usage.ts` |
+| `account-security.ts`, `login-sessions.ts` | Account settings and login-session dialogs with abort/disposal ownership |
 | `viewport.ts`, `mobile.ts` | Viewport/keyboard state, font preference bounds |
 | xterm 6.0.0 / `ios-native-input.ts`, `ios-native-input.css` | Default input; iPhone native Hangul transaction, echo preview and editable Paste target |
 | `native-clipboard.ts` | Native rendered-text selection/Copy and touch gesture ownership |
