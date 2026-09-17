@@ -1,3 +1,5 @@
+import { createTextFactory } from "./dom.ts";
+
 type SecurityAPI = (
   path: string,
   body?: unknown,
@@ -12,16 +14,7 @@ export function installAccountSecurity(
 ) {
   const controller = new AbortController();
   const doc = root.ownerDocument;
-  const make = <K extends keyof HTMLElementTagNameMap>(
-    tag: K,
-    value = "",
-    className = "",
-  ) => {
-    const node = doc.createElement(tag);
-    node.textContent = value;
-    node.className = className;
-    return node;
-  };
+  const make = createTextFactory(doc);
   let enabled: boolean | undefined;
   let busy = false;
   const heading = make("div", "", "security-heading");

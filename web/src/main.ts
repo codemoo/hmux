@@ -23,13 +23,10 @@ import {
   type SharedWorkspace,
   type WorkspaceChange,
 } from "./shared-workspace";
-import {
-  diskCapacity,
-  bedlCycle,
-  remaining,
-  representative,
-  validUsage,
-} from "./usage";
+import { createTextFactory, iconButton } from "./dom";
+import { icon } from "./icons";
+import { renderUsageFooter, renderUsagePanel } from "./usage-view";
+import { renderConversation, type Conversation } from "./conversation-view";
 import { theme } from "./theme";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
@@ -60,28 +57,6 @@ const isMacSafari =
 const fontPreferenceKey = () =>
   mobileScreen.matches ? "hmux.font.mobile.compact" : "hmux.font";
 const preferences = createPreferences(() => window.localStorage);
-const icons: Record<string, string> = {
-  attach:
-    '<path d="m8 12 6-6a3 3 0 0 1 4 4l-8 8a5 5 0 0 1-7-7l9-9m-6 13 8-8"/>',
-  terminal: '<path d="m4 5 6 7-6 7m9 0h7"/>',
-  search: '<circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/>',
-  plus: '<path d="M12 5v14M5 12h14"/>',
-  minus: '<path d="M5 12h14"/>',
-  close: '<path d="m6 6 12 12M6 18 18 6"/>',
-  copy: '<rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V3H3v13h5"/>',
-  book: '<path d="M12 5v15M3 4q5-2 9 1 4-3 9-1v15q-5-2-9 1-4-3-9-1Z"/>',
-  menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
-  arrow: '<path d="M5 12h14m-6-6 6 6-6 6"/>',
-  logout: '<path d="M9 4H4v16h5m5-13 5 5-5 5m-5-5h10"/>',
-  settings:
-    '<path d="M4 6h16M4 12h16M4 18h16"/><circle cx="8" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="10" cy="18" r="2"/>',
-  refresh:
-    '<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>',
-  lock: '<rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 6v2"/>',
-};
-function icon(name: string) {
-  return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name] || icons.terminal}</svg>`;
-}
 const mark = '<img class="brandmark" src="/icons/hmux-192.png" alt="">';
 let readerAbort: AbortController | undefined;
 let layoutObserver: ResizeObserver | undefined;
@@ -148,22 +123,9 @@ const collator = new Intl.Collator("en", {
 });
 const key = (s: Identity) => `${s.id}:${s.created_at}`;
 const label = (s: Session) => s.alias || s.name;
-function text(tag: string, value: string, cls = "") {
-  const n = document.createElement(tag);
-  n.textContent = value;
-  if (cls) n.className = cls;
-  return n;
-}
-function button(title: string, name: string, action: () => void) {
-  const b = document.createElement("button");
-  b.type = "button";
-  b.className = "icon-button";
-  b.title = title;
-  b.setAttribute("aria-label", title);
-  b.innerHTML = icon(name);
-  b.onclick = action;
-  return b;
-}
+const text = createTextFactory(document);
+const button = (title: string, name: string, action: () => void) =>
+  iconButton(document, title, name, action);
 function notice(message: string) {
   const n = $("#notice");
   if (n) {
@@ -1252,65 +1214,9 @@ async function toggleReader() {
       identity,
       undefined,
       readerAbort.signal,
-    )) as {
-      status: string;
-      messages: { role: string; text: string }[];
-      truncated: boolean;
-    };
+    )) as Conversation;
     if (!reading || epoch !== readEpoch || key(identity) !== active) return;
-    reader.replaceChildren();
-    if (data.status !== "ready") {
-      reader.append(
-        text("h2", "대화를 확인할 수 없습니다"),
-        text(
-          "p",
-          "이 tmux 세션의 활성 pane에 연결된 Codex 대화를 찾지 못했습니다.",
-          "muted",
-        ),
-      );
-      return;
-    }
-    const controls = document.createElement("div");
-    controls.className = "reader-controls";
-    const include = document.createElement("input");
-    include.type = "checkbox";
-    include.checked = true;
-    const questions = text("label", "내 메시지 ");
-    questions.prepend(include);
-    const code = document.createElement("input");
-    code.type = "checkbox";
-    const codeLabel = text("label", "코드 포함 ");
-    codeLabel.prepend(code);
-    controls.append(
-      text("h2", "대화"),
-      questions,
-      codeLabel,
-      button("최신 메시지로", "arrow", () => {
-        reader.scrollTop = reader.scrollHeight;
-      }),
-      button("터미널로 돌아가기", "close", () => selectTab(active)),
-    );
-    const content = document.createElement("div");
-    const render = () => {
-      content.replaceChildren();
-      for (const m of data.messages) {
-        if (m.role !== "assistant" && !include.checked) continue;
-        const article = document.createElement("article");
-        article.dataset.role = m.role;
-        article.append(text("small", m.role === "assistant" ? "CODEX" : "나"));
-        const value =
-          code.checked || m.role === "user"
-            ? m.text
-            : m.text.replace(/```[^\n]*\n[\s\S]*?```/g, "[코드 숨김]");
-        article.append(text("div", value, "message-text"));
-        content.append(article);
-      }
-    };
-    include.onchange = code.onchange = render;
-    reader.append(controls, content);
-    render();
-    if (data.truncated)
-      reader.append(text("p", "최근 대화 일부만 표시합니다.", "muted"));
+    if (!renderConversation(reader, data, () => selectTab(active))) return;
     requestAnimationFrame(() => {
       if (reading && epoch === readEpoch && key(identity) === active) {
         reader.scrollTop = reader.scrollHeight;
@@ -1322,122 +1228,18 @@ async function toggleReader() {
   }
 }
 function renderFooter() {
-  const usage = snapshot.usage || {};
-  const dog = $("#bedl");
-  const duration = snapshot.online ? bedlCycle([usage.claude, usage.codex]) : 0;
-  dog.classList.toggle("running", duration > 0);
-  dog.style.setProperty("--bedl-cycle", `${duration || 1}s`);
-  const b = $("#usage");
-  b.replaceChildren(
-    text("span", "Claude", "provider-label provider-claude"),
-    text("strong", representative(usage.claude)),
-    text("i", ""),
-    text("span", "Codex", "provider-label provider-codex"),
-    text("strong", representative(usage.codex)),
-  );
-  b.setAttribute(
-    "aria-label",
-    `계정별 사용량: Claude ${representative(usage.claude)}, Codex ${representative(usage.codex)}`,
-  );
-  b.title = "계정별 사용량 보기";
-  const m = snapshot.catalog?.host_metrics;
-  $("#metrics").textContent =
-    snapshot.online && m && Date.now() - Date.parse(m.observed_at) < 20000
-      ? `Home · CPU ${m.cpu_percent?.toFixed(0) ?? "—"}% · GPU ${m.gpu_percent?.toFixed(0) ?? "—"}% · RAM ${m.memory_total_bytes && m.memory_used_bytes !== undefined ? ((100 * m.memory_used_bytes) / m.memory_total_bytes).toFixed(0) + "%" : "—"} · Disk ${diskCapacity(m.disk_used_bytes, m.disk_total_bytes)}`
-      : "Home · 사용량 대기 중";
-  $("#metrics").title = $("#metrics").textContent || "";
-}
-function usageGauge(label: string, value: string) {
-  const box = text("div", "", "usage-gauge");
-  const known = value !== "—";
-  const percent = known ? Number.parseInt(value, 10) : 0;
-  const heading = text("div", "", "usage-gauge-heading");
-  heading.append(
-    text("span", label),
-    text("strong", known ? value : "확인 대기"),
-  );
-  const track = text("div", "", "usage-track");
-  if (known) {
-    track.setAttribute("role", "meter");
-    track.setAttribute("aria-label", `${label} 잔여량`);
-    track.setAttribute("aria-valuemin", "0");
-    track.setAttribute("aria-valuemax", "100");
-    track.setAttribute("aria-valuenow", String(percent));
-    track.dataset.level =
-      percent <= 15 ? "low" : percent <= 35 ? "medium" : "high";
-    const fill = text("span", "", "usage-fill");
-    fill.style.width = `${percent}%`;
-    track.append(fill);
-  } else track.classList.add("unknown");
-  box.append(heading, track);
-  return box;
+  renderUsageFooter(snapshot, {
+    dog: $("#bedl"),
+    usageButton: $("#usage"),
+    metrics: $("#metrics"),
+  });
 }
 function usageDialog() {
-  const body = dialog("계정 사용량");
-  const panel = text("div", "", "usage-panel");
-  const intro = text("div", "", "usage-intro");
-  intro.append(
-    text("span", "REMAINING CAPACITY", "usage-eyebrow"),
-    text("p", "얼마나 더 사용할 수 있는지 한눈에 확인하세요."),
+  renderUsagePanel(
+    dialog("계정 사용량"),
+    snapshot,
+    $("#metrics").textContent || "",
   );
-  panel.append(intro);
-  for (const provider of ["claude", "codex"]) {
-    const u = snapshot.usage?.[provider];
-    const section = text("section", "", "usage-provider");
-    section.dataset.provider = provider;
-    const header = text("div", "", "usage-provider-head");
-    header.append(
-      text("h3", provider === "claude" ? "Claude" : "Codex"),
-      text(
-        "span",
-        provider === "claude" ? "활성 계정 기준" : "전체 풀 기준",
-        "usage-badge",
-      ),
-    );
-    section.append(header, usageGauge("주간 잔여량", representative(u)));
-    if (!validUsage(u)) {
-      section.append(text("p", "최신 사용량을 확인하는 중입니다.", "muted"));
-    } else {
-      const accounts = text("div", "", "usage-accounts");
-      for (const a of u?.accounts || []) {
-        const row = text("div", "", "usage-account");
-        const title = text("div", "", "usage-account-head");
-        title.append(
-          text(
-            "strong",
-            (provider === "claude" ? a.email : a.display_name) ||
-              `계정 ${a.number}`,
-          ),
-        );
-        if (a.active) title.append(text("span", "현재 활성", "usage-active"));
-        const gauges = text("div", "", "usage-account-gauges");
-        gauges.append(
-          usageGauge(
-            "1주 잔여",
-            remaining(a.status === "ok" ? a.seven_day : undefined),
-          ),
-          usageGauge(
-            "5시간 잔여",
-            remaining(a.status === "ok" ? a.five_hour : undefined),
-          ),
-        );
-        row.append(title, gauges);
-        accounts.append(row);
-      }
-      section.append(accounts);
-      if (!u?.accounts?.length)
-        section.append(text("p", "계정별 정보가 없습니다.", "muted"));
-    }
-    panel.append(section);
-  }
-  panel.append(
-    text(
-      "p",
-      $("#metrics").textContent || "Home · 사용량 대기 중",
-      "usage-host muted",
-    ),
-  );
-  body.append(panel);
 }
 
 async function refresh() {

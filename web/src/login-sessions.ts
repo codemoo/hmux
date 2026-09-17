@@ -1,3 +1,5 @@
+import { createTextFactory } from "./dom.ts";
+
 export type LoginSession = {
   id: string;
   browser: string;
@@ -25,16 +27,7 @@ export function installLoginSessions(
 ) {
   const controller = new AbortController();
   const doc = root.ownerDocument;
-  const make = <K extends keyof HTMLElementTagNameMap>(
-    tag: K,
-    content: string,
-    className = "",
-  ) => {
-    const node = doc.createElement(tag);
-    node.textContent = content;
-    node.className = className;
-    return node;
-  };
+  const make = createTextFactory(doc);
   let busy = false;
   const heading = make("div", "", "login-sessions-heading");
   const refresh = make("button", "새로고침", "subtle-button");
