@@ -140,8 +140,7 @@ func (a *authStore) setTOTPEnabled(token, password, code string, enabled bool, n
 			delete(candidate, candidateKey)
 		}
 	}
-	if err := a.saveSessionMap(candidate); err != nil {
-		a.failStorageLocked(err)
+	if err := a.persistSessionsLocked(candidate); err != nil {
 		return accountSecurityStorageUnavailable
 	}
 	a.sessions = candidate

@@ -414,6 +414,17 @@ func (a *authStore) saveSessionMap(sessions map[string]*loginSession) error {
 	return config.AtomicWrite(a.sessionPath, raw, 0600)
 }
 
+// persistSessionsLocked requires a.mu. A failed write invalidates every active
+// connection so memory cannot continue authorizing sessions that were not saved.
+// Startup loading uses saveSessionMap directly before the store is exposed.
+func (a *authStore) persistSessionsLocked(sessions map[string]*loginSession) error {
+	if err := a.saveSessionMap(sessions); err != nil {
+		a.failStorageLocked(err)
+		return err
+	}
+	return nil
+}
+
 func (a *authStore) failStorageLocked(err error) {
 	if err == nil {
 		return
@@ -598,8 +609,7 @@ func (a *authStore) loginWithChallenge(username, password, code string, now time
 		fingerprint: credentialFingerprint(next), created: created, expires: created.Add(loginLifetime),
 		seen: created, persistedSeen: created, done: make(chan struct{}), doneOnce: &sync.Once{}}
 	candidate[key] = session
-	if err := a.saveSessionMap(candidate); err != nil {
-		a.failStorageLocked(err)
+	if err := a.persistSessionsLocked(candidate); err != nil {
 		return "", loginStorageUnavailable
 	}
 	if evicted != nil {
@@ -630,12 +640,11 @@ func (a *authStore) pruneLocked(now time.Time) error {
 	for _, key := range expired {
 		delete(candidate, key)
 	}
-	if err := a.saveSessionMap(candidate); err != nil {
+	if err := a.persistSessionsLocked(candidate); err != nil {
 		for _, key := range expired {
 			a.sessions[key].cancel()
 			delete(a.sessions, key)
 		}
-		a.failStorageLocked(err)
 		return err
 	}
 	for _, key := range expired {
@@ -665,8 +674,7 @@ func (a *authStore) get(token string, touch bool) (string, <-chan struct{}, bool
 			next.persistedSeen = now
 			candidate := cloneSessionMap(a.sessions)
 			candidate[sessionKey(token)] = &next
-			if err := a.saveSessionMap(candidate); err != nil {
-				a.failStorageLocked(err)
+			if err := a.persistSessionsLocked(candidate); err != nil {
 				return "", nil, false
 			}
 			a.sessions[sessionKey(token)] = &next
@@ -687,8 +695,7 @@ func (a *authStore) logout(token string) error {
 	if s := a.sessions[key]; s != nil {
 		candidate := cloneSessionMap(a.sessions)
 		delete(candidate, key)
-		if err := a.saveSessionMap(candidate); err != nil {
-			a.failStorageLocked(err)
+		if err := a.persistSessionsLocked(candidate); err != nil {
 			return err
 		}
 		s.cancel()
@@ -773,8 +780,7 @@ func (a *authStore) revoke(token, id string) (bool, error) {
 	}
 	candidate := cloneSessionMap(a.sessions)
 	delete(candidate, targetKey)
-	if err := a.saveSessionMap(candidate); err != nil {
-		a.failStorageLocked(err)
+	if err := a.persistSessionsLocked(candidate); err != nil {
 		return false, err
 	}
 	delete(a.sessions, targetKey)
