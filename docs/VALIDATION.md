@@ -5,6 +5,31 @@ private-deployment checkpoints are preserved in
 [the historical validation log](archive/VALIDATION_PRE_PUBLICATION.md).
 They are not claims about a user's independent deployment.
 
+## 2026-09-19 — browser connection recovery
+
+Browser API requests now belong to the originating login scope; disposal aborts
+them and late responses cannot affect another account. Workspace synchronization
+no longer blocks terminal reconnection. Transient startup/state failures preserve
+authentication and recover through retries. WebSocket recovery uses bounded
+backoff, keeps failure history across short connections, and pauses on output
+overflow until an explicit reconnect. Disposal clears pending connection timers.
+
+Checks completed: web type/style checks, 105 tests, production build and whitespace
+checks. Independent implementation review found no material defects. Chromium
+with synthetic API/WebSocket responses verified initial session 503 and state 502
+recovery, reconnection during a delayed workspace response, connection-limit
+backoff, output-overflow pause/manual recovery, and background/foreground cleanup
+without duplicate connections. These checks did not use existing tmux sessions
+and do not establish physical-device or Safari acceptance.
+
+Frontend release `20260919T045638Z` was deployed after verifying all 35 staged file
+hashes. The previous release and identical gateway binary were retained; the
+service stayed active with its PID unchanged. Public HTTPS HTML, app JS/CSS,
+manifest and worker hashes match the build. HTML no-store and PWA CSP remain
+intact; anonymous session/state requests return 401. Existing browsers need a
+reload to use the new client. No gateway restart or authentication-store change
+was required.
+
 ## 2026-09-17 — conversation Markdown
 
 The conversation reader now renders Markdown through a token-to-DOM renderer.

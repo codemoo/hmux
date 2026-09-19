@@ -1,5 +1,10 @@
 import { installAttachments } from "./attachments";
-import { withRequestDeadline } from "./request-deadline";
+import { createSessionAPI } from "./session-api";
+import {
+  createConnectionRecovery,
+  retryDelay,
+  type DisconnectKind,
+} from "./connection-recovery";
 import { installNativeClipboard, hasNativeSelection } from "./native-clipboard";
 import { installAndroidNativePaste } from "./android-native-paste";
 import {
@@ -85,7 +90,11 @@ function scheduleTerminalLayout() {
     }, delay),
   );
 }
-let refreshPending = false;
+let refreshRequest: AbortController | undefined;
+let accountEpoch = 0;
+let startRequest: object | undefined;
+let startTimer: number | undefined;
+let startFailures = 0;
 let bootstrapping = false;
 let sharedLoaded = false,
   applyingShared = false,
@@ -133,30 +142,13 @@ function notice(message: string) {
     n.hidden = !message;
   }
 }
-async function api(path: string, body?: unknown, signal?: AbortSignal) {
-  return withRequestDeadline(async (requestSignal) => {
-    const res = await fetch(path, {
-      method: body === undefined ? "GET" : "POST",
-      headers:
-        body === undefined
-          ? {}
-          : { "Content-Type": "application/json", "X-CSRF-Token": csrf },
-      body: body === undefined ? undefined : JSON.stringify(body),
-      credentials: "same-origin",
-      cache: "no-store",
-      signal: requestSignal,
-    });
-    if (!res.ok) {
-      if (res.status === 401 && path != "/api/login") {
-        showLogin();
-        throw new Error("로그인이 만료되었습니다. 다시 로그인하세요.");
-      }
-      throw new Error(
-        (await res.text()).slice(0, 250) || "요청을 완료하지 못했습니다.",
-      );
-    }
-    return res.json();
-  }, signal);
+const sessionAPI = createSessionAPI({
+  csrf: () => csrf,
+  unauthorized: showLogin,
+});
+const api = sessionAPI.request;
+function reportError(error: unknown) {
+  if ((error as Error).name !== "AbortError") notice((error as Error).message);
 }
 async function action(
   operation: string,
@@ -177,6 +169,13 @@ async function action(
   );
 }
 function disposeAll() {
+  accountEpoch++;
+  sessionAPI.reset();
+  refreshRequest?.abort();
+  refreshRequest = undefined;
+  startRequest = undefined;
+  clearTimeout(startTimer);
+  startFailures = 0;
   attachments?.dispose();
   attachments = undefined;
   dialogCleanup?.();
@@ -350,7 +349,7 @@ function shell() {
       preferences.remove(workspaceStorageKey);
       showLogin();
     } catch (e) {
-      notice((e as Error).message);
+      reportError(e);
     } finally {
       loggingOut = false;
       attachments?.refresh();
@@ -403,7 +402,7 @@ function shell() {
   }
   $("#reconnect").onclick = () => {
     const t = tabs.get(active);
-    if (t) connect(t);
+    if (t) connect(t, true);
   };
   for (const b of document.querySelectorAll<HTMLButtonElement>("[data-key]")) {
     b.onpointerdown = (e) => e.preventDefault();
@@ -600,6 +599,7 @@ function renderTabs() {
         disconnected: "연결 끊김",
       }[t.status]
     : "";
+  $("#terminal-state").title = t?.recovery.description() || "";
   $("#terminal-state").setAttribute(
     "aria-label",
     $("#terminal-state").textContent || "세션 없음",
@@ -761,6 +761,7 @@ function openSession(s: Session, activate = true) {
     host,
     status: "disconnected",
     generation: 0,
+    recovery: createConnectionRecovery(),
   };
   tabs.set(k, t);
   if (isIOS || isAndroid)
@@ -828,11 +829,44 @@ function releaseActiveConnection() {
   if (!tab) return;
   releaseTerminalView(tab);
 }
-function connect(t: Tab) {
-  if (active !== key(t.identity) || document.visibilityState !== "visible")
+function scheduleReconnect(t: Tab) {
+  clearTimeout(t.retryTimer);
+  t.retryTimer = undefined;
+  const delay = t.recovery.delay();
+  if (
+    !Number.isFinite(delay) ||
+    !loggedIn ||
+    reading ||
+    active !== key(t.identity) ||
+    document.visibilityState !== "visible"
+  )
     return;
-  if (t.status === "connecting" && t.ws && t.ws.readyState < WebSocket.CLOSING)
+  t.retryTimer = window.setTimeout(
+    () => {
+      t.retryTimer = undefined;
+      if (tabs.get(key(t.identity)) === t) ensureActiveConnection();
+    },
+    Math.max(1, delay),
+  );
+}
+function connect(t: Tab, manual = false) {
+  if (
+    !loggedIn ||
+    loggingOut ||
+    reading ||
+    tabs.get(key(t.identity)) !== t ||
+    active !== key(t.identity) ||
+    document.visibilityState !== "visible"
+  )
     return;
+  if (t.ws && t.ws.readyState < WebSocket.CLOSING) return;
+  if (manual) t.recovery.reset();
+  if (t.recovery.delay() > 0) {
+    scheduleReconnect(t);
+    return;
+  }
+  clearTimeout(t.retryTimer);
+  clearTimeout(t.openTimer);
   t.nativeInput?.flush();
   t.nativeInput?.cancel();
   t.generation++;
@@ -846,15 +880,30 @@ function connect(t: Tab) {
   );
   ws.binaryType = "arraybuffer";
   t.ws = ws;
-  const openDeadline = window.setTimeout(() => {
-    if (t.generation === gen && t.status === "connecting") {
-      t.generation++;
-      ws.close();
-      t.ws = undefined;
-      t.status = "disconnected";
-      renderTabs();
+  const fail = (kind: DisconnectKind, code = 0) => {
+    if (t.generation !== gen) return;
+    t.generation++;
+    clearTimeout(t.openTimer);
+    t.openTimer = undefined;
+    t.ws = undefined;
+    t.status = "disconnected";
+    t.nativeInput?.cancel();
+    const event = t.recovery.failed(kind);
+    // Fixed categories only: no terminal text, URLs, account IDs or server reason strings.
+    console.info("[HMux] terminal disconnected", { ...event, code });
+    ws.close();
+    if (active === key(t.identity)) {
+      notice(
+        t.recovery.description() +
+          (event.retryMs === null
+            ? ""
+            : ` · 약 ${Math.ceil(event.retryMs / 1000)}초 후 다시 연결`),
+      );
     }
-  }, 20000);
+    renderTabs();
+    scheduleReconnect(t);
+  };
+  t.openTimer = window.setTimeout(() => fail("timeout"), 20000);
   ws.onopen = () => {
     if (t.generation !== gen) {
       ws.close();
@@ -891,7 +940,10 @@ function connect(t: Tab) {
           }
         }
         if (message.type === "ready") {
-          clearTimeout(openDeadline);
+          clearTimeout(t.openTimer);
+          t.openTimer = undefined;
+          t.recovery.ready();
+          notice("");
           t.status = "connected";
           t.nativeInput?.cancel();
           t.term.reset();
@@ -899,13 +951,12 @@ function connect(t: Tab) {
           if (!isAndroid && active === key(t.identity)) focusTerminal(t);
         }
       } catch {
-        ws.close();
+        fail("protocol");
       }
     } else {
       queuedBytes += e.data.byteLength;
       if (queuedBytes > 1 << 20) {
-        ws.close();
-        notice("출력 처리 한도를 넘어 연결을 멈췄습니다. 다시 연결하세요.");
+        fail("output-overflow");
         return;
       }
       const size = e.data.byteLength;
@@ -914,15 +965,16 @@ function connect(t: Tab) {
       });
     }
   };
-  ws.onclose = () => {
-    clearTimeout(openDeadline);
-    if (t.generation !== gen) return;
-    t.ws = undefined;
-    t.status = "disconnected";
-    t.nativeInput?.cancel();
-    renderTabs();
-  };
-  ws.onerror = () => ws.close();
+  ws.onclose = (event) =>
+    fail(
+      event.code === 1013
+        ? "limit"
+        : event.code === 1008
+          ? "unavailable"
+          : "network",
+      event.code,
+    );
+  ws.onerror = () => fail("network", 1006);
 }
 function send(data: string) {
   const t = tabs.get(active);
@@ -1243,11 +1295,17 @@ function usageDialog() {
 }
 
 async function refresh() {
-  if (refreshPending) return;
-  refreshPending = true;
+  if (refreshRequest) return;
+  const request = new AbortController();
+  const epoch = accountEpoch;
+  refreshRequest = request;
   try {
-    const next = (await api("/api/state")) as Snapshot;
-    if (!loggedIn) return;
+    const next = (await api(
+      "/api/state",
+      undefined,
+      request.signal,
+    )) as Snapshot;
+    if (!loggedIn || epoch !== accountEpoch) return;
     snapshot = next;
     if (next.catalog?.sessions) sessions = next.catalog.sessions;
     $("#home-state").textContent = next.online
@@ -1257,20 +1315,26 @@ async function refresh() {
     renderSessions();
     renderTabs();
     renderFooter();
-    if (next.online) await syncSharedWorkspace();
     ensureActiveConnection();
+    if (next.online) void syncSharedWorkspace();
   } finally {
-    refreshPending = false;
+    if (refreshRequest === request) refreshRequest = undefined;
   }
 }
 async function poll() {
   if (!loggedIn) return;
+  const epoch = accountEpoch;
   try {
+    ensureActiveConnection();
     await refresh();
   } catch (e) {
-    if (loggedIn) notice((e as Error).message);
+    if (loggedIn && epoch === accountEpoch) reportError(e);
   } finally {
-    if (loggedIn && document.visibilityState === "visible") {
+    if (
+      loggedIn &&
+      epoch === accountEpoch &&
+      document.visibilityState === "visible"
+    ) {
       clearTimeout(pollTimer);
       pollTimer = window.setTimeout(poll, 5000);
     }
@@ -1298,24 +1362,58 @@ function restoreTerminalFonts(): Promise<void> {
   });
   return fontRestore;
 }
+function showConnectionRecovery(message: string) {
+  const main = text("main", "", "login");
+  const panel = text("section", "", "login-panel");
+  const retry = text("button", "다시 연결", "primary");
+  retry.type = "button";
+  retry.onclick = () => void start();
+  panel.append(text("h2", "연결 확인 중"), text("p", message, "muted"), retry);
+  main.append(panel);
+  app.replaceChildren(main);
+}
 async function start() {
-  const session = await api("/api/session");
-  workspaceStorageKey = session.profile
-    ? `hmux.tabs.${session.profile}`
-    : "hmux.tabs";
-  csrf = session.csrf;
-  loggedIn = true;
-  bootstrapping = true;
-  shell();
-  $("#username").textContent = session.username;
+  if (loggedIn || startRequest) return;
+  clearTimeout(startTimer);
+  const request = {};
+  const epoch = accountEpoch;
+  startRequest = request;
+  showConnectionRecovery("기존 로그인을 확인하고 있습니다.");
   try {
-    pendingWorkspace = JSON.parse(preferences.get(workspaceStorageKey) || "{}");
-  } catch {
-    pendingWorkspace = {};
+    const session = await api("/api/session");
+    if (epoch !== accountEpoch) return;
+    workspaceStorageKey = session.profile
+      ? `hmux.tabs.${session.profile}`
+      : "hmux.tabs";
+    csrf = session.csrf;
+    loggedIn = true;
+    startFailures = 0;
+    bootstrapping = true;
+    shell();
+    $("#username").textContent = session.username;
+    try {
+      pendingWorkspace = JSON.parse(
+        preferences.get(workspaceStorageKey) || "{}",
+      );
+    } catch {
+      pendingWorkspace = {};
+    }
+    // Font downloads and shared-tab synchronization must not block recovery.
+    void restoreTerminalFonts();
+    await poll();
+  } catch (error) {
+    if (epoch !== accountEpoch || (error as Error).name === "AbortError")
+      return;
+    const delay = retryDelay(++startFailures);
+    showConnectionRecovery(
+      `서버에 연결하지 못했습니다. 약 ${Math.ceil(delay / 1000)}초 후 다시 확인합니다.`,
+    );
+    startTimer = window.setTimeout(() => {
+      if (epoch === accountEpoch) void start();
+    }, delay);
+  } finally {
+    if (startRequest === request) startRequest = undefined;
   }
-  await restoreTerminalFonts();
-  await refresh();
-  pollTimer = window.setTimeout(poll, 5000);
 }
 document.addEventListener("keydown", (e) => {
   if (e.defaultPrevented || handleWorkspaceShortcut(e)) return;
@@ -1338,7 +1436,7 @@ document.addEventListener("visibilitychange", () => {
     void poll();
   }
 });
-void start().catch(() => showLogin());
+void start();
 
 const mobileSidebar = window.matchMedia(
   "(max-width: 700px), (pointer: coarse) and (max-height: 500px)",
@@ -1512,8 +1610,10 @@ async function syncSharedWorkspace() {
   } finally {
     if (workspaceRequest === request) workspaceRequest = undefined;
   }
-  if (workspaceDirty && !pendingChange)
-    window.setTimeout(() => void syncSharedWorkspace(), 100);
+  if (epoch === workspaceEpoch && workspaceDirty && !pendingChange)
+    window.setTimeout(() => {
+      if (epoch === workspaceEpoch) void syncSharedWorkspace();
+    }, 100);
 }
 function applySharedWorkspace(value: SharedWorkspace) {
   const first = !sharedLoaded;

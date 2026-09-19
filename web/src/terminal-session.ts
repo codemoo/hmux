@@ -6,6 +6,10 @@ export function releaseTerminalView(tab: Tab): void {
   tab.nativeInput?.flush();
   tab.nativeInput?.cancel();
   tab.generation++;
+  clearTimeout(tab.retryTimer);
+  clearTimeout(tab.openTimer);
+  tab.retryTimer = tab.openTimer = undefined;
+  tab.recovery?.released();
   tab.ws?.close();
   tab.ws = undefined;
   tab.status = "disconnected";

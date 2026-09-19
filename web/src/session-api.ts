@@ -1,0 +1,74 @@
+import { withRequestDeadline } from "./request-deadline.ts";
+
+// Every response, including errors and delayed bodies, belongs to one login.
+export function createSessionAPI(options: {
+  csrf: () => string;
+  unauthorized: () => void;
+  fetch?: typeof fetch;
+}) {
+  let scope = new AbortController();
+  return {
+    reset() {
+      scope.abort();
+      scope = new AbortController();
+    },
+    async request(path: string, body?: unknown, parent?: AbortSignal) {
+      const owner = scope;
+      const controller = new AbortController();
+      const cancel = () => controller.abort();
+      const signals = [owner.signal, parent].filter(
+        (s): s is AbortSignal => !!s,
+      );
+      for (const signal of signals) {
+        if (signal.aborted) cancel();
+        else signal.addEventListener("abort", cancel, { once: true });
+      }
+      const check = (signal: AbortSignal) => {
+        if (owner !== scope || controller.signal.aborted)
+          throw new DOMException("Obsolete request", "AbortError");
+        signal.throwIfAborted();
+      };
+      try {
+        return await withRequestDeadline(async (signal) => {
+          check(signal);
+          const response = await (options.fetch || fetch)(path, {
+            method: body === undefined ? "GET" : "POST",
+            headers:
+              body === undefined
+                ? {}
+                : {
+                    "Content-Type": "application/json",
+                    "X-CSRF-Token": options.csrf(),
+                  },
+            body: body === undefined ? undefined : JSON.stringify(body),
+            credentials: "same-origin",
+            cache: "no-store",
+            signal,
+          });
+          check(signal);
+          if (!response.ok) {
+            if (response.status === 401 && path !== "/api/login") {
+              options.unauthorized();
+              throw new DOMException("Authentication expired", "AbortError");
+            }
+            const message = await response.text();
+            check(signal);
+            throw new Error(
+              message.slice(0, 250) || "요청을 완료하지 못했습니다.",
+            );
+          }
+          const value = await response.json();
+          check(signal);
+          return value;
+        }, controller.signal);
+      } catch (error) {
+        if (owner !== scope || controller.signal.aborted)
+          throw new DOMException("Obsolete request", "AbortError");
+        throw error;
+      } finally {
+        for (const signal of signals)
+          signal.removeEventListener("abort", cancel);
+      }
+    },
+  };
+}

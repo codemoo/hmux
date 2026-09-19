@@ -109,12 +109,23 @@ seconds, and background clients refresh on resume. This is eventual synchronizat
 not an instantaneous or durable offline outbox guarantee. Web API requests have a
 30-second deadline including response body reads, so a stalled request cannot hold
 workspace synchronization indefinitely. Uncertain writes retain their operation ID
-for retry. Account disposal cancels the old workspace request; its cleanup cannot
-release a newer account's in-flight request.
+for retry. All API requests belong to their originating login and are aborted on
+account disposal; stale responses and delayed bodies cannot update a new login or
+send it back to the login page. Only a current authenticated request's 401 expires
+the UI login. Transient startup errors retry without discarding authentication,
+and font downloads do not block initial state loading.
 Each visible browser keeps only its selected view connected. Hidden documents
 release their view; resume/network recovery refreshes state and reconnects the
-selected valid session. Polling retries disconnected views; connection setup has
-a 20-second timeout. The original tmux/provider processes remain running.
+selected valid session. Terminal recovery runs independently of shared-tab sync.
+Connection setup has a 20-second timeout. Unexpected failures retry with jittered
+exponential delays capped at 60 seconds; connection-limit/unavailable responses
+wait at least 10 seconds. A connection must remain stable for 30 seconds before
+its failure count resets. Output-queue overflow pauses automatic retries until
+the user chooses reconnect. Tab release/disposal cancels both open and retry timers.
+The status tooltip and notice explain the last failure; browser console entries
+record only category, close code, attempt and retry delay, never terminal content,
+account identifiers or raw server reasons. The original tmux/provider processes
+remain running.
 
 ## User interface
 

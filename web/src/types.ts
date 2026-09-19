@@ -1,5 +1,6 @@
 import type { Terminal } from "@xterm/xterm";
 import type { FitAddon } from "@xterm/addon-fit";
+import type { createConnectionRecovery } from "./connection-recovery";
 export type Identity = { id: string; created_at: number };
 export type Session = Identity & {
   name: string;
@@ -55,6 +56,9 @@ export type Tab = {
   ws?: WebSocket;
   status: "connecting" | "connected" | "disconnected";
   generation: number;
+  recovery: ReturnType<typeof createConnectionRecovery>;
+  retryTimer?: number;
+  openTimer?: number;
   nativeInput?: { flush(): void; cancel(): void; dispose(): void };
   disposeNativePaste?: () => void;
   interaction?: { hide(): void; dispose(): void };
