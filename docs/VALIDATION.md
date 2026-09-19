@@ -5,6 +5,26 @@ private-deployment checkpoints are preserved in
 [the historical validation log](archive/VALIDATION_PRE_PUBLICATION.md).
 They are not claims about a user's independent deployment.
 
+## 2026-09-17 — conversation Markdown
+
+The conversation reader now renders Markdown through a token-to-DOM renderer.
+Checks completed: web type/style checks, 98 tests and production build; dependency
+audit reported no known vulnerabilities. Regression cases cover aligned tables,
+escaped pipes, nested/task lists, code visibility, literal HTML, entity decoding,
+unsafe links and images without automatic network loads.
+
+Chromium with synthetic responses verified table alignment and formatting at
+1280×900, plus internal table/code scrolling without reader overflow at 390×844.
+Screenshots were inspected; the browser reported no console errors. This is local
+browser verification, not a production deployment or physical-device acceptance.
+
+Deployment follow-up: frontend release `20260917T134005Z` was published after
+verification of all 35 staged file hashes. The prior release and gateway binary
+were retained; the gateway PID stayed unchanged. Public HTTPS HTML, app JS/CSS,
+manifest, worker and new license files match the deployed build. The no-store and
+PWA CSP headers remain intact; anonymous session/state APIs return 401. Physical
+device acceptance of Markdown remains separate from these deployment checks.
+
 ## 2026-09-17 — component cleanup
 
 Web presentation is separated into conversation and usage views, with shared typed

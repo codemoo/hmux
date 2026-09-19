@@ -17,6 +17,8 @@ for versions. This is not a complete native static-library SBOM.
 | xterm addon-fit | 0.11.0 | `web/public/licenses/xterm-addon-fit-LICENSE.txt` |
 | xterm addon-web-links | 0.12.0 | `web/public/licenses/xterm-addon-web-links-LICENSE.txt` |
 | es-hangul | package-lock.json | `web/public/licenses/` |
+| marked | package-lock.json | `web/public/licenses/marked-LICENSE.txt` |
+| entities | package-lock.json | `web/public/licenses/entities-LICENSE.txt` |
 | Monatendard / underlying fonts | bundled files | `web/public/fonts/NOTICE.txt`, `THIRD_PARTY_NOTICES.md` and license texts |
 | Ghostty / native libraries and sprites | pinned native manifest | `macos/HMux/ThirdPartyNotices.md`, `Dependencies.lock.json` |
 

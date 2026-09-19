@@ -1,4 +1,5 @@
 import { createTextFactory, iconButton } from "./dom.ts";
+import { renderMarkdown } from "./markdown.ts";
 
 export type Conversation = {
   status: string;
@@ -56,11 +57,9 @@ export function renderConversation(
       const article = doc.createElement("article");
       article.dataset.role = m.role;
       article.append(text("small", m.role === "assistant" ? "CODEX" : "나"));
-      const value =
-        code.checked || m.role === "user"
-          ? m.text
-          : m.text.replace(/```[^\n]*\n[\s\S]*?```/g, "[코드 숨김]");
-      article.append(text("div", value, "message-text"));
+      const message = text("div", "", "message-text");
+      renderMarkdown(message, m.text, code.checked || m.role === "user");
+      article.append(message);
       content.append(article);
     }
   };

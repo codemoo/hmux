@@ -398,6 +398,120 @@ kbd {
 .message-text {
   line-height: 1.9;
 }
+.message-text > :first-child {
+  margin-top: 0;
+}
+.message-text > :last-child {
+  margin-bottom: 0;
+}
+.message-text :is(h1, h2, h3, h4, h5, h6) {
+  margin: 1.4em 0 0.6em;
+  color: #e6e4d9;
+  line-height: 1.4;
+  font-weight: 650;
+}
+.message-text h1 {
+  font-size: 1.65em;
+}
+.message-text h2 {
+  font-size: 1.4em;
+}
+.message-text h3 {
+  font-size: 1.18em;
+}
+.message-text :is(h4, h5, h6) {
+  font-size: 1em;
+}
+.message-text p {
+  margin: 0.7em 0;
+}
+.message-text :is(ul, ol) {
+  padding-left: 1.6em;
+  margin: 0.7em 0;
+}
+.message-text li {
+  margin: 0.25em 0;
+}
+.message-text li > p {
+  margin: 0.25em 0;
+}
+.message-text blockquote {
+  margin: 1em 0;
+  padding: 0.1em 1em;
+  border-left: 3px solid #575653;
+  color: #b7b5ac;
+}
+.message-text code {
+  font:
+    0.9em/1.65 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  padding: 0.15em 0.35em;
+  border-radius: 4px;
+  background: #242321;
+  white-space: pre-wrap;
+}
+.message-text pre {
+  padding: 14px 16px;
+  margin: 1em 0;
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid #343331;
+  border-radius: 8px;
+  background: #191817;
+  white-space: pre;
+  overflow-wrap: normal;
+}
+.message-text pre code {
+  padding: 0;
+  background: none;
+  white-space: pre;
+}
+.message-text a {
+  color: #a0af54;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.message-text a:hover {
+  color: #c4d477;
+}
+.message-text hr {
+  border: 0;
+  border-top: 1px solid #343331;
+  margin: 1.5em 0;
+}
+.markdown-table {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 1em 0;
+}
+.markdown-table table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.95em;
+}
+.markdown-table :is(th, td) {
+  padding: 8px 12px;
+  border: 1px solid #343331;
+  min-width: 90px;
+}
+.markdown-table th {
+  background: #242321;
+  font-weight: 600;
+  text-align: left;
+}
+.markdown-task {
+  list-style: none;
+}
+.markdown-task > input {
+  margin: 0 0.6em 0 -1.4em;
+  accent-color: #879a39;
+}
+.markdown-code-hidden {
+  color: #878580;
+  font-size: 12px;
+}
 #empty {
   padding: 24px;
 }

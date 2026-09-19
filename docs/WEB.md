@@ -48,6 +48,15 @@ provider credentials, aliases, hidden metadata or shell permissions.
 
 ## Conversation reader
 
+Messages render GitHub-flavored Markdown: headings, emphasis, nested/task lists,
+quotes, links, fenced/indented code and aligned tables. Wide tables and code blocks
+scroll within the message on narrow screens. The question filter remains available;
+the code toggle hides assistant code blocks while keeping inline code and user code.
+The renderer creates allowlisted DOM elements from parsed tokens and inserts text
+with `textContent`. Raw HTML stays literal, only absolute HTTP(S) links without
+embedded credentials open in a new tab with `noopener noreferrer`, and images
+are explicit links rather than automatic external requests.
+
 Home filters internal Codex handoffs before returning conversation text. Private
 channels, tool records, injected environment/instruction wrappers and
 `codex_internal_context` goal reminders are excluded. Assistant text matching the
@@ -263,7 +272,7 @@ for build/deployment details.
 | --- | --- |
 | `web/src/main.ts` | UI composition, tab/connection lifecycle, API and workspace coordination |
 | `dom.ts`, `icons.ts` | Typed text-only DOM construction and fixed local SVG icons |
-| `conversation-view.ts` | Conversation display, question/code filters and return controls; request/epoch ownership stays in `main.ts` |
+| `conversation-view.ts`, `markdown.ts` | Markdown conversation display, question/code filters and return controls; request/epoch ownership stays in `main.ts` |
 | `usage-view.ts` | Usage footer, account gauges and usage dialog; quota interpretation stays in `usage.ts` |
 | `account-security.ts`, `login-sessions.ts` | Account settings and login-session dialogs with abort/disposal ownership |
 | `viewport.ts`, `mobile.ts` | Viewport/keyboard state, font preference bounds |

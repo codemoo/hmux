@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { renderMarkdown } from "../src/markdown.ts";
 import { renderConversation } from "../src/conversation-view.ts";
 import { renderUsageFooter, renderUsagePanel } from "../src/usage-view.ts";
 
@@ -60,11 +61,107 @@ function root() {
 const all = (node) => [node, ...node.children.flatMap(all)];
 const articles = (node) => all(node).filter((n) => n.tagName === "article");
 
+test("markdown renders aligned tables, nested lists, task lists and inline formatting", () => {
+  const view = root();
+  renderMarkdown(
+    view,
+    `# Summary
+
+| Name | Result | Count |
+| :--- | :---: | ---: |
+| **Korean 한글** | [Docs](https://example.com) | 12 |
+| A \\| B | \`x < y\` | 3 |
+
+> Quoted *text* &amp; more
+
+3. First
+   - Nested
+4. Second
+
+- [x] Done
+- [ ] Pending
+
+~~Removed~~
+`,
+  );
+  const nodes = all(view);
+  assert.equal(nodes.filter((n) => n.tagName === "h1").length, 1);
+  const headers = nodes.filter((n) => n.tagName === "th");
+  assert.deepEqual(
+    headers.map((n) => n.style.textAlign),
+    ["left", "center", "right"],
+  );
+  assert.ok(headers.every((n) => n.attrs.scope === "col"));
+  assert.equal(nodes.filter((n) => n.tagName === "td").length, 6);
+  assert.ok(view.textContent.includes("A | B"));
+  assert.ok(view.textContent.includes("& more"));
+  assert.equal(nodes.find((n) => n.tagName === "ol").attrs.start, "3");
+  assert.equal(nodes.filter((n) => n.tagName === "strong").length, 1);
+  assert.equal(nodes.filter((n) => n.tagName === "em").length, 1);
+  assert.equal(nodes.filter((n) => n.tagName === "del").length, 1);
+  const checks = nodes.filter((n) => n.tagName === "input");
+  assert.deepEqual(
+    checks.map((n) => n.checked),
+    [true, false],
+  );
+  assert.ok(checks.every((n) => n.disabled));
+});
+
+test("markdown treats HTML as text and blocks unsafe URLs and automatic image loads", () => {
+  const view = root();
+  renderMarkdown(
+    view,
+    `<script>alert(1)</script>
+
+<img src=x onerror=alert(1)>
+
+[bad](javascript:alert%281%29) [encoded](jav&#x61;script:alert%281%29)
+[data](data:text/html,test) [local](file:///etc/passwd) [relative](/api/logout)
+[credentials](https://user:password@example.com) [safe](https://example.com?a=1&amp;b=2)
+![image](https://example.com/tracker.png)
+
+&lt;img src=x onerror=alert(1)&gt;`,
+  );
+  const nodes = all(view);
+  assert.ok(
+    !nodes.some((n) => ["img", "script", "iframe"].includes(n.tagName)),
+  );
+  assert.ok(view.textContent.includes("<script>alert(1)</script>"));
+  const links = nodes.filter((n) => n.tagName === "a");
+  assert.deepEqual(
+    links.map((n) => n.attrs.href),
+    ["https://example.com/?a=1&b=2", "https://example.com/tracker.png"],
+  );
+  assert.ok(
+    links.every(
+      (n) =>
+        n.attrs.target === "_blank" && n.attrs.rel === "noopener noreferrer",
+    ),
+  );
+});
+
+test("code toggle covers tilde fences and indented blocks without hiding inline code", () => {
+  const view = root();
+  const source =
+    "Inline `keep`\n\n~~~ts\nconst a = '<img>';\n~~~\n\n    indented()\n";
+  renderMarkdown(view, source, false);
+  assert.equal(all(view).filter((n) => n.tagName === "pre").length, 0);
+  assert.equal(
+    all(view).filter((n) => n.className === "markdown-code-hidden").length,
+    2,
+  );
+  assert.ok(view.textContent.includes("keep"));
+  renderMarkdown(view, source, true);
+  assert.equal(all(view).filter((n) => n.tagName === "pre").length, 2);
+  assert.ok(view.textContent.includes("const a = '<img>';"));
+  assert.ok(!all(view).some((n) => n.tagName === "img"));
+});
+
 test("reader preserves safe text, question/code toggles and return action", () => {
   const reader = root();
   const unsafe = '<img src=x onerror="unexpected()">';
   const question = "user code\n```sh\necho example\n```";
-  const answer = unsafe + "\n```sh\nprintf example\n```";
+  const answer = unsafe + "\n\n```sh\nprintf example\n```";
   let returned = 0;
   assert.equal(
     renderConversation(
@@ -82,7 +179,7 @@ test("reader preserves safe text, question/code toggles and return action", () =
     true,
   );
   assert.equal(articles(reader).length, 2);
-  assert.ok(articles(reader)[0].textContent.includes(question));
+  assert.ok(articles(reader)[0].textContent.includes("echo example"));
   assert.ok(articles(reader)[1].textContent.includes(unsafe));
   assert.ok(articles(reader)[1].textContent.includes("[코드 숨김]"));
   assert.ok(!all(reader).some((n) => n.tagName === "img"));
@@ -93,7 +190,7 @@ test("reader preserves safe text, question/code toggles and return action", () =
   assert.equal(articles(reader).length, 1);
   code.checked = true;
   code.onchange();
-  assert.ok(articles(reader)[0].textContent.includes(answer));
+  assert.ok(articles(reader)[0].textContent.includes("printf example"));
   const buttons = all(reader).filter((n) => n.tagName === "button");
   reader.scrollHeight = 99;
   buttons[0].onclick();

@@ -830,7 +830,7 @@ article small {
   margin-bottom: 12px;
 }
 .message-text {
-  white-space: pre-wrap;
+  white-space: normal;
   overflow-wrap: anywhere;
   line-height: 1.85;
   font-size: 14px;
