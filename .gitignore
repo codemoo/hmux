@@ -32,6 +32,8 @@ coverage.out
 /config/inventory.toml
 /web/credentials*.json
 /web/*.sessions
+*.push.json
+*.push.json.lock
 
 # Python test/build intermediates
 __pycache__/

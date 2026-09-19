@@ -40,6 +40,15 @@ func CatalogStreamSupported(ctx context.Context, cfg config.ClientConfig) (bool,
 // The callback is invoked only for complete, validated, strictly sequenced
 // snapshots. Mutations remain on their existing expected-identity commands.
 func StreamCatalogs(ctx context.Context, cfg config.ClientConfig, publish func(model.Catalog) error) error {
+	return StreamCatalogsObserved(ctx, cfg, nil, publish)
+}
+
+// StreamCatalogsObserved runs observe for every complete Home catalog fetch,
+// before semantic digest suppression. This lets Home-only event detectors see a
+// fast lifecycle transition even when the preceding and following published
+// catalogs are semantically identical. Remote JSON catalogs do not retain the
+// in-memory pane PIDs required by those detectors.
+func StreamCatalogsObserved(ctx context.Context, cfg config.ClientConfig, observe func(context.Context, model.Catalog) error, publish func(model.Catalog) error) error {
 	if publish == nil {
 		return errors.New("catalog stream publisher is required")
 	}
@@ -56,12 +65,16 @@ func StreamCatalogs(ctx context.Context, cfg config.ClientConfig, publish func(m
 		if err != nil {
 			return err
 		}
+		fetch = observeCatalogFetch(fetch, observe)
 		return catalogstream.Produce(ctx, catalogstream.DefaultInterval, fetch, func(frame catalogstream.SourceFrame) error {
 			if frame.Type == "heartbeat" {
 				return nil
 			}
 			return publish(frame.Catalog)
 		})
+	}
+	if observe != nil {
+		return errors.New("catalog stream observer requires Home role")
 	}
 	if !safeAlias(cfg.HomeAlias) || !safeRemotePath(cfg.AgentPath) {
 		return errors.New("unsafe home_alias or agent_path")
@@ -196,4 +209,20 @@ readLoop:
 		return fmt.Errorf("remote catalog stream exited: %w", waitErr)
 	}
 	return errors.New("remote catalog stream ended unexpectedly")
+}
+
+func observeCatalogFetch(fetch catalogstream.Fetch, observe func(context.Context, model.Catalog) error) catalogstream.Fetch {
+	if observe == nil {
+		return fetch
+	}
+	return func(ctx context.Context) (model.Catalog, error) {
+		value, err := fetch(ctx)
+		if err != nil {
+			return value, err
+		}
+		if err := observe(ctx, value); err != nil {
+			return value, err
+		}
+		return value, nil
+	}
 }

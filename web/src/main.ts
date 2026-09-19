@@ -21,6 +21,14 @@ import { installDesktopTerminal, isTerminalCopy } from "./desktop-terminal";
 import { installMobileTerminalLinks } from "./mobile-terminal-links";
 import { installAccountSecurity } from "./account-security";
 import { installLoginSessions } from "./login-sessions";
+import {
+  installPushNotifications,
+  installPushPresence,
+  pushTargetFromMessage,
+  pushTargetFromURL,
+  removePushTargetFromURL,
+  type PushTarget,
+} from "./push-notifications";
 import { workspaceShortcut } from "./shortcuts";
 import { createPreferences } from "./preferences";
 import {
@@ -110,9 +118,19 @@ let lastWorkspaceTabs = "[]";
 let workspaceStorageKey = "hmux.tabs";
 let pendingWorkspace: { tabs?: Identity[]; active?: Identity } | undefined;
 let attachments: ReturnType<typeof installAttachments> | undefined;
+let pushPresence: ReturnType<typeof installPushPresence> | undefined;
+const initialURL = new URL(window.location.href);
+let pendingPushTarget: PushTarget | undefined = pushTargetFromURL(initialURL);
+if (
+  ["push_session", "push_created", "push_login"].some((name) =>
+    initialURL.searchParams.has(name),
+  )
+)
+  removePushTargetFromURL();
 let dialogCleanup: (() => void) | undefined;
 let loggingOut = false;
 let csrf = "",
+  loginID = "",
   loggedIn = false,
   sessions: Session[] = [],
   snapshot: Snapshot = { online: false },
@@ -178,6 +196,8 @@ function disposeAll() {
   startFailures = 0;
   attachments?.dispose();
   attachments = undefined;
+  pushPresence?.dispose();
+  pushPresence = undefined;
   dialogCleanup?.();
   dialogCleanup = undefined;
   workspaceEpoch++;
@@ -203,11 +223,25 @@ function disposeAll() {
   readEpoch++;
   clearTimeout(pollTimer);
 }
+function resolvePushTarget() {
+  if (!pendingPushTarget || !loggedIn || !loginID || !sharedLoaded) return;
+  if (pendingPushTarget.login_id !== loginID) return;
+  const target = pendingPushTarget;
+  const session = sessions.find(
+    (value) =>
+      value.id === target.session.id &&
+      value.created_at === target.session.created_at,
+  );
+  if (!session) return;
+  pendingPushTarget = undefined;
+  openSession(session);
+}
 function showLogin() {
   loggingOut = false;
   loggedIn = false;
   disposeAll();
   csrf = "";
+  loginID = "";
   sessions = [];
   snapshot = { online: false };
   app.innerHTML = `<main class="login"><div class="login-story"><a class="brand" href="/">${mark}<span>HMux</span></a><div class="story-copy"><span class="eyebrow">YOUR PERSONAL WORKSPACE</span><h1>작업은 그대로.<br><span>어디서든 이어서.</span></h1><p>Home에서 이어지는 터미널과 AI 작업.<br>익숙한 공간으로 돌아오세요.</p><div class="story-terminal"><div><i></i><i></i><i></i><span>home / workspace</span></div><p><b>❯</b> tmux attach</p><p class="muted">Your work is right where you left it.<span class="cursor">▍</span></p></div></div><p class="story-foot">ONE HOME. EVERY SCREEN.</p></div><section class="login-panel"><form id="login-form"><div class="lock-badge">${icon("lock")}</div><span class="eyebrow">WELCOME BACK</span><h2>내 작업 공간에 로그인</h2><p class="muted">계정으로 내 작업 공간에 접속하세요.</p><label>계정<input name="username" autocomplete="username" required maxlength="80" autofocus placeholder="계정 이름"></label><label>비밀번호<input name="password" type="password" autocomplete="current-password" required maxlength="128" placeholder="비밀번호"></label><label id="login-totp" hidden>인증 코드<input name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000"><small>Google Authenticator의 6자리 코드</small></label><p id="login-error" class="error" role="alert"></p><button class="primary" type="submit">작업 이어가기 ${icon("arrow")}</button><p class="login-note">개인 전용 공간 · 공개 회원가입 없음</p></form></section></main>`;
@@ -711,6 +745,7 @@ function selectTab(k: string) {
   persistTabs();
   if (mobileSidebar.matches) setSidebar(false, false);
   notice("");
+  pushPresence?.refresh();
 }
 
 function openSession(s: Session, activate = true) {
@@ -1207,8 +1242,20 @@ function settingsDialog() {
     installButton(),
   );
   const loginSessions = text("section", "", "settings-section login-sessions");
+  const notifications = text(
+    "section",
+    "",
+    "settings-section push-notifications",
+  );
   const security = text("section", "", "settings-section account-security");
-  body.append(appearance, security, loginSessions, keys, install);
+  body.append(
+    appearance,
+    notifications,
+    security,
+    loginSessions,
+    keys,
+    install,
+  );
   let disposeSessions: (() => void) | undefined;
   const refreshSessions = () => {
     disposeSessions?.();
@@ -1229,7 +1276,9 @@ function settingsDialog() {
     api,
     refreshSessions,
   );
+  const disposePush = installPushNotifications(notifications, api, loginID);
   dialogCleanup = () => {
+    disposePush();
     disposeSecurity();
     disposeSessions?.();
   };
@@ -1316,6 +1365,7 @@ async function refresh() {
     renderTabs();
     renderFooter();
     ensureActiveConnection();
+    resolvePushTarget();
     if (next.online) void syncSharedWorkspace();
   } finally {
     if (refreshRequest === request) refreshRequest = undefined;
@@ -1386,11 +1436,13 @@ async function start() {
       ? `hmux.tabs.${session.profile}`
       : "hmux.tabs";
     csrf = session.csrf;
+    loginID = session.login_id;
     loggedIn = true;
     startFailures = 0;
     bootstrapping = true;
     shell();
     $("#username").textContent = session.username;
+    pushPresence = installPushPresence(api, () => tabs.get(active)?.identity);
     try {
       pendingWorkspace = JSON.parse(
         preferences.get(workspaceStorageKey) || "{}",
@@ -1604,6 +1656,7 @@ async function syncSharedWorkspace() {
     $("#footer-connection").title = workspaceDirty
       ? "공용 탭 · 동기화 중"
       : "공용 탭 · 동기화됨";
+    resolvePushTarget();
   } catch (error) {
     if (epoch !== workspaceEpoch) return;
     if (loggedIn) $("#footer-connection").title = "공용 탭 · 동기화 대기";
@@ -1656,10 +1709,33 @@ function applySharedWorkspace(value: SharedWorkspace) {
     bootstrapping = false;
     pendingWorkspace = undefined;
     persistTabs();
+    resolvePushTarget();
   } finally {
     applyingShared = false;
   }
 }
+
+navigator.serviceWorker?.addEventListener("message", (event) => {
+  const target = pushTargetFromMessage(event.data);
+  const source = event.source as ServiceWorker | null;
+  if (!target || !source || !("scriptURL" in source)) return;
+  let sourceURL: URL;
+  try {
+    sourceURL = new URL(source.scriptURL);
+  } catch {
+    return;
+  }
+  if (
+    sourceURL.origin !== window.location.origin ||
+    sourceURL.pathname !== "/sw.js" ||
+    !loggedIn ||
+    target.login_id !== loginID
+  )
+    return;
+  pendingPushTarget = target;
+  resolvePushTarget();
+  event.ports[0]?.postMessage({ type: "hmux-push-open-ack" });
+});
 
 const viewportController = createViewportController(app, isIOS, isAndroid);
 function resizeMobileViewport() {

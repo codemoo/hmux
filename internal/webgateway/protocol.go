@@ -99,15 +99,16 @@ func heartbeat(ctx context.Context, p *peer) {
 }
 
 type hub struct {
-	mu        sync.Mutex
-	home      *peer
-	pending   map[string]chan Message
-	terminals map[string]chan Message
-	uploads   map[string]*gatewayUpload
-	uploadCap bool
-	catalog   json.RawMessage
-	usage     map[string]json.RawMessage
-	updated   time.Time
+	onCompletion func(completionEvent)
+	mu           sync.Mutex
+	home         *peer
+	pending      map[string]chan Message
+	terminals    map[string]chan Message
+	uploads      map[string]*gatewayUpload
+	uploadCap    bool
+	catalog      json.RawMessage
+	usage        map[string]json.RawMessage
+	updated      time.Time
 }
 
 type gatewayUpload struct {
@@ -238,6 +239,13 @@ func (h *hub) serve(ctx context.Context, p *peer) bool {
 				if capability == "web-upload-v1" {
 					h.uploadCap = true
 				}
+			}
+		case "task-complete":
+			var payload struct {
+				CompletedAt time.Time `json:"completed_at"`
+			}
+			if h.onCompletion != nil && strictPayload(m.Payload, &payload) == nil {
+				h.onCompletion(completionEvent{Session: m.Session, EventID: m.ID, CompletedAt: payload.CompletedAt})
 			}
 		case "catalog":
 			h.catalog = append(json.RawMessage(nil), m.Payload...)

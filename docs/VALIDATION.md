@@ -5,6 +5,46 @@ private-deployment checkpoints are preserved in
 [the historical validation log](archive/VALIDATION_PRE_PUBLICATION.md).
 They are not claims about a user's independent deployment.
 
+## 2026-09-20 — Codex PWA completion notifications
+
+Codex completion notifications are opt-in per authenticated browser/PWA login.
+One Home observer uses bound rollout lifecycle records before catalog publication
+suppression; it never infers completion from inactivity. Delivery checks the
+account's shared workspace and exact tmux lifetime. Notifications include the
+requested tab name and completion status, and clicking opens that exact tab.
+They do not include conversation text. Logout/expiry and unknown or mismatched
+service-worker authentication suppress delivery/display.
+
+Checks completed:
+
+- Full Go tests and vet, plus race tests for catalog, client and web gateway.
+  After independent review fixes, gateway tests, race tests and vet passed again.
+- Web type/style checks, 119 tests and production build. Cases cover initial
+  baseline/no replay, fast turns, truncated/partial records, exact account/session
+  matching, VAPID/encrypted payload decryption, subscription transfer/revocation,
+  natural expiry cancellation, outbound address limits, exclusive state locking,
+  notification click routing and stale settings disposal.
+- Chromium against the production build with synthetic API/WebSocket/PushManager
+  responses: explicit permission request, opt-in/out, test success/failure UI,
+  `$0` notification deep link, existing-window target selection and wrong-login
+  rejection. Settings screenshots were inspected at desktop and 390×844 sizes.
+  The single browser console error was the deliberately injected HTTP 502.
+- Independent backend review findings were fixed and re-reviewed with no material
+  residual defects. Tests did not attach to or change pre-existing tmux sessions.
+
+Release `20260919T160548Z` (UTC) was deployed after verification of 45 staged file
+hashes. Previous gateway/frontend release and timestamped Home binary backup are
+retained. Gateway and the one foreground Home connector were updated; no macOS
+LaunchAgent or automatic-start item was added. Public HTTPS HTML, JS/CSS, manifest
+and worker hashes match the build; no-store/PWA CSP and anonymous API 401 responses
+remain intact. Private VAPID state is service-owned mode 0600. The service is active,
+and exactly one updated Home connector was verified with established connections.
+
+These checks verify implementation and deployment, not delivery to a physical
+user device or acceptance by every push provider. After reloading, enable Settings
+→ 완료 알림 → 알림 켜기 in the installed PWA and use 테스트 알림 to verify device
+permission and OS delivery. No real device subscription was created by the tests.
+
 ## 2026-09-19 — browser connection recovery
 
 Browser API requests now belong to the originating login scope; disposal aborts

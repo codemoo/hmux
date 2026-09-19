@@ -10,8 +10,11 @@ for versions. This is not a complete native static-library SBOM.
 | BurntSushi/toml | v1.5.0 | `third_party/licenses/toml-LICENSE.txt` |
 | coder/websocket | v1.8.14 | `third_party/licenses/websocket-LICENSE.txt` |
 | creack/pty | v1.1.24 | `third_party/licenses/pty-LICENSE.txt` |
-| Go x/sys | v0.33.0 | `third_party/licenses/x-sys-LICENSE.txt` |
-| Go x/term | v0.32.0 | `third_party/licenses/x-term-LICENSE.txt` |
+| Go x/sys | v0.38.0 | `third_party/licenses/x-sys-LICENSE.txt` |
+| Go x/term | v0.37.0 | `third_party/licenses/x-term-LICENSE.txt` |
+| SherClockHolmes/webpush-go | v1.4.0 | `third_party/licenses/webpush-go-LICENSE.txt` |
+| golang-jwt/jwt | v5.3.0 | `third_party/licenses/jwt-LICENSE.txt` |
+| Go x/crypto | v0.45.0 | `third_party/licenses/x-crypto-LICENSE.txt` |
 | Token Terrier collector | in-tree source snapshot | `third_party/token-terrier-server/LICENSE`, `NOTICE`, `UPSTREAM.md` |
 | xterm.js | 6.0.0 | `web/public/licenses/xterm-LICENSE.txt` |
 | xterm addon-fit | 0.11.0 | `web/public/licenses/xterm-addon-fit-LICENSE.txt` |

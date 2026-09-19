@@ -402,3 +402,19 @@
 .security-status:empty {
   display: none;
 }
+.push-status {
+  min-height: 1.5em;
+  font-size: 11px;
+  color: #b7b5ac;
+}
+.push-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+#dialog-body .push-actions button {
+  min-height: 34px;
+  padding: 8px 12px;
+  font-size: 11px;
+}

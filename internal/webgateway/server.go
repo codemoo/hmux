@@ -20,6 +20,7 @@ import (
 )
 
 type Server struct {
+	push         *pushStore
 	locations    *sessionLocator
 	workspaceDir string
 	origin       string
@@ -44,7 +45,14 @@ func NewServer(origin, credentialsPath, tokenPath string, assets fs.FS) (*Server
 	if err != nil {
 		return nil, err
 	}
-	return &Server{locations: newSessionLocator(), workspaceDir: filepath.Join(filepath.Dir(credentialsPath), "web-profiles"), origin: origin, host: u.Host, token: token, auth: a, hub: newHub(), uploads: newUploadLimiter(), assets: http.FileServer(http.FS(assets))}, nil
+	push, err := newPushStore(credentialsPath + ".push.json")
+	if err != nil {
+		return nil, err
+	}
+	s := &Server{push: push, locations: newSessionLocator(), workspaceDir: filepath.Join(filepath.Dir(credentialsPath), "web-profiles"), origin: origin, host: u.Host, token: token, auth: a, hub: newHub(), uploads: newUploadLimiter(), assets: http.FileServer(http.FS(assets))}
+	s.hub.onCompletion = push.enqueue
+	s.runPush()
+	return s, nil
 }
 func LoopbackAddress(address string) error {
 	host, _, err := net.SplitHostPort(address)
@@ -101,7 +109,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			username, profile, _ := s.auth.identity(cookie.Value)
-			writeJSON(w, map[string]any{"username": username, "profile": profile, "csrf": csrf})
+			login, _ := s.auth.pushLogin(cookie.Value)
+			writeJSON(w, map[string]any{"username": username, "profile": profile, "csrf": csrf, "login_id": login.id})
 		case "/api/logout":
 			if r.Method != http.MethodPost {
 				http.Error(w, "Method not allowed", 405)
@@ -158,6 +167,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, map[string]bool{"ok": true})
 		case "/api/account/security":
 			s.accountSecurity(w, r, cookie.Value)
+		case "/api/push", "/api/push/subscribe", "/api/push/unsubscribe", "/api/push/presence", "/api/push/test":
+			s.pushAPI(w, r, cookie.Value)
 		case "/api/state":
 			if r.Method != http.MethodGet {
 				http.Error(w, "Method not allowed", 405)
@@ -506,6 +517,9 @@ func (s *Server) terminal(w http.ResponseWriter, r *http.Request, token string, 
 }
 
 func (s *Server) Close() {
+	if s.push != nil {
+		s.push.close()
+	}
 	s.auth.closeConnections()
 	s.hub.mu.Lock()
 	p := s.hub.home
