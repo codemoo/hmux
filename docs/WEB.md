@@ -223,8 +223,8 @@ review and verification; log collection does not execute code or apply changes.
   beside Attach in the keyboard-visible mobile row. Home limits redraws to one
   per second per view; unavailable views disable the control.
 - Alias-first A–Z session list, Home profile session creation, rename and hide/show.
-- Cool charcoal chrome, blue/cyan accents and compact 4–5px corners. A 44px tab
-  bar contains 34px desktop tabs with visible inactive borders and an active blue
+- Neutral graphite chrome, restrained slate accents and compact 4–5px corners. A 44px tab
+  bar contains 34px desktop tabs with visible inactive borders and an active muted
   top accent. The wide desktop sidebar is 268px; the status bar stays on one line.
 - Alt+1–9 selects the corresponding tab in current sidebar-independent tab order
   (an absent tab number does nothing); Alt+Shift+Left/Right changes tabs; Alt+L or Alt+Backquote (` / ₩ on Korean layouts) toggles sidebar;
@@ -310,7 +310,7 @@ Terminal colors live in `theme.ts`. Bold text does not automatically promote ANS
 colors to bright variants. Settings → 터미널 offers HMux Dark (default), Tokyo
 Night Storm, Catppuccin Mocha, Dracula and Nord. The choice is device-local,
 validated on load and applied immediately to every existing/future terminal,
-without reconnecting or clearing output. Chrome stays cool/dark independently
+without reconnecting or clearing output. Chrome stays neutral/dark independently
 of the terminal palette. Settings categories support keyboard navigation and
 keep account requests tied to the original dialog. Pinned GitHub sources and
 licenses are in `web/public/licenses/terminal-themes-NOTICE.md`.
@@ -330,7 +330,7 @@ desktop 14px, both adjustable 8–24px with separate preferences. The self-hoste
 Pretendard Variable v1.3.9 font covers proportional UI and Korean labels; code
 blocks and terminal previews use Monatendard. Regular/Bold terminal metrics
 are identical, with modern Hangul syllables exactly twice the ASCII cell width.
-The flat SVG mark also supplies the PWA PNG icons; versioned icon paths preserve
+The monochrome bracket/H SVG mark also supplies the PWA PNG icons; versioned icon paths preserve
 the manifest identity. Existing installed launchers may refresh icons on their
 own schedule; the application never reinstalls or reloads an active terminal.
 

@@ -636,7 +636,7 @@ kbd {
 }
 .theme-option:has(:checked) {
   border-color: var(--blue) !important;
-  box-shadow: 0 0 0 1px var(--blue);
+  box-shadow: none;
 }
 .theme-option:has(:focus-visible) {
   outline: 2px solid var(--blue);

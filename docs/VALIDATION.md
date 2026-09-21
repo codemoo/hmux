@@ -5,6 +5,21 @@ private-deployment checkpoints are preserved in
 [the historical validation log](archive/VALIDATION_PRE_PUBLICATION.md).
 They are not claims about a user's independent deployment.
 
+## 2026-09-22 — Restrained graphite and monochrome branding
+
+Follow-up visual refinement replaces the two-color block logo with a single-color
+bracket/H mark, neutralizes blue-tinted surfaces and lowers accent saturation.
+The default HMux Dark terminal palette is similarly restrained; the four pinned
+third-party palettes remain unchanged. Selected tab borders and focus indicators
+stay visible. New versioned PWA icon paths keep the same installation identity.
+
+Web check, 151 tests and build passed. Chromium rechecked five-theme switching,
+persistence, existing/new terminals, no reconnect on theme changes, settings
+keyboard navigation, four viewport widths and Korean Regular/Bold metrics.
+Desktop/mobile settings, usage and workspace screenshots were inspected.
+Frontend-only release `20260921T191051Z` retains the gateway/Home processes and is
+verified through HTTPS asset/icon/font hashes, authentication barriers and PWA CSP.
+
 ## 2026-09-22 — Cool workspace design and terminal themes
 
 The web UI now uses cool charcoal, blue/cyan accents, compact corners and flat

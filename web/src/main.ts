@@ -97,7 +97,7 @@ const appearanceState = createTerminalAppearance(preferences, (palette) => {
     palette.foreground!,
   );
 });
-const mark = '<img class="brandmark" src="/icons/hmux-mark.svg" alt="">';
+const mark = '<img class="brandmark" src="/icons/hmux-symbol.svg" alt="">';
 let readerAbort: AbortController | undefined;
 let layoutObserver: ResizeObserver | undefined;
 let layoutFrame = 0;
