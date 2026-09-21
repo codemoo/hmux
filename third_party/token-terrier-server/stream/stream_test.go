@@ -199,14 +199,25 @@ func TestTransportSourcesAreProviderMatchedBoundedAndNonRecursive(t *testing.T) 
 		BurnState: "idle", Rolling5h: wire.EmptyRollingWindow(), Weekly: wire.EmptyRollingWindow(),
 		Status: wire.SnapshotStatus{State: wire.StateNetworkError, DataSource: wire.DataSourceAPIOnly, QuotaSource: wire.QuotaSourceNone, Stale: true},
 	}
-	transport := newTransportSnapshotWithSources(parent, map[string]wire.UsageSnapshot{"cli": parent, "cswap": parent})
+	cswap := parent
+	cswap.Status.QuotaSource = wire.QuotaSourceClaudeSwap
+	transport := newTransportSnapshotWithSources(parent, map[string]wire.UsageSnapshot{"cli": parent, "cswap": cswap})
 	if err := transport.validate(); err != nil {
 		t.Fatalf("valid sources rejected: %v", err)
 	}
 	if len(transport.Sources) != 2 || len(transport.Sources["cli"].Sources) != 0 {
 		t.Fatalf("sources=%+v", transport.Sources)
 	}
-	badProvider := newTransportSnapshotWithSources(parent, map[string]wire.UsageSnapshot{"cli": parent, "cswap": parent})
+	for _, source := range []string{"cli", "cswap"} {
+		bad := newTransportSnapshotWithSources(parent, map[string]wire.UsageSnapshot{"cli": parent, "cswap": cswap})
+		child := bad.Sources[source]
+		child.Status.QuotaSource = wire.QuotaSourceCodexLB
+		bad.Sources[source] = child
+		if err := bad.validate(); err == nil {
+			t.Fatal("source with incorrect quota provenance accepted", source)
+		}
+	}
+	badProvider := newTransportSnapshotWithSources(parent, map[string]wire.UsageSnapshot{"cli": parent, "cswap": cswap})
 	child := badProvider.Sources["cli"]
 	child.Provider = wire.ProviderCodex
 	badProvider.Sources["cli"] = child
@@ -218,7 +229,7 @@ func TestTransportSourcesAreProviderMatchedBoundedAndNonRecursive(t *testing.T) 
 	if err := unknown.validate(); err == nil {
 		t.Fatal("unknown source accepted")
 	}
-	recursive := newTransportSnapshotWithSources(parent, map[string]wire.UsageSnapshot{"cli": parent, "cswap": parent})
+	recursive := newTransportSnapshotWithSources(parent, map[string]wire.UsageSnapshot{"cli": parent, "cswap": cswap})
 	child = recursive.Sources["cli"]
 	child.Sources = map[string]transportSnapshot{"cli": newTransportSnapshot(parent)}
 	recursive.Sources["cli"] = child
@@ -592,5 +603,25 @@ func TestClaudeSwapEmailTransport(t *testing.T) {
 		if accountEmail(wire.ProviderClaude, value) != "" {
 			t.Fatal("invalid email label allowed")
 		}
+	}
+}
+
+func TestSourceQuotaPublishKeepsInterleavedNewerActivity(t *testing.T) {
+	provider := wire.ProviderCodex
+	old := wire.Degraded(provider, 1, wire.ProducerInfo{}, time.Now(), wire.StateOK)
+	old.TodayTotalTokens = 10
+	lb := old
+	lb.Status.QuotaSource = wire.QuotaSourceCodexLB
+	runtime := &collectorRuntime{latest: map[wire.Provider]wire.UsageSnapshot{}, sources: map[wire.Provider]map[string]wire.UsageSnapshot{}, dirty: map[wire.Provider]bool{}}
+	runtime.publishSources(provider, lb, map[string]wire.UsageSnapshot{"cli": old, "codex-lb": lb})
+	pending := copyActivity(lb, runtime.sourceSnapshot(provider, "cli"))
+	latest := old
+	latest.TodayTotalTokens = 20
+	latest.BurnState = "run"
+	runtime.publishActivity(latest)
+	runtime.publishSource(provider, "codex-lb", pending, true)
+	got := runtime.takeCollectedSnapshots()
+	if len(got) != 1 || got[0].snapshot.TodayTotalTokens != 20 || got[0].sources["codex-lb"].BurnState != "run" {
+		t.Fatal("quota refresh overwrote newer activity")
 	}
 }

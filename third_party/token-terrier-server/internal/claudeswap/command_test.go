@@ -3,6 +3,7 @@ package claudeswap
 import (
 	"context"
 	"errors"
+	"github.com/codemoo/token-terrier/server-go/internal/wire"
 	"os"
 	"path/filepath"
 	"strings"
@@ -130,4 +131,25 @@ func writeCommandFixture(t *testing.T, dir, body string) string {
 		t.Fatal(err)
 	}
 	return path
+}
+
+func TestCommandCachedMeasurementExpiresWithoutAnotherSuccess(t *testing.T) {
+	now := time.Date(2026, 9, 22, 12, 0, 0, 0, time.UTC)
+	observed := now.Add(-29 * time.Minute).Format(time.RFC3339)
+	r := NewCommandReader(t.TempDir(), nil)
+	r.now = func() time.Time { return now }
+	r.lastGoodAt = now
+	r.accounts = []wire.AccountUsage{{Number: 1, Status: "ok", LastRefreshAt: &observed, SevenDay: &wire.AccountWindow{UsedPct: .4}}}
+	before, _ := r.Accounts()
+	if before[0].SevenDay == nil {
+		t.Fatal("unexpired measurement missing")
+	}
+	now = now.Add(2 * time.Minute)
+	after, _ := r.Accounts()
+	if after[0].SevenDay != nil || after[0].Status != "unavailable" {
+		t.Fatal("measurement age extended by command cache")
+	}
+	if before[0].SevenDay == nil || before[0].Status != "ok" {
+		t.Fatal("previous snapshot mutated")
+	}
 }

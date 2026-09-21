@@ -206,6 +206,12 @@ func (s transportSnapshot) validate() error {
 		if !allowedSources[name] || child.Provider != s.Provider || len(child.Sources) != 0 {
 			return errors.New("invalid usage snapshot source")
 		}
+		quotaSource := child.Status.QuotaSource
+		if (name == "cli" && quotaSource != wire.QuotaSourceOAuth && quotaSource != wire.QuotaSourceNone) ||
+			(name == "cswap" && quotaSource != wire.QuotaSourceClaudeSwap) ||
+			(name == "codex-lb" && quotaSource != wire.QuotaSourceCodexLB) {
+			return errors.New("mismatched usage source provenance")
+		}
 		if err := child.validate(); err != nil {
 			return err
 		}
@@ -700,6 +706,11 @@ func (r *collectorRuntime) publishSource(provider wire.Provider, name string, sn
 	r.snapshotMu.Lock()
 	if r.sources[provider] == nil {
 		r.sources[provider] = make(map[string]wire.UsageSnapshot)
+	}
+	if name != "cli" {
+		// A JSONL update may have arrived while this quota request ran.
+		// Merge activity under the publish lock so its counters never roll back.
+		snapshot = copyActivity(snapshot, r.sources[provider]["cli"])
 	}
 	r.sources[provider][name] = snapshot
 	if selected {

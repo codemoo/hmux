@@ -105,7 +105,20 @@ func (r *CommandReader) Accounts() ([]wire.AccountUsage, *string) {
 	if r.lastGoodAt.IsZero() || r.now().Sub(r.lastGoodAt) > defaultMaxLastGoodAge {
 		return nil, nil
 	}
-	return append([]wire.AccountUsage(nil), r.accounts...), copyString(r.updated)
+	accounts := append([]wire.AccountUsage(nil), r.accounts...)
+	for i := range accounts {
+		observed := time.Time{}
+		if accounts[i].LastRefreshAt != nil {
+			observed, _ = time.Parse(time.RFC3339Nano, *accounts[i].LastRefreshAt)
+		}
+		if observed.IsZero() || r.now().Sub(observed) >= defaultMaxLastGoodAge {
+			accounts[i].FiveHour, accounts[i].SevenDay = nil, nil
+			if accounts[i].Status == "ok" {
+				accounts[i].Status = "unavailable"
+			}
+		}
+	}
+	return accounts, copyString(r.updated)
 }
 
 func (r *CommandReader) ActiveAccountNumber() int {
