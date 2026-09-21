@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -189,6 +190,93 @@ func TestTransportSerializesMissingWindowFlags(t *testing.T) {
 	encoded := string(raw)
 	if !strings.Contains(encoded, `"rolling_5h_observed":false`) || !strings.Contains(encoded, `"weekly_observed":false`) {
 		t.Fatalf("missing window flags were omitted: %s", encoded)
+	}
+}
+
+func TestTransportSourcesAreProviderMatchedBoundedAndNonRecursive(t *testing.T) {
+	parent := wire.UsageSnapshot{
+		Schema: 1, Seq: 1, GeneratedAtUTC: "2026-08-24T00:00:00.000Z", Provider: wire.ProviderClaude,
+		BurnState: "idle", Rolling5h: wire.EmptyRollingWindow(), Weekly: wire.EmptyRollingWindow(),
+		Status: wire.SnapshotStatus{State: wire.StateNetworkError, DataSource: wire.DataSourceAPIOnly, QuotaSource: wire.QuotaSourceNone, Stale: true},
+	}
+	transport := newTransportSnapshotWithSources(parent, map[string]wire.UsageSnapshot{"cli": parent, "cswap": parent})
+	if err := transport.validate(); err != nil {
+		t.Fatalf("valid sources rejected: %v", err)
+	}
+	if len(transport.Sources) != 2 || len(transport.Sources["cli"].Sources) != 0 {
+		t.Fatalf("sources=%+v", transport.Sources)
+	}
+	badProvider := newTransportSnapshotWithSources(parent, map[string]wire.UsageSnapshot{"cli": parent, "cswap": parent})
+	child := badProvider.Sources["cli"]
+	child.Provider = wire.ProviderCodex
+	badProvider.Sources["cli"] = child
+	if err := badProvider.validate(); err == nil {
+		t.Fatal("provider-mismatched source accepted")
+	}
+	unknown := transport
+	unknown.Sources = map[string]transportSnapshot{"native": newTransportSnapshot(parent)}
+	if err := unknown.validate(); err == nil {
+		t.Fatal("unknown source accepted")
+	}
+	recursive := newTransportSnapshotWithSources(parent, map[string]wire.UsageSnapshot{"cli": parent, "cswap": parent})
+	child = recursive.Sources["cli"]
+	child.Sources = map[string]transportSnapshot{"cli": newTransportSnapshot(parent)}
+	recursive.Sources["cli"] = child
+	if err := recursive.validate(); err == nil {
+		t.Fatal("recursive source accepted")
+	}
+}
+
+func TestTransportPlanTypeIsAllowlisted(t *testing.T) {
+	raw := testSnapshot(t, wire.ProviderCodex, 1)
+	var snapshot map[string]any
+	if err := json.Unmarshal(raw, &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	snapshot["plan_type"] = "pro"
+	valid, _ := json.Marshal(snapshot)
+	frame := Frame{ProtocolVersion: ProtocolVersion, Sequence: 1, Type: "snapshot", Provider: "codex", Snapshot: valid}
+	if err := frame.Validate(); err != nil {
+		t.Fatalf("allowlisted plan_type rejected: %v", err)
+	}
+	snapshot["plan_type"] = "private-provider-value"
+	invalid, _ := json.Marshal(snapshot)
+	frame.Snapshot = invalid
+	if err := frame.Validate(); err == nil {
+		t.Fatal("raw provider plan_type accepted")
+	}
+}
+
+func TestLegacyTransportOmitsSources(t *testing.T) {
+	snapshot := wire.UsageSnapshot{Provider: wire.ProviderClaude}
+	raw, err := json.Marshal(newTransportSnapshot(snapshot))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(raw, []byte(`"sources"`)) {
+		t.Fatalf("legacy snapshot gained sources: %s", raw)
+	}
+}
+
+func TestClaudeSwapSourceUsesOnlyActiveCSwapQuota(t *testing.T) {
+	now := time.Date(2026, 9, 22, 1, 2, 3, 0, time.UTC)
+	observed := wire.FormatTime(now.Add(-time.Minute))
+	cli := wire.Degraded(wire.ProviderClaude, 7, wire.ProducerInfo{ID: "hmux-home", TimeZone: "UTC"}, now, wire.StateOK)
+	cli.Rolling5h = wire.RollingWindow{UsedPct: .99}
+	cli.Rolling5hObserved = true
+	cli.TodayTotalTokens = 123
+	cswap := claudeSwapSourceSnapshot(cli, []wire.AccountUsage{
+		{Number: 1, Email: "one@example.test", Active: true, Status: "keychain_unavailable", FiveHour: &wire.AccountWindow{UsedPct: .25}, LastRefreshAt: &observed},
+		{Number: 2, Email: "two@example.test", Status: "ok", FiveHour: &wire.AccountWindow{UsedPct: .75}},
+	}, &observed, now)
+	if cswap.Rolling5h.UsedPct != .25 || cswap.Status.State != wire.StateNetworkError || !cswap.Status.Stale {
+		t.Fatalf("cswap summary=%+v", cswap)
+	}
+	if cswap.TodayTotalTokens != 123 || len(cswap.Accounts) != 2 || cswap.Accounts[0].Status != "keychain_unavailable" {
+		t.Fatalf("cswap activity/accounts=%+v", cswap)
+	}
+	if cli.Rolling5h.UsedPct != .99 || len(cli.Accounts) != 0 {
+		t.Fatalf("CLI source was mixed with cswap: %+v", cli)
 	}
 }
 
@@ -373,6 +461,39 @@ func TestRunNeedsNoBearerAndCreatesNoCredentialFiles(t *testing.T) {
 	}
 }
 
+func TestRunWithSourcesEmitsExplicitChildrenWithoutCreatingFiles(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("TOKEN_USAGE_DISABLE_JSONL", "1")
+	t.Setenv("TOKEN_USAGE_DISABLE_CLAUDE_SWAP", "1")
+	t.Setenv("TOKEN_USAGE_DISABLE_CODEX_ACCOUNTS", "1")
+	t.Setenv("TOKEN_USAGE_DISABLE_CODEX_LB", "1")
+	ctx, cancel := context.WithCancel(context.Background())
+	writer := &cancelAfterWrite{cancel: cancel}
+	if err := RunWithSources(ctx, writer); err != nil {
+		t.Fatal(err)
+	}
+	decoder, _ := NewDecoder(bytes.NewReader(writer.data.Bytes()))
+	frame, err := decoder.Decode()
+	if err != nil || frame.Type != "snapshot" || frame.Provider != "claude" {
+		t.Fatalf("first frame=%#v err=%v", frame, err)
+	}
+	decoded, err := decodeTransportSnapshot(frame.Snapshot)
+	if err != nil || len(decoded.Sources) != 2 {
+		t.Fatalf("source snapshot=%+v err=%v", decoded, err)
+	}
+	if _, ok := decoded.Sources["cli"]; !ok {
+		t.Fatal("Claude CLI child missing")
+	}
+	if _, ok := decoded.Sources["cswap"]; !ok {
+		t.Fatal("Claude cswap child missing")
+	}
+	entries, err := os.ReadDir(home)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("source stream created Home files: %v, err=%v", entries, err)
+	}
+}
+
 func TestCollectorRuntimeCoalescesLatestSnapshotPerProvider(t *testing.T) {
 	runtime := &collectorRuntime{
 		latest: map[wire.Provider]wire.UsageSnapshot{},
@@ -390,6 +511,29 @@ func TestCollectorRuntimeCoalescesLatestSnapshotPerProvider(t *testing.T) {
 	if second := runtime.takeSnapshots(); len(second) != 0 {
 		t.Fatalf("clean broker replayed snapshots=%#v", second)
 	}
+}
+
+func TestIndependentSourceWorkerIsNotBlockedBySlowCLI(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	var wg sync.WaitGroup
+	alternateDone := make(chan struct{})
+	startSourceRefreshWorker(ctx, &wg, func(refreshCtx context.Context, _ time.Time) {
+		<-refreshCtx.Done()
+	})
+	startSourceRefreshWorker(ctx, &wg, func(context.Context, time.Time) {
+		select {
+		case <-alternateDone:
+		default:
+			close(alternateDone)
+		}
+	})
+	select {
+	case <-alternateDone:
+	case <-time.After(time.Second):
+		t.Fatal("alternate source waited for slow CLI source")
+	}
+	cancel()
+	wg.Wait()
 }
 
 type cancelAfterWrite struct {

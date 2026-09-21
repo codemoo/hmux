@@ -8,6 +8,7 @@ package wire
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 )
 
@@ -46,9 +47,10 @@ const (
 type QuotaSource string
 
 const (
-	QuotaSourceNone    QuotaSource = "none"
-	QuotaSourceOAuth   QuotaSource = "oauth_api"
-	QuotaSourceCodexLB QuotaSource = "codex_lb"
+	QuotaSourceNone       QuotaSource = "none"
+	QuotaSourceOAuth      QuotaSource = "oauth_api"
+	QuotaSourceClaudeSwap QuotaSource = "claude_swap"
+	QuotaSourceCodexLB    QuotaSource = "codex_lb"
 )
 
 // QuotaWindow is a single named quota window in normalized form.
@@ -91,6 +93,7 @@ type AccountUsage struct {
 	TokensPerHour *float64       `json:"tokens_per_hour,omitempty"`
 	TotalTokens   *int64         `json:"total_tokens,omitempty"`
 	LastRefreshAt *string        `json:"last_refresh_at,omitempty"`
+	PlanType      string         `json:"plan_type,omitempty"`
 }
 
 // Credits captures credit balance information when a provider exposes it.
@@ -136,6 +139,7 @@ type UsageSnapshot struct {
 	ProducerID        string         `json:"producer_id"`
 	ProducerTimeZone  string         `json:"producer_tz"`
 	Provider          Provider       `json:"provider"`
+	PlanType          string         `json:"plan_type,omitempty"`
 	BurnRatePerMinute float64        `json:"burn_rate_per_min"`
 	BurnState         string         `json:"burn_state"`
 	TodayTotalTokens  int            `json:"today_total_tokens"`
@@ -152,6 +156,21 @@ type UsageSnapshot struct {
 	// compact wire shape when no account-pool integration is configured.
 	Accounts        []AccountUsage `json:"accounts,omitempty"`
 	AccountsUpdated *string        `json:"accounts_updated_at,omitempty"`
+}
+
+// NormalizePlanType exposes only plan categories the UI knows how to label. Raw
+// provider strings are never transported, and quota percentages are never
+// used to infer a plan.
+func NormalizePlanType(value string) string {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	normalized = strings.ReplaceAll(normalized, "chatgpt_", "")
+	normalized = strings.ReplaceAll(normalized, "chatgpt-", "")
+	switch normalized {
+	case "free", "plus", "pro", "team", "business", "enterprise", "edu", "go":
+		return normalized
+	default:
+		return ""
+	}
 }
 
 // ProducerInfo is stable producer metadata picked up from env at boot.

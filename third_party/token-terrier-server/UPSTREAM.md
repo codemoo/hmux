@@ -11,7 +11,7 @@ application, daemon installation, fixed port, or launch agent.
   commit byte-for-byte. The snapshot included local collector changes; this
   repository tracks the imported code and all subsequent changes independently.
 - Go source digest (`cmd/**/*.go` and `internal/**/*.go`, sorted):
-  `e3ed7cc7c0897def6e57fb8dca2b2bdb48604037ff5faa023942b60bf1593439`
+  `c2178feacdb932e58cbf9d7aff47fdd50a7c915fdecaf09a609fbcf48234d0d2`
   (reproduce from this directory with
   `find cmd internal -type f -name '*.go' -print | LC_ALL=C sort | xargs shasum -a 256 | shasum -a 256`)
 - Local HMux delta: the public `stream` package links the existing collectors
@@ -19,8 +19,11 @@ application, daemon installation, fixed port, or launch agent.
   treats Claude/Codex CLI credentials as a revision-tracked, read-only source.
   `cmd/daemon` remains available for upstream contract coverage but is not
   bundled or launched by HMux. `internal/codexlb` accepts an explicit aggregate
-  key. The unused upstream `internal/source` SSH bridge remains excluded: HMux
-  uses its own host-key-checked, allowlisted transport.
+  key. The source-aware stream keeps CLI, claude-swap and codex-lb quota values
+  separate. Its claude-swap reader runs only `cswap list --json` on a bounded
+  cadence with bounded output and discarded diagnostics. The unused upstream
+  `internal/source` SSH bridge remains excluded: HMux uses its own
+  host-key-checked, allowlisted transport.
 
 On a remote client, the existing HMux SSH identity authorizes the exact command
 `hmux-agent usage-stream --stdio`. No usage bearer is created. SSH stdin is the

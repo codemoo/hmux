@@ -28,11 +28,17 @@ type cswapList struct {
 }
 
 type cswapAccount struct {
-	Number      int         `json:"number"`
-	Email       string      `json:"email"`
-	Active      bool        `json:"active"`
-	UsageStatus string      `json:"usageStatus"`
-	Usage       *cswapUsage `json:"usage"`
+	Number             int         `json:"number"`
+	Email              string      `json:"email"`
+	Alias              string      `json:"alias"`
+	Active             bool        `json:"active"`
+	UsageStatus        string      `json:"usageStatus"`
+	Usage              *cswapUsage `json:"usage"`
+	UsageFetchedAt     *string     `json:"usageFetchedAt"`
+	UsageAgeSeconds    *float64    `json:"usageAgeSeconds"`
+	LastGoodUsage      *cswapUsage `json:"lastGoodUsage"`
+	LastGoodFetchedAt  *string     `json:"lastGoodFetchedAt"`
+	LastGoodAgeSeconds *float64    `json:"lastGoodAgeSeconds"`
 }
 
 type cswapUsage struct {
@@ -90,53 +96,102 @@ type ReaderStatus struct {
 // rejected for malformed schema, invalid/duplicate account numbers, or
 // non-finite percentages so a partially corrupt pool cannot replace last-good.
 func parseAccounts(data []byte) ([]wire.AccountUsage, error) {
+	accounts, _, err := parseAccountsAt(data, time.Now(), false)
+	return accounts, err
+}
+
+// parseCommandAccounts preserves cswap's own decision status and measurement
+// timestamps. In particular, a display-grade last-good value never changes a
+// keychain_unavailable/token_expired row into an apparently fresh "ok" row.
+func parseCommandAccounts(data []byte, now time.Time) ([]wire.AccountUsage, *string, error) {
+	return parseAccountsAt(data, now, true)
+}
+
+func parseAccountsAt(data []byte, now time.Time, commandOutput bool) ([]wire.AccountUsage, *string, error) {
 	var list cswapList
 	if err := json.Unmarshal(data, &list); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if list.SchemaVersion != 1 {
-		return nil, fmt.Errorf("unsupported claude-swap schemaVersion %d", list.SchemaVersion)
+		return nil, nil, fmt.Errorf("unsupported claude-swap schemaVersion %d", list.SchemaVersion)
 	}
 	if len(list.Accounts) == 0 || strings.TrimSpace(string(list.Accounts)) == "null" {
-		return nil, errors.New("claude-swap accounts must be an array")
+		return nil, nil, errors.New("claude-swap accounts must be an array")
 	}
 	if err := safefile.ValidateJSONArrayLimit(list.Accounts, maximumAccounts); err != nil {
-		return nil, fmt.Errorf("validate claude-swap accounts: %w", err)
+		return nil, nil, fmt.Errorf("validate claude-swap accounts: %w", err)
 	}
 	var accounts []cswapAccount
 	if err := json.Unmarshal(list.Accounts, &accounts); err != nil {
-		return nil, fmt.Errorf("decode claude-swap accounts: %w", err)
+		return nil, nil, fmt.Errorf("decode claude-swap accounts: %w", err)
 	}
 	if len(accounts) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 	out := make([]wire.AccountUsage, 0, len(accounts))
 	seenNumbers := make(map[int]struct{}, len(accounts))
+	var newest time.Time
 	for _, a := range accounts {
 		if a.Number <= 0 {
-			return nil, fmt.Errorf("claude-swap account number must be positive: %d", a.Number)
+			return nil, nil, fmt.Errorf("claude-swap account number must be positive: %d", a.Number)
 		}
 		if _, duplicate := seenNumbers[a.Number]; duplicate {
-			return nil, fmt.Errorf("duplicate claude-swap account number %d", a.Number)
+			return nil, nil, fmt.Errorf("duplicate claude-swap account number %d", a.Number)
 		}
 		seenNumbers[a.Number] = struct{}{}
 
 		acc := wire.AccountUsage{
-			Number: a.Number,
-			Email:  accountLabel(a.Email, a.Number),
-			Active: a.Active,
-			Status: strings.TrimSpace(a.UsageStatus),
+			Number:      a.Number,
+			Email:       accountLabel(a.Email, a.Number),
+			DisplayName: safeLabel(a.Alias),
+			Active:      a.Active,
+			Status:      strings.TrimSpace(a.UsageStatus),
 		}
 		if acc.Status == "" {
 			acc.Status = "unavailable"
 		}
-		if a.Usage != nil {
+		measurement := a.Usage
+		fetchedAt := a.UsageFetchedAt
+		ageSeconds := a.UsageAgeSeconds
+		if commandOutput && measurement == nil && a.LastGoodUsage != nil {
+			measurement = a.LastGoodUsage
+			fetchedAt = a.LastGoodFetchedAt
+			ageSeconds = a.LastGoodAgeSeconds
+		}
+		if measurement != nil {
 			var err error
-			if acc.FiveHour, err = toWindow(a.Usage.FiveHour); err != nil {
-				return nil, fmt.Errorf("claude-swap account %d fiveHour: %w", a.Number, err)
+			if acc.FiveHour, err = toWindow(measurement.FiveHour); err != nil {
+				return nil, nil, fmt.Errorf("claude-swap account %d fiveHour: %w", a.Number, err)
 			}
-			if acc.SevenDay, err = toWindow(a.Usage.SevenDay); err != nil {
-				return nil, fmt.Errorf("claude-swap account %d sevenDay: %w", a.Number, err)
+			if acc.SevenDay, err = toWindow(measurement.SevenDay); err != nil {
+				return nil, nil, fmt.Errorf("claude-swap account %d sevenDay: %w", a.Number, err)
+			}
+		}
+		if commandOutput {
+			observed, err := commandMeasurementTime(fetchedAt, ageSeconds, now)
+			if err != nil {
+				return nil, nil, fmt.Errorf("claude-swap account %d freshness: %w", a.Number, err)
+			}
+			if !observed.IsZero() {
+				formatted := wire.FormatTime(observed)
+				acc.LastRefreshAt = &formatted
+				if observed.After(newest) {
+					newest = observed
+				}
+				age := now.Sub(observed)
+				if age > defaultMaxLastGoodAge {
+					acc.FiveHour, acc.SevenDay = nil, nil
+					if acc.Status == "ok" {
+						acc.Status = "unavailable"
+					}
+				}
+			} else if measurement != nil {
+				// A quota measurement without source freshness is not safe to
+				// present as current, even when cswap called its decision status ok.
+				acc.FiveHour, acc.SevenDay = nil, nil
+				if acc.Status == "ok" {
+					acc.Status = "unavailable"
+				}
 			}
 		}
 		out = append(out, acc)
@@ -153,7 +208,49 @@ func parseAccounts(data []byte) ([]wire.AccountUsage, error) {
 			out[i].Active = false
 		}
 	}
-	return out, nil
+	var updated *string
+	if !newest.IsZero() {
+		formatted := wire.FormatTime(newest)
+		updated = &formatted
+	}
+	return out, updated, nil
+}
+
+func commandMeasurementTime(raw *string, reportedAge *float64, now time.Time) (time.Time, error) {
+	var ageObserved time.Time
+	if reportedAge != nil {
+		if math.IsNaN(*reportedAge) || math.IsInf(*reportedAge, 0) || *reportedAge < 0 || *reportedAge > 1e9 {
+			return time.Time{}, errors.New("invalid usage age")
+		}
+		ageObserved = now.Add(-time.Duration(*reportedAge * float64(time.Second)))
+	}
+	if raw == nil || strings.TrimSpace(*raw) == "" {
+		return ageObserved, nil
+	}
+	observed, err := time.Parse(time.RFC3339Nano, strings.TrimSpace(*raw))
+	if err != nil || observed.After(now.Add(maxSourceFutureSkew)) {
+		return time.Time{}, errors.New("invalid usage timestamp")
+	}
+	if observed.After(now) {
+		observed = now
+	}
+	if !ageObserved.IsZero() && ageObserved.Before(observed) {
+		observed = ageObserved
+	}
+	return observed, nil
+}
+
+func safeLabel(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" || len(value) > 256 || !utf8.ValidString(value) {
+		return ""
+	}
+	for _, r := range value {
+		if unicode.IsControl(r) || (r >= 0x202a && r <= 0x202e) || (r >= 0x2066 && r <= 0x2069) {
+			return ""
+		}
+	}
+	return value
 }
 
 func toWindow(w *cswapWindow) (*wire.AccountWindow, error) {

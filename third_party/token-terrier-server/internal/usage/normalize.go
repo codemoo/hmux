@@ -101,6 +101,7 @@ func NormalizeCodex(resp *codexUsageResponse, credential auth.OAuthCredential, s
 		ProducerID:        producer.ID,
 		ProducerTimeZone:  producer.TimeZone,
 		Provider:          wire.ProviderCodex,
+		PlanType:          wire.NormalizePlanType(resp.PlanType),
 		BurnState:         "idle",
 		Rolling5h:         rolling,
 		Weekly:            weekly,

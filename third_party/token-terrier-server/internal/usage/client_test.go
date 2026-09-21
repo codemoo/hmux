@@ -117,6 +117,16 @@ func TestNormalizeWindowsDistinguishesMissingFromFullyUsed(t *testing.T) {
 	}
 }
 
+func TestNormalizeCodexPlanTypeUsesOnlyAuthoritativeAllowlist(t *testing.T) {
+	window := &codexWindow{UsedPercentCamel: flexFloat{Value: 25, Set: true}}
+	for raw, want := range map[string]string{"plus": "plus", "ChatGPT_pro": "pro", "mystery": ""} {
+		snapshot := NormalizeCodex(&codexUsageResponse{Primary: window, PlanType: raw}, auth.OAuthCredential{}, 1, wire.ProducerInfo{}, time.Now())
+		if snapshot.PlanType != want {
+			t.Fatalf("plan_type %q normalized to %q, want %q", raw, snapshot.PlanType, want)
+		}
+	}
+}
+
 func TestProviderResponsesRequireSemanticQuotaWindow(t *testing.T) {
 	credential := auth.OAuthCredential{AccessToken: "access"}
 	tests := []struct {

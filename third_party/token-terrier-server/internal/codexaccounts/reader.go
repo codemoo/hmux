@@ -40,6 +40,9 @@ type derivedAccount struct {
 	TotalTokens      *int64   `json:"totalTokens"`
 	TokensPerHour    *float64 `json:"tokensPerHour"`
 	LastRefreshAt    *string  `json:"lastRefreshAt"`
+	Plan             string   `json:"plan"`
+	PlanType         string   `json:"planType"`
+	PlanTypeSnake    string   `json:"plan_type"`
 }
 
 const (
@@ -139,6 +142,7 @@ func parseAccounts(data []byte) ([]wire.AccountUsage, string, error) {
 			TokensPerHour: a.TokensPerHour,
 			TotalTokens:   a.TotalTokens,
 			LastRefreshAt: normalizeTimestamp(a.LastRefreshAt),
+			PlanType:      wire.NormalizePlanType(firstNonEmpty(a.Plan, a.PlanType, a.PlanTypeSnake)),
 		}
 		out = append(out, acc)
 	}

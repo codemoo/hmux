@@ -26,8 +26,8 @@ func readerFromString(t *testing.T, js string) *Reader {
 
 func TestReader_MapsAndNormalizes(t *testing.T) {
 	js := `{"schemaVersion":1,"accountsUpdatedAt":"2026-07-03T13:00:00Z","accounts":[
-      {"number":1,"accountId":"aid1","email":"a@x","alias":" Work ","status":" active ","fiveHourPct":10,"sevenDayPct":0.92,"resetAtPrimary":"2026-07-03T15:00:00Z","resetAtSecondary":"2026-07-07T02:00:00Z","totalTokens":123,"tokensPerHour":45.6,"lastRefreshAt":"2026-07-03T12:55:00Z"},
-      {"number":2,"accountId":"aid2","email":"b@x","alias":"","status":"paused","fiveHourPct":null,"sevenDayPct":0}]}`
+      {"number":1,"accountId":"aid1","email":"a@x","alias":" Work ","status":" active ","plan_type":"pro","fiveHourPct":10,"sevenDayPct":0.92,"resetAtPrimary":"2026-07-03T15:00:00Z","resetAtSecondary":"2026-07-07T02:00:00Z","totalTokens":123,"tokensPerHour":45.6,"lastRefreshAt":"2026-07-03T12:55:00Z"},
+      {"number":2,"accountId":"aid2","email":"b@x","alias":"","status":"paused","planType":"unrecognized","fiveHourPct":null,"sevenDayPct":0}]}`
 
 	accts, updated := readerFromString(t, js).Accounts()
 
@@ -66,6 +66,12 @@ func TestReader_MapsAndNormalizes(t *testing.T) {
 	}
 	if accts[1].FiveHour != nil {
 		t.Errorf("expected nil FiveHour for null window, got %+v", accts[1].FiveHour)
+	}
+	if accts[0].PlanType != "pro" || accts[1].PlanType != "" {
+		t.Fatalf("plan types were not allowlisted: %+v", accts)
+	}
+	if accts[0].SevenDay == nil || accts[0].SevenDay.ResetsAt == nil || *accts[0].SevenDay.ResetsAt != "2026-07-07T02:00:00.000Z" {
+		t.Fatalf("weekly reset lost: %+v", accts[0].SevenDay)
 	}
 }
 
