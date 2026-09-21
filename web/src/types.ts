@@ -47,6 +47,7 @@ export type Usage = {
   rolling_5h: Quota;
   rolling_5h_observed: boolean;
   accounts?: Account[];
+  accounts_updated_at?: string;
   status: { stale: boolean; state: string; quota_observed_at?: string };
 };
 export type Snapshot = {

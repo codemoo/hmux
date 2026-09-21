@@ -240,6 +240,12 @@ review and verification; log collection does not execute code or apply changes.
 - Source choices select genuinely separate quota snapshots. CLI means the current
   provider login; cswap means its registered accounts with the unique active
   account as headline; codex-lb means the configured weighted account pool.
+  Codex-lb account details use `accounts_updated_at` from the account export,
+  independently of pool quota freshness. Its `last_refresh_at` is OAuth token
+  refresh time and must not hide recently observed account details. Account-list
+  observations over 30 minutes old or without a valid timestamp remain unknown.
+  This timestamp proves when the list was observed, not when the upstream provider
+  last measured its quota.
   Missing/failed sources never silently use a different source. Account aliases
   come from codex-lb; cswap account details show authorized email labels. Never
   sum percentages or treat missing/expired quota as available capacity. Keychain

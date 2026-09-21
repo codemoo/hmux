@@ -217,6 +217,7 @@ test("usage panel keeps missing data distinct from zero remaining capacity", () 
   const usage = {
     provider: "codex",
     generated_at_utc: now,
+    accounts_updated_at: now,
     weekly_observed: true,
     weekly: { used_pct: 1 },
     status: { stale: false, state: "ok", quota_observed_at: now },
@@ -298,6 +299,7 @@ test("both providers show weekly reset, absent 5h is hidden and Codex plans stay
   const usage = (provider) => ({
     provider,
     generated_at_utc: now,
+    accounts_updated_at: now,
     weekly_observed: true,
     weekly: { used_pct: 0.5, resets_at: reset },
     rolling_5h_observed: false,
@@ -445,4 +447,93 @@ test("cswap last-good measurements render despite decision-status failures", () 
   renderUsagePanel(stale, state, "");
   assert.ok(!stale.textContent.includes("73%"));
   assert.ok(!stale.textContent.includes("79%"));
+});
+
+test("codex-lb details use account-list observation, never credential or aggregate freshness", () => {
+  const now = Date.now();
+  const refreshed = new Date(now - 2 * 60000).toISOString();
+  const old = new Date(now - 4 * 86400000).toISOString();
+  const reset = new Date(now + 86400000).toISOString();
+  const source = {
+    provider: "codex",
+    generated_at_utc: new Date(now).toISOString(),
+    status: { stale: false, state: "ok", quota_observed_at: refreshed },
+    accounts_updated_at: refreshed,
+    weekly_observed: true,
+    weekly: { used_pct: 0.4, resets_at: reset },
+    rolling_5h_observed: true,
+    rolling_5h: { used_pct: 0.2 },
+    accounts: [
+      {
+        number: 1,
+        display_name: "Primary",
+        active: true,
+        status: "ok",
+        plan_type: "plus",
+        last_refresh_at: old,
+        seven_day: { used_pct: 0.27, resets_at: reset },
+        five_hour: { used_pct: 0.1 },
+      },
+      {
+        number: 2,
+        display_name: "Secondary",
+        active: true,
+        status: "ok",
+        plan_type: "pro",
+        last_refresh_at: old,
+        seven_day: { used_pct: 0.21, resets_at: reset },
+      },
+    ],
+  };
+  const snapshot = {
+    online: true,
+    usage: { codex: { sources: { "codex-lb": source } } },
+  };
+  const panel = root();
+  renderUsagePanel(panel, snapshot, "");
+  const accounts = all(panel).filter((n) => n.className === "usage-account");
+  assert.equal(accounts.length, 2);
+  assert.ok(accounts[0].textContent.includes("73%"));
+  assert.ok(accounts[0].textContent.includes("90%"));
+  assert.ok(accounts[0].textContent.includes("Plus"));
+  assert.ok(accounts[1].textContent.includes("79%"));
+  assert.ok(accounts[1].textContent.includes("Pro"));
+  for (const row of accounts) {
+    assert.ok(row.textContent.includes("2분 전 업데이트"));
+    assert.ok(row.textContent.includes("1일 후 초기화"));
+    assert.ok(!row.textContent.includes("96시간"));
+  }
+  assert.equal(
+    all(panel)
+      .filter(
+        (n) =>
+          n.className === "usage-summary" ||
+          n.className.includes("usage-summary"),
+      )[0]
+      .textContent.includes("5시간"),
+    false,
+  );
+  // The independent aggregate and token timestamps cannot freshen an old list.
+  for (const observed of [old, undefined, "invalid"]) {
+    source.accounts_updated_at = observed;
+    source.accounts[0].last_refresh_at = refreshed;
+    const expired = root();
+    renderUsagePanel(expired, snapshot, "");
+    assert.ok(expired.textContent.includes("60%"));
+    for (const row of all(expired).filter(
+      (n) => n.className === "usage-account",
+    )) {
+      assert.ok(!row.textContent.includes("73%"));
+      assert.ok(!row.textContent.includes("79%"));
+      assert.ok(!row.textContent.includes("90%"));
+    }
+  }
+  // Fresh account details remain available during a separate pool fetch failure.
+  source.accounts_updated_at = refreshed;
+  source.status = { stale: true, state: "networkError" };
+  const partial = root();
+  renderUsagePanel(partial, snapshot, "");
+  assert.ok(partial.textContent.includes("73%"));
+  assert.ok(partial.textContent.includes("79%"));
+  assert.ok(!partial.textContent.includes("60%"));
 });

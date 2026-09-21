@@ -199,10 +199,14 @@ export function renderUsagePanel(
         if (a.active) title.append(text("span", "활성", "usage-active"));
         if (a.status !== "ok")
           title.append(text("span", accountStatus(a.status), "muted"));
+        // codex-lb last_refresh_at describes account credential refresh,
+        // not this account-list observation. Pool quota is fetched separately.
         const observedAt =
-          a.last_refresh_at ||
-          u?.status.quota_observed_at ||
-          (a.status === "ok" ? u?.generated_at_utc : undefined);
+          provider === "codex" && preferences.codex.source === "codex-lb"
+            ? u?.accounts_updated_at
+            : a.last_refresh_at ||
+              u?.status.quota_observed_at ||
+              (a.status === "ok" ? u?.generated_at_utc : undefined);
         const fresh = validAccountMeasurement(observedAt);
         const updated = observationLabel(observedAt);
         const timestamp = updated

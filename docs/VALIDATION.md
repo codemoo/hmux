@@ -5,6 +5,26 @@ private-deployment checkpoints are preserved in
 [the historical validation log](archive/VALIDATION_PRE_PUBLICATION.md).
 They are not claims about a user's independent deployment.
 
+## 2026-09-22 — Restore codex-lb account details
+
+Codex-lb uses `lastRefreshAt` for OAuth credentials. The web panel incorrectly
+used that field as the quota freshness timestamp, hiding all six observed account
+rows even though their exported list was less than one minute old and all had
+weekly quota/reset data. Account details now use the existing account export's
+`accounts_updated_at`. Independent pool refreshes cannot freshen an old list,
+and expired/missing/invalid list timestamps keep details unknown. Cswap retains
+its own per-account observation behavior. Account-list freshness is not a claim
+about the age of the provider's underlying quota measurement.
+
+Web type/style checks, 149 tests and production build passed. Chromium verified
+production assets with old OAuth timestamps and recent account observations:
+account gauges, Plus/Pro labels, resets, mixed five-hour availability, source
+switching, saved visibility, and desktop/mobile-width layout. Regression tests
+also cover an expired list with a fresh pool and a fresh list with a failed pool.
+Release `20260921T182950Z` updates web assets only, retaining the gateway and Home
+processes and the terminal flow-control fixes. HTTPS hashes and authentication
+barriers are verified after the atomic release switch.
+
 ## 2026-09-22 — Pace terminal output at browser consumption
 
 Negotiated output credits now connect xterm write completion to each disposable
