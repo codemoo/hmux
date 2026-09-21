@@ -231,23 +231,49 @@ kbd {
   min-height: 34px;
   padding: 8px 12px;
 }
+/* Usage is a workspace-sized comparison panel, with one shared scroller. */
+#dialog.usage-dialog {
+  width: 1180px;
+}
+.usage-dialog #dialog-body {
+  padding: 24px;
+}
+#dialog.usage-dialog .dialog-head {
+  padding: 16px 24px;
+}
+#dialog.usage-dialog .dialog-head h2 {
+  font-size: 17px;
+}
 .usage-panel {
   display: grid;
-  gap: 14px;
+  gap: 20px;
 }
 .usage-intro p {
   margin: 0;
-  color: var(--secondary);
-  font-size: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.usage-providers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 24px;
 }
 .usage-provider {
-  padding: 18px;
+  min-width: 0;
+  overflow: hidden;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 5px;
+  background: var(--panel);
+}
+.usage-provider:only-child {
+  grid-column: 1 / -1;
+}
+.usage-provider-overview {
+  padding: 24px;
   background: var(--surface);
 }
 .usage-provider-head,
-.usage-account-head,
 .usage-gauge-heading {
   display: flex;
   align-items: center;
@@ -256,40 +282,50 @@ kbd {
 }
 #dialog-body .usage-provider-head h3 {
   margin: 0;
-  font-size: 18px;
-  letter-spacing: -0.03em;
+  font-size: 23px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.5px;
 }
 .usage-provider-head {
   flex-wrap: wrap;
-  margin-bottom: 20px;
+  margin-bottom: 26px;
   align-items: flex-start;
 }
 .usage-provider-title {
   display: grid;
-  gap: 5px;
+  gap: 7px;
 }
 .usage-provider-meta {
   font-size: 12px;
   color: var(--muted);
 }
-.usage-provider-badges {
+.usage-provider-badges,
+.usage-account-badges {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   align-items: center;
 }
 .usage-section-label {
-  margin: 0 0 12px;
-  font-size: 12px;
+  margin: 0 0 16px;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--secondary);
 }
+.usage-provider-details {
+  padding: 20px 24px 0;
+  border-top: 1px solid var(--border);
+}
 .usage-accounts-label {
-  margin: 24px 0 0;
+  margin: 0 0 4px;
 }
 .usage-badge,
 .usage-active {
   font-size: 12px;
-  border-radius: 5px;
-  padding: 4px 8px;
+  border-radius: 4px;
+  padding: 3px 7px;
+  line-height: 1.4;
   white-space: nowrap;
 }
 .usage-badge {
@@ -300,23 +336,38 @@ kbd {
   background: var(--selected);
   color: var(--cyan);
 }
+.usage-gauge {
+  min-width: 0;
+}
 .usage-gauge-heading {
-  margin-bottom: 8px;
+  margin-bottom: 9px;
   font-size: 12px;
   color: var(--secondary);
 }
 .usage-gauge-heading strong {
   color: var(--ink);
-  font-size: 16px;
+  font-size: 18px;
+  font-weight: 550;
+  line-height: 1.1;
   font-variant-numeric: tabular-nums;
 }
+.usage-summary .usage-gauge-heading {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
 .usage-summary .usage-gauge-heading strong {
-  font-size: 28px;
-  letter-spacing: -0.04em;
+  font-size: 42px;
+  letter-spacing: -1.5px;
+}
+.usage-summary .usage-gauge + .usage-gauge {
+  border-left: 1px solid var(--border);
+  padding-left: 24px;
 }
 .usage-track {
-  height: 5px;
-  border-radius: 5px;
+  height: 6px;
+  border-radius: 2px;
   overflow: hidden;
   background: var(--border);
 }
@@ -341,44 +392,57 @@ kbd {
 }
 .usage-accounts {
   display: grid;
-  margin-top: 0;
 }
 .usage-account {
-  border-top: 1px solid var(--border);
-  padding-top: 14px;
-  margin-top: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  align-items: start;
+  gap: 20px;
+  padding: 20px 0;
   min-width: 0;
 }
-.usage-account:first-child {
-  margin-top: 12px;
+.usage-account + .usage-account {
+  border-top: 1px solid var(--border);
 }
-.usage-account-head {
-  flex-wrap: wrap;
-  justify-content: flex-start;
-  margin-bottom: 14px;
+.usage-account-info {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
 }
 .usage-account-head strong {
-  flex: 1 1 120px;
-  font-size: 12px;
+  display: block;
+  font-size: 14px;
+  font-weight: 550;
+  line-height: 1.5;
   overflow-wrap: anywhere;
-  min-width: 0;
+}
+.usage-account-badges:empty {
+  display: none;
+}
+.usage-account-status {
+  font-size: 12px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
 }
 .usage-account-updated {
-  margin: -7px 0 12px;
+  margin: 0;
   font-size: 12px;
   color: var(--muted);
 }
 .usage-account-gauges {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
+  align-items: start;
+  gap: 20px;
 }
 .usage-account-gauges > :only-child {
   grid-column: 1 / -1;
 }
 .usage-reset {
-  margin: 7px 0 0;
+  margin: 9px 0 0;
   font-size: 12px;
+  line-height: 1.5;
   color: var(--secondary);
   font-variant-numeric: tabular-nums;
 }
@@ -389,10 +453,69 @@ kbd {
 .usage-account .usage-track {
   height: 4px;
 }
+.usage-observation {
+  margin: 18px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.usage-message {
+  margin: 18px 0;
+  line-height: 1.6;
+}
 .usage-host {
   margin: 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
   font-size: 12px;
   line-height: 1.6;
+}
+@media (min-width: 901px) and (min-height: 501px) {
+  #dialog.usage-dialog {
+    max-width: calc(100vw - 64px);
+    max-height: min(960px, calc(100dvh - 80px));
+  }
+}
+@media (max-width: 1000px) {
+  .usage-providers {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+}
+@media (max-width: 600px) {
+  .usage-dialog #dialog-body {
+    padding: 16px;
+  }
+  #dialog.usage-dialog .dialog-head {
+    padding: 12px 16px;
+  }
+  .usage-panel {
+    gap: 16px;
+  }
+  .usage-provider-overview {
+    padding: 20px;
+  }
+  .usage-provider-details {
+    padding: 18px 20px 0;
+  }
+  .usage-provider-head {
+    margin-bottom: 22px;
+  }
+  .usage-summary .usage-gauge-heading strong {
+    font-size: 36px;
+  }
+  .usage-summary .usage-gauge + .usage-gauge {
+    padding-left: 16px;
+  }
+  .usage-account {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .usage-account-head strong {
+    font-size: 14px;
+  }
+  .usage-account-gauges {
+    gap: 16px;
+  }
 }
 @media (max-width: 700px), (pointer: coarse) and (max-height: 500px) {
   #dialog {

@@ -112,13 +112,20 @@ export function renderUsagePanel(
   const panel = text("div", "", "usage-panel");
   const intro = text("div", "", "usage-intro");
   intro.append(text("p", "계정별 남은 한도와 초기화 일정"));
-  panel.append(intro);
+  const providers = text("div", "", "usage-providers");
+  panel.append(intro, providers);
   const usage = selectedUsage(snapshot, preferences);
   for (const provider of ["codex", "claude"] as const) {
     if (!preferences[provider].enabled) continue;
     const u = usage[provider];
     const section = text("section", "", "usage-provider");
     section.dataset.provider = provider;
+    section.setAttribute(
+      "aria-label",
+      provider === "codex" ? "Codex 사용량" : "Claude 사용량",
+    );
+    const overview = text("div", "", "usage-provider-overview");
+    const details = text("div", "", "usage-provider-details");
     const header = text("div", "", "usage-provider-head");
     const heading = text("div", "", "usage-provider-title");
     heading.append(text("h3", provider === "codex" ? "Codex" : "Claude"));
@@ -145,7 +152,7 @@ export function renderUsagePanel(
     if (plan) badges.append(text("span", plan, "usage-badge usage-plan"));
     header.append(heading, badges);
     const observed = observationLabel(u?.status.quota_observed_at);
-    if (observed) heading.append(text("span", observed, "usage-provider-meta"));
+
     if (u?.status.stale && validUsage(u)) {
       const delayed = text("span", "갱신 지연", "usage-badge");
       delayed.title =
@@ -166,7 +173,7 @@ export function renderUsagePanel(
           validUsage(u) ? remaining(u?.rolling_5h) : "—",
         ),
       );
-    section.append(
+    overview.append(
       header,
       text(
         "p",
@@ -177,14 +184,20 @@ export function renderUsagePanel(
       ),
       summary,
     );
+    if (observed) overview.append(text("p", observed, "usage-observation"));
     if (!validUsage(u)) {
-      section.append(text("p", "현재 사용량을 확인할 수 없습니다.", "muted"));
+      overview.append(
+        text("p", "현재 사용량을 확인할 수 없습니다.", "usage-message muted"),
+      );
     }
+    section.append(overview);
     {
       const accounts = text("div", "", "usage-accounts");
       for (const a of u?.accounts || []) {
         const row = text("div", "", "usage-account");
+        const info = text("div", "", "usage-account-info");
         const title = text("div", "", "usage-account-head");
+        const badges = text("div", "", "usage-account-badges");
         title.append(
           text(
             "strong",
@@ -195,10 +208,12 @@ export function renderUsagePanel(
         const accountPlan =
           provider === "codex" ? codexPlanLabel(a.plan_type) : undefined;
         if (accountPlan)
-          title.append(text("span", accountPlan, "usage-badge usage-plan"));
-        if (a.active) title.append(text("span", "활성", "usage-active"));
+          badges.append(text("span", accountPlan, "usage-badge usage-plan"));
+        if (a.active) badges.append(text("span", "활성", "usage-active"));
         if (a.status !== "ok")
-          title.append(text("span", accountStatus(a.status), "muted"));
+          badges.append(
+            text("span", accountStatus(a.status), "usage-account-status"),
+          );
         // codex-lb last_refresh_at describes account credential refresh,
         // not this account-list observation. Pool quota is fetched separately.
         const observedAt =
@@ -226,15 +241,15 @@ export function renderUsagePanel(
               remaining(fresh ? a.five_hour : undefined),
             ),
           );
-        row.append(title);
-        if (timestamp) row.append(timestamp);
-        row.append(gauges);
+        info.append(title, badges);
+        if (timestamp) info.append(timestamp);
+        row.append(info, gauges);
         accounts.append(row);
       }
       if (u?.accounts?.length) {
-        section.append(
+        details.append(
           text(
-            "p",
+            "h4",
             "계정별 잔여량",
             "usage-section-label usage-accounts-label",
           ),
@@ -242,10 +257,21 @@ export function renderUsagePanel(
         );
       }
       if (!u?.accounts?.length && preferences[provider].source !== "cli")
-        section.append(text("p", "연결된 계정 정보가 없습니다.", "muted"));
+        details.append(
+          text("p", "연결된 계정 정보가 없습니다.", "usage-message muted"),
+        );
     }
-    panel.append(section);
+    if (details.childElementCount) section.append(details);
+    providers.append(section);
   }
+  if (!providers.childElementCount)
+    providers.append(
+      text(
+        "p",
+        "설정의 사용량 항목에서 표시할 서비스를 선택하세요.",
+        "usage-message muted",
+      ),
+    );
   panel.append(
     text("p", metricsText || "Home · 사용량 대기 중", "usage-host muted"),
   );

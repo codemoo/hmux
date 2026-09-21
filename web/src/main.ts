@@ -1150,7 +1150,7 @@ function dialog(title: string) {
   tabs.get(active)?.interaction?.hide();
   dialogCleanup?.();
   dialogCleanup = undefined;
-  $("#dialog").classList.remove("settings-dialog");
+  $("#dialog").classList.remove("settings-dialog", "usage-dialog");
   $("#dialog-title").textContent = title;
   $("#dialog-body").replaceChildren();
   // Native dialog restores its prior focus on close. Keep that target off the
@@ -1472,6 +1472,7 @@ function renderFooter() {
 }
 function usageDialog() {
   const body = dialog("계정 사용량");
+  $("#dialog").classList.add("usage-dialog");
   const render = () => {
     const scrollTop = body.scrollTop;
     body.replaceChildren();

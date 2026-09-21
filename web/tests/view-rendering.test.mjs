@@ -10,6 +10,9 @@ function element(tagName = "div", doc) {
     tagName,
     ownerDocument: doc,
     children: [],
+    get childElementCount() {
+      return this.children.length;
+    },
     attrs: {},
     dataset: {},
     className: "",
