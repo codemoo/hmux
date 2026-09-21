@@ -18,6 +18,35 @@ const maxMessage = 4 << 20
 const maxTerminals = 8
 const maxUploadChunk = 256 << 10
 
+const (
+	terminalHomeOffline websocket.StatusCode = 4001
+	terminalOutputFull  websocket.StatusCode = 4002
+	terminalViewExited  websocket.StatusCode = 4003
+)
+
+type terminalOutput struct {
+	frames chan Message
+	// Written under hub.mu before closing frames; read only after receiving !ok.
+	closeCode websocket.StatusCode
+}
+
+func (o *terminalOutput) close(code websocket.StatusCode) {
+	o.closeCode = code
+	close(o.frames)
+}
+
+// Caller holds hub.mu. Overflow only ends the slow disposable view.
+func (h *hub) deliverTerminalLocked(m Message) {
+	if output := h.terminals[m.ID]; output != nil {
+		select {
+		case output.frames <- m:
+		default:
+			output.close(terminalOutputFull)
+			delete(h.terminals, m.ID)
+		}
+	}
+}
+
 type Message struct {
 	Type         string                `json:"type"`
 	ID           string                `json:"id,omitempty"`
@@ -120,7 +149,7 @@ type hub struct {
 	mu           sync.Mutex
 	home         *peer
 	pending      map[string]chan Message
-	terminals    map[string]chan Message
+	terminals    map[string]*terminalOutput
 	uploads      map[string]*gatewayUpload
 	uploadCap    bool
 	catalog      json.RawMessage
@@ -134,7 +163,7 @@ type gatewayUpload struct {
 }
 
 func newHub() *hub {
-	return &hub{pending: map[string]chan Message{}, terminals: map[string]chan Message{}, uploads: map[string]*gatewayUpload{}}
+	return &hub{pending: map[string]chan Message{}, terminals: map[string]*terminalOutput{}, uploads: map[string]*gatewayUpload{}}
 }
 
 func (h *hub) openUpload(header filestage.Header) (*gatewayUpload, error) {
@@ -233,9 +262,9 @@ func (h *hub) serve(ctx context.Context, p *peer) bool {
 			}
 		}
 		for _, ch := range h.terminals {
-			close(ch)
+			ch.close(terminalHomeOffline)
 		}
-		h.terminals = map[string]chan Message{}
+		h.terminals = map[string]*terminalOutput{}
 		for id, upload := range h.uploads {
 			if upload.peer == p {
 				close(upload.events)
@@ -284,14 +313,7 @@ func (h *hub) serve(ctx context.Context, p *peer) bool {
 				}
 			}
 		case "data", "exit", "refresh-result":
-			if ch := h.terminals[m.ID]; ch != nil {
-				select {
-				case ch <- m:
-				default:
-					close(ch)
-					delete(h.terminals, m.ID)
-				}
-			}
+			h.deliverTerminalLocked(m)
 		case "upload-ready", "upload-ack", "upload-complete", "upload-error":
 			if upload := h.uploads[m.ID]; upload != nil && upload.peer == p {
 				select {

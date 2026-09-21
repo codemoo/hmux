@@ -6,6 +6,15 @@ export type DisconnectKind =
   | "output-overflow"
   | "protocol";
 
+// Private close codes are fixed gateway categories, never raw Home errors.
+export function disconnectKind(code: number): DisconnectKind {
+  if (code === 4002) return "output-overflow";
+  if (code === 1013) return "limit";
+  if (code === 1002) return "protocol";
+  if (code === 1008 || code === 4001 || code === 4003) return "unavailable";
+  return "network";
+}
+
 export function retryDelay(
   attempt: number,
   minimum = 1000,

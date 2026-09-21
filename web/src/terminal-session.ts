@@ -1,5 +1,15 @@
 import type { Tab } from "./types";
 
+// Open, resize and redraw must use the same gateway/PTY bounds. A short
+// viewport can legitimately make xterm report one row.
+export function terminalSize(cols: number, rows: number) {
+  const bound = (value: number, maximum: number) =>
+    Number.isFinite(value)
+      ? Math.max(2, Math.min(maximum, Math.floor(value)))
+      : 2;
+  return { cols: bound(cols, 500), rows: bound(rows, 250) };
+}
+
 // Release only this browser's disposable view; keep the terminal buffer and
 // original tmux session. Advance generation before close to reject stale callbacks.
 export function releaseTerminalView(tab: Tab): void {

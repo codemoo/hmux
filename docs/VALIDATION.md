@@ -5,6 +5,45 @@ private-deployment checkpoints are preserved in
 [the historical validation log](archive/VALIDATION_PRE_PUBLICATION.md).
 They are not claims about a user's independent deployment.
 
+## 2026-09-22 — First production diagnostics investigation
+
+The inspected account-scoped diagnostic snapshot contained four macOS Safari
+terminal failures (`1006`), each followed by recovery in 1.19–2.455 seconds, and
+one short push API network failure. There were no runtime exceptions, reported
+capacity failures or browser output-overflow events in that snapshot. Gateway
+restart count was zero after the prior deployment; inspected proxy records had
+no corresponding HMux API error. This does not prove a historical root cause or
+exclude intermittent network loss. Private records remain outside the repository.
+
+Inspection found that xterm can fit a one-row viewport while resize/redraw sent
+its raw size to a gateway requiring at least two rows. All size producers now
+share the existing open bounds. Known gateway shutdown paths now send fixed close
+codes instead of all appearing as abnormal network closure: Home unavailability,
+gateway output overflow, disposable view exit and invalid client frames. Output
+pressure retains bounded cooldown and does not affect other views. The original
+four `1006` events cannot retrospectively distinguish these paths.
+
+Checks completed:
+
+- Full Go tests and vet; full gateway race suite including isolated WebSocket
+  tests with a fake Home. New cases verify bounded/isolated output overflow,
+  accepted two-row resize, rejected one-row frame, close codes and no raw error
+  disclosure. No pre-existing tmux sessions were used by tests.
+- Web type/style checks, 134 tests and production build.
+- Chromium against the production build with synthetic APIs/WebSockets: one-row
+  and oversized viewport dimensions are clamped, manual redraw uses the same
+  bounds, restoring the viewport does not reconnect, and server output overflow
+  is recorded correctly without bypassing its retry cooldown. This is automated
+  Chromium verification, not physical Safari or mobile device acceptance.
+
+Independent review found no remaining material defects. Release
+`20260921T165620Z` (UTC; September 22 in Korea) was deployed with all 36 staged
+file hashes verified and the previous release retained. Public HTTPS assets,
+anonymous API rejection, no-store/PWA CSP, service health and Home transport
+were checked after activation. Home and existing tmux/provider processes were
+not replaced. Existing diagnostic history and private account/push stores remain.
+Browsers must reload to receive the size fix and detailed close-code mapping.
+
 ## 2026-09-21 — Account-scoped frontend diagnostics
 
 Added bounded browser connection/API/runtime diagnostics, an authenticated private

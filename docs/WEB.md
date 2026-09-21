@@ -171,6 +171,16 @@ device records remain available in the download. A storage failure is reported i
 settings while terminal access remains available; malformed/private-mode-invalid
 files disable diagnostic writes without overwriting the original file.
 
+All terminal open, resize and redraw requests use the same 2–500 column and
+2–250 row bounds. A one-row browser viewport must not emit an invalid PTY resize.
+Known gateway endings use fixed WebSocket close codes: `4001` for Home transport
+unavailable, `4002` for gateway output queue overflow, `4003` for disposable view
+exit and `1002` for invalid client frames. Browser output overflow and gateway
+output overflow both retain the bounded pressure cooldown; the code distinguishes
+their origin. Actual transport loss can still surface as `1006`. Close reasons
+never contain raw Home errors. A `4003` ends only the disposable view and does
+not establish that the original tmux session ended.
+
 For investigation, compare event times, bundle/browser, API status and terminal
 failure/recovery pairs in the exported JSON. The `counts` field groups recorded
 errors by kind/reason. Server operators can inspect the private JSON locally;

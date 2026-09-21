@@ -102,3 +102,19 @@ test("releasing a tab cancels open and retry timers before stale callbacks can r
   assert.equal(tab.heartbeat, undefined);
   assert.equal(tab.status, "disconnected");
 });
+
+test("gateway close categories distinguish pressure, Home exit and malformed input", async () => {
+  const { disconnectKind } = await import("../src/connection-recovery.ts");
+  assert.equal(disconnectKind(1006), "network");
+  assert.equal(disconnectKind(4001), "unavailable");
+  assert.equal(disconnectKind(4003), "unavailable");
+  assert.equal(disconnectKind(1002), "protocol");
+  assert.equal(disconnectKind(1013), "limit");
+  const recovery = createConnectionRecovery(
+    () => 0,
+    () => 0,
+  );
+  assert.equal(recovery.failed(disconnectKind(4002)).retryMs, 10_000);
+  recovery.resume();
+  assert.equal(recovery.delay(), 10_000);
+});

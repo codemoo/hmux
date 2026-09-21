@@ -8,6 +8,7 @@ import { installAttachments } from "./attachments";
 import { createSessionAPI } from "./session-api";
 import {
   createConnectionRecovery,
+  disconnectKind,
   retryDelay,
   type DisconnectKind,
 } from "./connection-recovery";
@@ -17,7 +18,7 @@ import {
   installIOSNativeInput,
   installMacSafariNativeInput,
 } from "./ios-native-input";
-import { releaseTerminalView } from "./terminal-session";
+import { releaseTerminalView, terminalSize } from "./terminal-session";
 import { createTerminalHeartbeat } from "./terminal-heartbeat";
 import { createTerminalOutput } from "./terminal-output";
 import { createViewportController } from "./viewport";
@@ -467,8 +468,7 @@ function shell() {
       t.ws.send(
         JSON.stringify({
           type: "resize",
-          cols: t.term.cols,
-          rows: t.term.rows,
+          ...terminalSize(t.term.cols, t.term.rows),
         }),
       );
       t.ws.send(JSON.stringify({ type: "refresh" }));
@@ -885,7 +885,9 @@ function openSession(s: Session, activate = true) {
   });
   term.onResize(({ cols, rows }) => {
     if (t.ws?.readyState === WebSocket.OPEN && t.status === "connected")
-      t.ws.send(JSON.stringify({ type: "resize", cols, rows }));
+      t.ws.send(
+        JSON.stringify({ type: "resize", ...terminalSize(cols, rows) }),
+      );
   });
   if (activate) selectTab(k);
   else {
@@ -1012,8 +1014,7 @@ function connect(t: Tab, manual = false) {
       JSON.stringify({
         type: "open",
         session: t.identity,
-        cols: Math.max(2, Math.min(500, t.term.cols)),
-        rows: Math.max(2, Math.min(250, t.term.rows)),
+        ...terminalSize(t.term.cols, t.term.rows),
       }),
     );
   };
@@ -1067,15 +1068,7 @@ function connect(t: Tab, manual = false) {
       }
     }
   };
-  ws.onclose = (event) =>
-    fail(
-      event.code === 1013
-        ? "limit"
-        : event.code === 1008
-          ? "unavailable"
-          : "network",
-      event.code,
-    );
+  ws.onclose = (event) => fail(disconnectKind(event.code), event.code);
   // close carries the actual capacity/policy code; error alone does not.
   ws.onerror = () => ws.close();
 }

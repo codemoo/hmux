@@ -420,7 +420,7 @@ func (s *Server) terminal(w http.ResponseWriter, r *http.Request, token string, 
 		return
 	}
 	id := RandomToken()
-	output := make(chan Message, 64)
+	output := &terminalOutput{frames: make(chan Message, 64)}
 	s.hub.mu.Lock()
 	if len(s.hub.terminals) >= maxTerminals {
 		s.hub.mu.Unlock()
@@ -447,39 +447,47 @@ func (s *Server) terminal(w http.ResponseWriter, r *http.Request, token string, 
 	if err = conn.Write(ctx, websocket.MessageText, []byte(`{"type":"ready","heartbeat":true}`)); err != nil {
 		return
 	}
+	readStopped := make(chan websocket.StatusCode, 1)
 	go func() {
-		defer cancel()
+		var code websocket.StatusCode
+		defer func() { readStopped <- code }()
 		for {
 			kind, raw, err := conn.Read(ctx)
 			if err != nil {
 				return
 			}
 			if _, _, ok := s.auth.get(token, true); !ok {
+				code = websocket.StatusPolicyViolation
 				return
 			}
 			var frame Message
 			if kind == websocket.MessageBinary {
 				if len(raw) > 32<<10 {
+					code = websocket.StatusProtocolError
 					return
 				}
 				frame = Message{Type: "input", ID: id, Data: raw}
 			} else {
 				if json.Unmarshal(raw, &frame) != nil {
+					code = websocket.StatusProtocolError
 					return
 				}
 				switch frame.Type {
 				case "resize":
 					if !validSize(frame) {
+						code = websocket.StatusProtocolError
 						return
 					}
 					frame = Message{Type: "resize", ID: id, Cols: frame.Cols, Rows: frame.Rows}
 				case "refresh":
 					frame = Message{Type: "refresh", ID: id}
 				default:
+					code = websocket.StatusProtocolError
 					return
 				}
 			}
 			if s.hub.send(ctx, frame) != nil {
+				code = terminalHomeOffline
 				return
 			}
 		}
@@ -489,6 +497,11 @@ func (s *Server) terminal(w http.ResponseWriter, r *http.Request, token string, 
 	go heartbeat(ctx, &peer{conn: conn})
 	for {
 		select {
+		case code := <-readStopped:
+			if code != 0 {
+				_ = conn.Close(code, "Terminal transport ended")
+			}
+			return
 		case <-ctx.Done():
 			return
 		case <-done:
@@ -505,8 +518,13 @@ func (s *Server) terminal(w http.ResponseWriter, r *http.Request, token string, 
 			if err != nil {
 				return
 			}
-		case frame, ok := <-output:
-			if !ok || frame.Type == "exit" {
+		case frame, ok := <-output.frames:
+			if !ok {
+				_ = conn.Close(output.closeCode, "Terminal transport ended")
+				return
+			}
+			if frame.Type == "exit" {
+				_ = conn.Close(terminalViewExited, "Terminal view ended")
 				return
 			}
 			c, stop := context.WithTimeout(ctx, 5*time.Second)

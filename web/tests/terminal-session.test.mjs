@@ -23,3 +23,11 @@ test("release rejects stale callbacks before closing and preserves terminal", ()
   releaseTerminalView(tab);
   assert.equal(closed, 1);
 });
+
+test("viewport changes keep every PTY size inside the gateway contract", async () => {
+  const { terminalSize } = await import("../src/terminal-session.ts");
+  assert.deepEqual(terminalSize(80, 1), { cols: 80, rows: 2 });
+  assert.deepEqual(terminalSize(600, 300), { cols: 500, rows: 250 });
+  assert.deepEqual(terminalSize(120, 40), { cols: 120, rows: 40 });
+  assert.deepEqual(terminalSize(NaN, Infinity), { cols: 2, rows: 2 });
+});
