@@ -101,29 +101,18 @@ func connectOnce(parent context.Context, endpoint, token string, cfg config.Clie
 	// One shared catalog collector and one usage collector for all web sessions.
 	var latestMu sync.Mutex
 	var latest json.RawMessage
+	tracker := catalog.CompletionTracker{}
+	completion := newCompletionWorker(tracker.Observe, p.send)
+	workers.Add(1)
+	go func() {
+		defer workers.Done()
+		completion.run(ctx)
+	}()
 	workers.Add(1)
 	go func() {
 		defer workers.Done()
 		defer cancel()
-		tracker := catalog.CompletionTracker{}
-		observe := func(observeCtx context.Context, value model.Catalog) error {
-			bounded, stop := context.WithTimeout(observeCtx, 3*time.Second)
-			events, err := tracker.Observe(bounded, value)
-			stop()
-			if err != nil {
-				return nil
-			} // Notification discovery must not break terminals.
-			for _, event := range events {
-				payload, _ := json.Marshal(struct {
-					CompletedAt time.Time `json:"completed_at"`
-				}{event.CompletedAt})
-				if err := p.send(observeCtx, Message{Type: "task-complete", ID: event.EventID, Session: event.Session, Payload: payload}); err != nil {
-					return err
-				}
-			}
-			return nil
-		}
-		_ = client.StreamCatalogsObserved(ctx, cfg, observe, func(c model.Catalog) error {
+		_ = client.StreamCatalogsObserved(ctx, cfg, completion.enqueue, func(c model.Catalog) error {
 			// Enrich only the web stream so older strict native decoders continue
 			// receiving the existing negotiated host-metrics shape.
 			if used, total, ok := hostmetrics.DiskUsage(); ok {

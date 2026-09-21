@@ -440,7 +440,7 @@ func (s *Server) terminal(w http.ResponseWriter, r *http.Request, token string, 
 		_ = conn.Close(websocket.StatusPolicyViolation, "Terminal unavailable")
 		return
 	}
-	if err = conn.Write(ctx, websocket.MessageText, []byte(`{"type":"ready"}`)); err != nil {
+	if err = conn.Write(ctx, websocket.MessageText, []byte(`{"type":"ready","heartbeat":true}`)); err != nil {
 		return
 	}
 	go func() {
@@ -491,6 +491,14 @@ func (s *Server) terminal(w http.ResponseWriter, r *http.Request, token string, 
 			return
 		case <-tick.C:
 			if _, _, ok := s.auth.get(token, false); !ok {
+				return
+			}
+			// JS cannot observe WebSocket control pings. A bounded application
+			// heartbeat lets suspended or half-open clients detect a dead view.
+			c, stop := context.WithTimeout(ctx, 5*time.Second)
+			err := conn.Write(c, websocket.MessageText, []byte(`{"type":"heartbeat"}`))
+			stop()
+			if err != nil {
 				return
 			}
 		case frame, ok := <-output:

@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -11,6 +12,34 @@ import (
 
 	"github.com/codemoo/hmux/internal/model"
 )
+
+type cancellingCompletionReader struct {
+	*bytes.Reader
+	cancel context.CancelFunc
+	reads  int
+}
+
+func (r *cancellingCompletionReader) Read(p []byte) (int, error) {
+	r.reads++
+	n, err := r.Reader.Read(p)
+	r.cancel()
+	return n, err
+}
+
+func TestCompletionReadStopsBetweenBoundedChunks(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	reader := &cancellingCompletionReader{Reader: bytes.NewReader(make([]byte, eventTailLimit)), cancel: cancel}
+	if _, ok := readCompletionBytes(ctx, reader, 0, eventTailLimit, eventTailLimit); ok {
+		t.Fatal("cancelled read accepted")
+	}
+	if reader.reads != 1 || reader.Size()-int64(reader.Len()) != 32<<10 {
+		t.Fatal("continued scanning after cancellation")
+	}
+	if _, _, ok := parseCompletionRecords(ctx, []byte("{}\n{}\n"), 0); ok {
+		t.Fatal("cancelled parser accepted records")
+	}
+}
 
 func completionFixture(t *testing.T, initial ...string) (*CompletionTracker, model.Catalog, string, string) {
 	t.Helper()

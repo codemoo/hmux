@@ -1,6 +1,8 @@
 import type { Terminal } from "@xterm/xterm";
 import type { FitAddon } from "@xterm/addon-fit";
 import type { createConnectionRecovery } from "./connection-recovery";
+import type { createTerminalHeartbeat } from "./terminal-heartbeat";
+import type { createTerminalOutput } from "./terminal-output";
 export type Identity = { id: string; created_at: number };
 export type Session = Identity & {
   name: string;
@@ -57,8 +59,10 @@ export type Tab = {
   status: "connecting" | "connected" | "disconnected";
   generation: number;
   recovery: ReturnType<typeof createConnectionRecovery>;
+  output: ReturnType<typeof createTerminalOutput>;
   retryTimer?: number;
   openTimer?: number;
+  heartbeat?: ReturnType<typeof createTerminalHeartbeat>;
   nativeInput?: { flush(): void; cancel(): void; dispose(): void };
   disposeNativePaste?: () => void;
   interaction?: { hide(): void; dispose(): void };

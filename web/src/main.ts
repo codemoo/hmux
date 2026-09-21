@@ -12,6 +12,8 @@ import {
   installMacSafariNativeInput,
 } from "./ios-native-input";
 import { releaseTerminalView } from "./terminal-session";
+import { createTerminalHeartbeat } from "./terminal-heartbeat";
+import { createTerminalOutput } from "./terminal-output";
 import { createViewportController } from "./viewport";
 import { createTerminalFonts } from "./fonts";
 import { installButton } from "./pwa";
@@ -682,6 +684,7 @@ function closeTab(k: string) {
   persistTabs();
 }
 function selectTab(k: string) {
+  const changed = active !== k || reading;
   attachments?.invalidate();
   tabs.get(active)?.interaction?.hide();
   tabs.get(active)?.nativeInput?.flush();
@@ -717,6 +720,7 @@ function selectTab(k: string) {
     }
   }
   const t = tabs.get(k);
+  if (changed) t?.recovery.resume();
   if (t)
     requestAnimationFrame(() => {
       if (active === k) {
@@ -797,6 +801,12 @@ function openSession(s: Session, activate = true) {
     status: "disconnected",
     generation: 0,
     recovery: createConnectionRecovery(),
+    output: createTerminalOutput(
+      (bytes, done) => term.write(bytes, done),
+      () => {
+        if (t.status === "disconnected") scheduleReconnect(t);
+      },
+    ),
   };
   tabs.set(k, t);
   if (isIOS || isAndroid)
@@ -851,6 +861,7 @@ function ensureActiveConnection() {
   if (
     !loggedIn ||
     !snapshot.online ||
+    !navigator.onLine ||
     reading ||
     document.visibilityState !== "visible" ||
     !tab
@@ -888,20 +899,27 @@ function connect(t: Tab, manual = false) {
   if (
     !loggedIn ||
     loggingOut ||
+    !navigator.onLine ||
     reading ||
     tabs.get(key(t.identity)) !== t ||
     active !== key(t.identity) ||
     document.visibilityState !== "visible"
   )
     return;
+  if (manual) {
+    releaseTerminalView(t);
+    t.recovery.reset();
+  }
   if (t.ws && t.ws.readyState < WebSocket.CLOSING) return;
-  if (manual) t.recovery.reset();
+  if (t.output.pending() > 0) return;
   if (t.recovery.delay() > 0) {
     scheduleReconnect(t);
     return;
   }
   clearTimeout(t.retryTimer);
   clearTimeout(t.openTimer);
+  t.heartbeat?.dispose();
+  t.heartbeat = undefined;
   t.nativeInput?.flush();
   t.nativeInput?.cancel();
   t.generation++;
@@ -920,6 +938,8 @@ function connect(t: Tab, manual = false) {
     t.generation++;
     clearTimeout(t.openTimer);
     t.openTimer = undefined;
+    t.heartbeat?.dispose();
+    t.heartbeat = undefined;
     t.ws = undefined;
     t.status = "disconnected";
     t.nativeInput?.cancel();
@@ -930,9 +950,7 @@ function connect(t: Tab, manual = false) {
     if (active === key(t.identity)) {
       notice(
         t.recovery.description() +
-          (event.retryMs === null
-            ? ""
-            : ` · 약 ${Math.ceil(event.retryMs / 1000)}초 후 다시 연결`),
+          ` · 약 ${Math.ceil(event.retryMs / 1000)}초 후 다시 연결`,
       );
     }
     renderTabs();
@@ -953,9 +971,9 @@ function connect(t: Tab, manual = false) {
       }),
     );
   };
-  let queuedBytes = 0;
   ws.onmessage = (e) => {
     if (t.generation !== gen) return;
+    t.heartbeat?.received();
     if (typeof e.data === "string") {
       try {
         const message = JSON.parse(e.data);
@@ -975,6 +993,11 @@ function connect(t: Tab, manual = false) {
           }
         }
         if (message.type === "ready") {
+          t.heartbeat?.dispose();
+          t.heartbeat =
+            message.heartbeat === true
+              ? createTerminalHeartbeat(() => fail("timeout"))
+              : undefined;
           clearTimeout(t.openTimer);
           t.openTimer = undefined;
           t.recovery.ready();
@@ -989,15 +1012,9 @@ function connect(t: Tab, manual = false) {
         fail("protocol");
       }
     } else {
-      queuedBytes += e.data.byteLength;
-      if (queuedBytes > 1 << 20) {
+      if (!t.output.enqueue(new Uint8Array(e.data))) {
         fail("output-overflow");
-        return;
       }
-      const size = e.data.byteLength;
-      t.term.write(new Uint8Array(e.data), () => {
-        queuedBytes -= size;
-      });
     }
   };
   ws.onclose = (event) =>
@@ -1009,7 +1026,8 @@ function connect(t: Tab, manual = false) {
           : "network",
       event.code,
     );
-  ws.onerror = () => fail("network", 1006);
+  // close carries the actual capacity/policy code; error alone does not.
+  ws.onerror = () => ws.close();
 }
 function send(data: string) {
   const t = tabs.get(active);
@@ -1354,7 +1372,8 @@ async function refresh() {
       undefined,
       request.signal,
     )) as Snapshot;
-    if (!loggedIn || epoch !== accountEpoch) return;
+    if (!loggedIn || epoch !== accountEpoch || refreshRequest !== request)
+      return;
     snapshot = next;
     if (next.catalog?.sessions) sessions = next.catalog.sessions;
     $("#home-state").textContent = next.online
@@ -1483,9 +1502,7 @@ document.addEventListener("visibilitychange", () => {
     clearTimeout(pollTimer);
   }
   if (document.visibilityState === "visible" && loggedIn) {
-    void restoreTerminalFonts();
-    clearTimeout(pollTimer);
-    void poll();
+    resumeConnection();
   }
 });
 void start();
@@ -1745,21 +1762,35 @@ window.visualViewport?.addEventListener("resize", scheduleTerminalLayout);
 window.visualViewport?.addEventListener("scroll", scheduleTerminalLayout);
 window.addEventListener("resize", scheduleTerminalLayout);
 resizeMobileViewport();
-window.addEventListener("pageshow", () => {
+function resumeConnection() {
+  if (!loggedIn || document.visibilityState !== "visible") return;
+  // Requests created before suspension may never complete on the old network.
+  refreshRequest?.abort();
+  refreshRequest = undefined;
+  tabs.get(active)?.recovery.resume();
+  void restoreTerminalFonts();
+  clearTimeout(pollTimer);
+  void poll();
+}
+window.addEventListener("pagehide", releaseActiveConnection);
+window.addEventListener("offline", () => {
+  releaseActiveConnection();
+  if (loggedIn) renderTabs();
+});
+window.addEventListener("pageshow", (event) => {
   scheduleTerminalLayout();
   resizeMobileViewport();
   requestAnimationFrame(resizeMobileViewport);
   if (loggedIn) {
-    void restoreTerminalFonts();
-    clearTimeout(pollTimer);
-    void poll();
+    if (event.persisted) releaseActiveConnection();
+    resumeConnection();
   }
 });
 window.addEventListener("online", () => {
   if (loggedIn) {
-    void restoreTerminalFonts();
-    clearTimeout(pollTimer);
-    void poll();
+    // Replace a socket tied to the previous network; keep an in-flight new open.
+    if (tabs.get(active)?.status === "connected") releaseActiveConnection();
+    resumeConnection();
   }
 });
 document.addEventListener("visibilitychange", () => {

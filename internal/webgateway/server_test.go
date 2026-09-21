@@ -284,7 +284,7 @@ func TestWebSocketOriginAndLogout(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, raw, err := terminal.Read(ctx)
-	if err != nil || string(raw) != `{"type":"ready"}` {
+	if err != nil || string(raw) != `{"type":"ready","heartbeat":true}` {
 		t.Fatalf("not ready: %s %v", raw, err)
 	}
 
@@ -304,6 +304,12 @@ func TestWebSocketOriginAndLogout(t *testing.T) {
 	kind, result, err := terminal.Read(ctx)
 	if err != nil || kind != websocket.MessageText || string(result) != `{"type":"refresh-result","ok":false}` {
 		t.Fatalf("refresh result: %s %v", result, err)
+	}
+	// An idle terminal still exposes transport health to browser JavaScript.
+	// No real Home, tmux session or application input is involved.
+	kind, result, err = terminal.Read(ctx)
+	if err != nil || kind != websocket.MessageText || string(result) != `{"type":"heartbeat"}` {
+		t.Fatalf("heartbeat: %s %v", result, err)
 	}
 	s.auth.logout(token)
 	if _, _, err = terminal.Read(ctx); err == nil {

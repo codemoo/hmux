@@ -5,6 +5,43 @@ private-deployment checkpoints are preserved in
 [the historical validation log](archive/VALIDATION_PRE_PUBLICATION.md).
 They are not claims about a user's independent deployment.
 
+## 2026-09-21 — Connection recovery regression
+
+Fixed recovery paths where refreshing the page succeeded but the existing client
+remained disconnected: permanent output-overflow pause, retained transient backoff
+on resume, and silent sockets still reporting OPEN. Output budgets now persist
+across socket generations; reconnect waits for queued xterm writes to drain.
+The gateway advertises five-second application heartbeats, with a 20-second
+browser silence deadline. Capacity/output cooldowns and one visible view remain.
+
+Moved completion discovery out of the catalog publication path into one worker
+with one latest pending snapshot. Notification failures no longer cancel the
+connector. Completion binding skips unrelated provider/state scans and checks
+cancellation between bounded reads/records. Peer writer deadlines include queueing.
+
+Checks completed:
+
+- Full Go tests and vet; race tests for catalog and web gateway, including opt-in
+  isolated WebSocket tests with a fake Home, heartbeat delivery and logout closure.
+- Web type/style checks, 124 tests and production build. Added checks cover output
+  draining across generations, heartbeat expiry/disposal, bounded automatic retry,
+  worker coalescing/cancellation, writer contention and completion read cancellation.
+- Chromium against the production build with synthetic API/WebSocket responses:
+  initial 503/502 recovery without login loss; stalled shared workspace; capacity
+  cooldown; output overflow auto-recovery; repeated foreground resume; healthy
+  idle heartbeat versus silent OPEN socket; offline/online and BFCache restoration.
+  The fixture observed at most one live browser terminal view. These are automated
+  browser checks, not physical Safari/iOS/Android or real-network acceptance.
+- Independent review findings about abandoned output and completion scan cost
+  were fixed; the updated source review found no remaining material defects.
+
+Release `20260921T033805Z` (UTC) was deployed after verifying 36 staged file hashes.
+Gateway, web assets and Home connector were updated; the prior gateway release and
+timestamped Home binary backup were retained. Public HTTPS assets match staged
+hashes, authentication still rejects anonymous API requests, and no-store/PWA CSP
+remain intact. One updated Home connector has an established transport. Existing
+tmux/provider sessions and persistent account/push stores were preserved.
+
 ## 2026-09-20 — Codex PWA completion notifications
 
 Codex completion notifications are opt-in per authenticated browser/PWA login.

@@ -33,8 +33,23 @@ type Message struct {
 	Capabilities []string              `json:"capabilities,omitempty"`
 }
 type peer struct {
-	conn *websocket.Conn
-	mu   sync.Mutex
+	conn      *websocket.Conn
+	writeOnce sync.Once
+	writeLock chan struct{}
+}
+
+func (p *peer) acquireWriter(ctx context.Context) error {
+	p.writeOnce.Do(func() { p.writeLock = make(chan struct{}, 1) })
+	select {
+	case p.writeLock <- struct{}{}:
+		if err := ctx.Err(); err != nil {
+			<-p.writeLock
+			return err
+		}
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (p *peer) send(ctx context.Context, m Message) error {
@@ -42,13 +57,15 @@ func (p *peer) send(ctx context.Context, m Message) error {
 	if err != nil {
 		return err
 	}
-	p.mu.Lock()
-	defer p.mu.Unlock()
 	c, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	if len(raw) > maxMessage {
 		return errors.New("web frame exceeds 4 MiB")
 	}
+	if err := p.acquireWriter(c); err != nil {
+		return err
+	}
+	defer func() { <-p.writeLock }()
 	return p.conn.Write(c, websocket.MessageText, raw)
 }
 func (p *peer) read(ctx context.Context) (Message, error) {

@@ -9,6 +9,8 @@ export function releaseTerminalView(tab: Tab): void {
   clearTimeout(tab.retryTimer);
   clearTimeout(tab.openTimer);
   tab.retryTimer = tab.openTimer = undefined;
+  tab.heartbeat?.dispose();
+  tab.heartbeat = undefined;
   tab.recovery?.released();
   tab.ws?.close();
   tab.ws = undefined;

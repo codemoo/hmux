@@ -31,15 +31,30 @@ type sessionBinding struct {
 }
 
 func (s systemProcessInspector) resolveSessionBindings(ctx context.Context, nodes map[int]processNode, panes []int, home string) map[int]sessionBinding {
+	return s.resolveBindings(ctx, nodes, panes, home, false)
+}
+
+// Completion discovery needs exact Codex ownership, not another all-provider
+// metadata/state scan. Keep the same ambiguity and wrapper-chain checks.
+func (s systemProcessInspector) resolveCompletionBindings(ctx context.Context, nodes map[int]processNode, panes []int) map[int]sessionBinding {
+	return s.resolveBindings(ctx, nodes, panes, "", true)
+}
+
+func (s systemProcessInspector) resolveBindings(ctx context.Context, nodes map[int]processNode, panes []int, home string, completionOnly bool) map[int]sessionBinding {
 	result := make(map[int]sessionBinding, len(panes))
 	children := processChildren(nodes)
 	owners := map[int]bool{}
 	for _, pane := range panes {
+		if ctx.Err() != nil {
+			break
+		}
 		pid, status := nearestSessionProvider(nodes, children, pane)
 		binding := sessionBinding{providerPID: pid, status: status}
 		if pid > 0 {
 			binding.provider = nodes[pid].Provider
-			owners[pid] = true
+			if !completionOnly || binding.provider == "codex" {
+				owners[pid] = true
+			}
 		}
 		result[pane] = binding
 	}
@@ -56,7 +71,7 @@ func (s systemProcessInspector) resolveSessionBindings(ctx context.Context, node
 		}
 		base := sessionBinding{provider: nodes[pid].Provider, providerPID: pid, status: sessionBindingUnavailable}
 		if base.provider == "codex" {
-			base = bindCodexRecords(base, pid, files[pid])
+			base = bindCodexRecordsContext(ctx, base, pid, files[pid])
 			// Only one non-provider wrapper chain may own the descriptor. Never search
 			// sibling providers or select another agent's record from a process tree.
 			if base.status == sessionBindingUnavailable && len(files[pid]) == 0 {
@@ -65,7 +80,7 @@ func (s systemProcessInspector) resolveSessionBindings(ctx context.Context, node
 					wrappers := s.providerRecordFiles(ctx, chain)
 					var bound []sessionBinding
 					for _, child := range chain {
-						b := bindCodexRecords(base, child, wrappers[child])
+						b := bindCodexRecordsContext(ctx, base, child, wrappers[child])
 						if b.status == sessionBindingReady {
 							bound = append(bound, b)
 						} else if b.status == sessionBindingAmbiguous {
@@ -79,7 +94,7 @@ func (s systemProcessInspector) resolveSessionBindings(ctx context.Context, node
 					}
 				}
 			}
-			if base.status == sessionBindingReady {
+			if base.status == sessionBindingReady && !completionOnly {
 				base.model, base.state, base.workingSince = readCodexEvents(base.path, base.root)
 			}
 		} else if base.provider == "claude" {
@@ -196,9 +211,17 @@ func codexRecordRoot(path string) string {
 	return root
 }
 func bindCodexRecords(base sessionBinding, filePID int, paths []string) sessionBinding {
+	return bindCodexRecordsContext(context.Background(), base, filePID, paths)
+}
+
+func bindCodexRecordsContext(ctx context.Context, base sessionBinding, filePID int, paths []string) sessionBinding {
 	var matches []sessionBinding
 	unknown := false
 	for _, path := range uniqueStrings(paths) {
+		if ctx.Err() != nil {
+			base.status = sessionBindingUnavailable
+			return base
+		}
 		root := codexRecordRoot(path)
 		if root == "" {
 			continue

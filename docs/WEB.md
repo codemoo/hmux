@@ -117,11 +117,19 @@ and font downloads do not block initial state loading.
 Each visible browser keeps only its selected view connected. Hidden documents
 release their view; resume/network recovery refreshes state and reconnects the
 selected valid session. Terminal recovery runs independently of shared-tab sync.
-Connection setup has a 20-second timeout. Unexpected failures retry with jittered
-exponential delays capped at 60 seconds; connection-limit/unavailable responses
-wait at least 10 seconds. A connection must remain stable for 30 seconds before
-its failure count resets. Output-queue overflow pauses automatic retries until
-the user chooses reconnect. Tab release/disposal cancels both open and retry timers.
+Connection setup has a 20-second timeout. Network/protocol failures retry with
+jittered exponential delays capped at 15 seconds. Connection-limit/unavailable
+responses and output pressure wait at least 10 seconds, with a 60-second cap.
+Output pressure recovers automatically after pending xterm writes drain; its
+1 MiB queue budget belongs to the terminal across socket generations. A healthy
+connection resets failure history after 10 seconds, or when intentionally released.
+Foreground/network recovery expedites transient retries but preserves capacity
+and output cooldowns. Ordinary polling never bypasses backoff. Offline/page-hide
+events release the view; resume replaces stale state requests and BFCache restores
+reopen the selected view. Gateways advertise application heartbeats every five
+seconds; a browser replaces a socket silent for 20 seconds even if WebSocket
+still reports OPEN. Older gateways without that capability do not activate the
+watchdog. Tab release/disposal cancels open, retry and heartbeat timers.
 The status tooltip and notice explain the last failure; browser console entries
 record only category, close code, attempt and retry delay, never terminal content,
 account identifiers or raw server reasons. The original tmux/provider processes
@@ -368,8 +376,13 @@ HMux and selects the exact `{id, created_at}` session. A notification belonging
 to another or expired login cannot open a tab under the current account.
 
 One Home observer reads authoritative `task_started` / `task_complete` records
-from the exact bound Codex rollout, on every shared catalog fetch (normally five
-seconds). It does not infer completion from idle output or CPU. The first scan,
+from the exact bound Codex rollout. Shared catalog fetches (normally five seconds)
+feed one separate worker with one latest pending snapshot; slow notification work
+does not block catalog publication or cancel the connector on discovery/send
+failure. The worker skips Claude metadata and redundant Codex state-tail scans,
+checks cancellation between bounded file chunks/records, and waits five seconds
+after an over-budget scan. Peer write deadlines include waiting for the shared
+writer. It does not infer completion from idle output or CPU. The first scan,
 changed/ambiguous bindings and oversized/truncated history establish a baseline
 without replaying old work. A turn already running at baseline can still notify
 when it completes. Discovery errors leave terminal operation available. The

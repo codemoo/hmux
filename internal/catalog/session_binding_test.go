@@ -22,6 +22,34 @@ func bindingRollout(t *testing.T, root, id, source string) string {
 	}
 	return path
 }
+
+func TestCompletionResolverSkipsClaudeAndCodexStateScan(t *testing.T) {
+	home := t.TempDir()
+	path := bindingRollout(t, filepath.Join(home, ".codex", "sessions"), "completion", `"cli"`)
+	fake := filepath.Join(t.TempDir(), "lsof")
+	// Completion discovery must query only the Codex provider, never Claude.
+	if err := os.WriteFile(fake, []byte("#!/bin/sh\ncase \"$*\" in *30*) exit 1;; esac\nprintf '%s\\n' \"$HMUX_BINDING_LSOF\"\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HMUX_BINDING_LSOF", "p20\nn"+path)
+	nodes := map[int]processNode{10: {PID: 10, Process: "zsh"}, 20: {PID: 20, PPID: 10, Provider: "codex", Process: "codex"}, 30: {PID: 30, Provider: "claude", Process: "claude"}}
+	inspector := systemProcessInspector{HomeDir: home, LsofPath: fake}
+	bindings := inspector.resolveCompletionBindings(context.Background(), nodes, []int{10, 30})
+	if bindings[10].status != sessionBindingReady || bindings[10].path != path {
+		t.Fatal("Codex binding missing")
+	}
+	if bindings[10].model != "" || bindings[10].state != "" {
+		t.Fatal("completion resolver scanned Codex state tail")
+	}
+	if bindings[30].path != "" {
+		t.Fatal("completion resolver read Claude metadata")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if b := bindCodexRecordsContext(ctx, sessionBinding{provider: "codex"}, 20, []string{path}); b.status == sessionBindingReady {
+		t.Fatal("cancelled binding read accepted")
+	}
+}
 func TestCodexBindingUsesMainMetadataNotFilenameOrAge(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "custom-codex-home", "sessions")
 	main := bindingRollout(t, root, "z-main", `"cli"`)

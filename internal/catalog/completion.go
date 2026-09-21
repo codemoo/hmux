@@ -91,11 +91,7 @@ func (t *CompletionTracker) Observe(ctx context.Context, value model.Catalog) ([
 		clear(t.cursors)
 		return nil, err
 	}
-	home := t.inspector.HomeDir
-	if home == "" {
-		home, _ = os.UserHomeDir()
-	}
-	bindings := t.inspector.resolveSessionBindings(ctx, nodes, panes, home)
+	bindings := t.inspector.resolveCompletionBindings(ctx, nodes, panes)
 	if err := ctx.Err(); err != nil {
 		clear(t.cursors)
 		return nil, err
@@ -105,12 +101,16 @@ func (t *CompletionTracker) Observe(ctx context.Context, value model.Catalog) ([
 	for pane, paneSessions := range sessions {
 		binding := bindings[pane]
 		for _, session := range paneSessions {
+			if err := ctx.Err(); err != nil {
+				clear(t.cursors)
+				return nil, err
+			}
 			identity := model.SessionIdentity{ID: session.ID, CreatedAt: session.CreatedAt}
 			if binding.provider != "codex" || binding.status != sessionBindingReady || binding.path == "" || binding.root == "" || binding.recordID == "" {
 				delete(t.cursors, identity)
 				continue
 			}
-			found, next, ok := t.observeBinding(identity, binding)
+			found, next, ok := t.observeBinding(ctx, identity, binding)
 			if !ok {
 				delete(t.cursors, identity)
 				continue
@@ -119,10 +119,14 @@ func (t *CompletionTracker) Observe(ctx context.Context, value model.Catalog) ([
 			completions = append(completions, found...)
 		}
 	}
+	if err := ctx.Err(); err != nil {
+		clear(t.cursors)
+		return nil, err
+	}
 	return completions, nil
 }
 
-func (t *CompletionTracker) observeBinding(identity model.SessionIdentity, binding sessionBinding) ([]TaskCompletion, completionCursor, bool) {
+func (t *CompletionTracker) observeBinding(ctx context.Context, identity model.SessionIdentity, binding sessionBinding) ([]TaskCompletion, completionCursor, bool) {
 	file, info, err := openSessionRecord(binding.root, binding.path)
 	if err != nil {
 		return nil, completionCursor{}, false
@@ -130,16 +134,16 @@ func (t *CompletionTracker) observeBinding(identity model.SessionIdentity, bindi
 	defer file.Close()
 
 	current, exists := t.cursors[identity]
-	anchor, anchorLength, anchorOK := completionAnchor(file, current.offset)
+	anchor, anchorLength, anchorOK := completionAnchor(ctx, file, current.offset)
 	sameBinding := exists && current.root == binding.root && current.path == binding.path && current.recordID == binding.recordID &&
 		current.info != nil && os.SameFile(current.info, info) && info.Size() >= current.offset && anchorOK &&
 		current.anchorLength == anchorLength && current.anchor == anchor
 	if !sameBinding || info.Size()-current.offset > eventTailLimit {
-		records, offset, ok := readCompletionTail(file, info.Size())
+		records, offset, ok := readCompletionTail(ctx, file, info.Size())
 		if !ok {
 			return nil, completionCursor{}, false
 		}
-		anchor, anchorLength, ok = completionAnchor(file, offset)
+		anchor, anchorLength, ok = completionAnchor(ctx, file, offset)
 		if !ok {
 			return nil, completionCursor{}, false
 		}
@@ -158,13 +162,13 @@ func (t *CompletionTracker) observeBinding(identity model.SessionIdentity, bindi
 		}, true
 	}
 
-	records, offset, ok := readCompletionRange(file, current.offset, info.Size()-current.offset)
+	records, offset, ok := readCompletionRange(ctx, file, current.offset, info.Size()-current.offset)
 	if !ok {
 		return nil, completionCursor{}, false
 	}
 	current.info = info
 	current.offset = offset
-	current.anchor, current.anchorLength, ok = completionAnchor(file, offset)
+	current.anchor, current.anchorLength, ok = completionAnchor(ctx, file, offset)
 	if !ok {
 		return nil, completionCursor{}, false
 	}
@@ -187,20 +191,20 @@ func (t *CompletionTracker) observeBinding(identity model.SessionIdentity, bindi
 	return completions, current, true
 }
 
-func completionAnchor(file *os.File, offset int64) ([sha256.Size]byte, int64, bool) {
+func completionAnchor(ctx context.Context, file *os.File, offset int64) ([sha256.Size]byte, int64, bool) {
 	const anchorLimit = 256
 	length := offset
 	if length > anchorLimit {
 		length = anchorLimit
 	}
-	data, ok := readCompletionBytes(file, offset-length, length, anchorLimit)
+	data, ok := readCompletionBytes(ctx, file, offset-length, length, anchorLimit)
 	if !ok {
 		return [sha256.Size]byte{}, 0, false
 	}
 	return sha256.Sum256(data), length, true
 }
 
-func readCompletionTail(file *os.File, size int64) ([]completionRecord, int64, bool) {
+func readCompletionTail(ctx context.Context, file *os.File, size int64) ([]completionRecord, int64, bool) {
 	start := size - eventTailLimit
 	if start < 0 {
 		start = 0
@@ -209,7 +213,7 @@ func readCompletionTail(file *os.File, size int64) ([]completionRecord, int64, b
 	if readStart > 0 {
 		readStart--
 	}
-	data, ok := readCompletionBytes(file, readStart, size-readStart, eventTailLimit+1)
+	data, ok := readCompletionBytes(ctx, file, readStart, size-readStart, eventTailLimit+1)
 	if !ok {
 		return nil, 0, false
 	}
@@ -227,21 +231,21 @@ func readCompletionTail(file *os.File, size int64) ([]completionRecord, int64, b
 			return nil, size, true
 		}
 	}
-	return parseCompletionRecords(data, base)
+	return parseCompletionRecords(ctx, data, base)
 }
 
-func readCompletionRange(file *os.File, start, length int64) ([]completionRecord, int64, bool) {
+func readCompletionRange(ctx context.Context, file *os.File, start, length int64) ([]completionRecord, int64, bool) {
 	if length < 0 || length > eventTailLimit {
 		return nil, 0, false
 	}
-	data, ok := readCompletionBytes(file, start, length, eventTailLimit)
+	data, ok := readCompletionBytes(ctx, file, start, length, eventTailLimit)
 	if !ok {
 		return nil, 0, false
 	}
-	return parseCompletionRecords(data, start)
+	return parseCompletionRecords(ctx, data, start)
 }
 
-func readCompletionBytes(file *os.File, start, length, limit int64) ([]byte, bool) {
+func readCompletionBytes(ctx context.Context, file io.ReadSeeker, start, length, limit int64) ([]byte, bool) {
 	if start < 0 || length < 0 || length > limit {
 		return nil, false
 	}
@@ -249,11 +253,20 @@ func readCompletionBytes(file *os.File, start, length, limit int64) ([]byte, boo
 		return nil, false
 	}
 	data := make([]byte, int(length))
-	_, err := io.ReadFull(file, data)
-	return data, err == nil
+	for offset := 0; offset < len(data); {
+		if ctx.Err() != nil {
+			return nil, false
+		}
+		end := min(offset+(32<<10), len(data))
+		if _, err := io.ReadFull(file, data[offset:end]); err != nil {
+			return nil, false
+		}
+		offset = end
+	}
+	return data, ctx.Err() == nil
 }
 
-func parseCompletionRecords(data []byte, base int64) ([]completionRecord, int64, bool) {
+func parseCompletionRecords(ctx context.Context, data []byte, base int64) ([]completionRecord, int64, bool) {
 	lastNewline := bytes.LastIndexByte(data, '\n')
 	if lastNewline < 0 {
 		return nil, base, true
@@ -262,6 +275,9 @@ func parseCompletionRecords(data []byte, base int64) ([]completionRecord, int64,
 	records := make([]completionRecord, 0)
 	lineStart := 0
 	for lineStart < len(complete) {
+		if ctx.Err() != nil {
+			return nil, 0, false
+		}
 		relativeEnd := bytes.IndexByte(complete[lineStart:], '\n')
 		if relativeEnd < 0 {
 			break
