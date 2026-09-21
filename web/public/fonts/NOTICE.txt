@@ -5,3 +5,10 @@ Converted losslessly to WOFF2, without changing glyphs.
 See Monatendard-LICENSE.txt, NERD_FONTS_LICENSE.txt and THIRD_PARTY_NOTICES.md.
 
 TTF compatibility copies are decoded from the same WOFF2 files; glyphs are unchanged.
+
+UI font: Pretendard Variable v1.3.9, unmodified.
+Source: https://github.com/orioncactus/pretendard/tree/v1.3.9
+File: packages/pretendard/dist/web/variable/woff2/PretendardVariable.woff2
+SHA-256: 9599f12fd42fc0bce1cd50b47a0c022e108d7aa64dd0d1bb0ed44f3282d900b4
+License: SIL Open Font License 1.1; see Pretendard-LICENSE.txt.
+Used for proportional UI only. Terminal text remains Monatendard.

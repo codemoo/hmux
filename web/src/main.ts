@@ -55,7 +55,9 @@ import { createTextFactory, iconButton } from "./dom";
 import { icon } from "./icons";
 import { renderUsageFooter, renderUsagePanel } from "./usage-view";
 import { renderConversation, type Conversation } from "./conversation-view";
-import { theme } from "./theme";
+import { createTerminalAppearance } from "./theme";
+import { installThemePicker } from "./theme-picker";
+import { installSettingsNavigation } from "./settings-navigation";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
@@ -85,7 +87,17 @@ const isMacSafari =
 const fontPreferenceKey = () =>
   mobileScreen.matches ? "hmux.font.mobile.compact" : "hmux.font";
 const preferences = createPreferences(() => window.localStorage);
-const mark = '<img class="brandmark" src="/icons/hmux-192.png" alt="">';
+const appearanceState = createTerminalAppearance(preferences, (palette) => {
+  document.documentElement.style.setProperty(
+    "--terminal-bg",
+    palette.background!,
+  );
+  document.documentElement.style.setProperty(
+    "--terminal-fg",
+    palette.foreground!,
+  );
+});
+const mark = '<img class="brandmark" src="/icons/hmux-mark.svg" alt="">';
 let readerAbort: AbortController | undefined;
 let layoutObserver: ResizeObserver | undefined;
 let layoutFrame = 0;
@@ -299,7 +311,7 @@ function showLogin() {
   loginID = "";
   sessions = [];
   snapshot = { online: false };
-  app.innerHTML = `<main class="login"><div class="login-story"><a class="brand" href="/">${mark}<span>HMux</span></a><div class="story-copy"><span class="eyebrow">YOUR PERSONAL WORKSPACE</span><h1>작업은 그대로.<br><span>어디서든 이어서.</span></h1><p>Home에서 이어지는 터미널과 AI 작업.<br>익숙한 공간으로 돌아오세요.</p><div class="story-terminal"><div><i></i><i></i><i></i><span>home / workspace</span></div><p><b>❯</b> tmux attach</p><p class="muted">Your work is right where you left it.<span class="cursor">▍</span></p></div></div><p class="story-foot">ONE HOME. EVERY SCREEN.</p></div><section class="login-panel"><form id="login-form"><div class="lock-badge">${icon("lock")}</div><span class="eyebrow">WELCOME BACK</span><h2>내 작업 공간에 로그인</h2><p class="muted">계정으로 내 작업 공간에 접속하세요.</p><label>계정<input name="username" autocomplete="username" required maxlength="80" autofocus placeholder="계정 이름"></label><label>비밀번호<input name="password" type="password" autocomplete="current-password" required maxlength="128" placeholder="비밀번호"></label><label id="login-totp" hidden>인증 코드<input name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000"><small>Google Authenticator의 6자리 코드</small></label><p id="login-error" class="error" role="alert"></p><button class="primary" type="submit">작업 이어가기 ${icon("arrow")}</button><p class="login-note">개인 전용 공간 · 공개 회원가입 없음</p></form></section></main>`;
+  app.innerHTML = `<main class="login"><div class="login-story"><a class="brand" href="/">${mark}<span>HMux</span></a><div class="story-copy"><h1>작업은 그대로.<br><span>어디서든 이어서.</span></h1><p>Home에서 이어지는 터미널과 AI 작업.<br>익숙한 공간으로 돌아오세요.</p><div class="story-terminal"><div><i></i><i></i><i></i><span>home / workspace</span></div><p><b>❯</b> tmux attach</p><p class="muted">작업은 호스트에서 계속 실행됩니다.<span class="cursor">▍</span></p></div></div><p class="story-foot">Codex · Claude · Shell</p></div><section class="login-panel"><form id="login-form"><div class="lock-badge">${icon("lock")}</div><h2>내 작업 공간에 로그인</h2><p class="muted">계정으로 내 작업 공간에 접속하세요.</p><label>계정<input name="username" autocomplete="username" required maxlength="80" autofocus placeholder="계정 이름"></label><label>비밀번호<input name="password" type="password" autocomplete="current-password" required maxlength="128" placeholder="비밀번호"></label><label id="login-totp" hidden>인증 코드<input name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000"><small>Google Authenticator의 6자리 코드</small></label><p id="login-error" class="error" role="alert"></p><button class="primary" type="submit">작업 이어가기 ${icon("arrow")}</button><p class="login-note">등록된 계정으로 접속할 수 있습니다.</p></form></section></main>`;
   $("#login-form").append(installButton());
   const loginForm = $<HTMLFormElement>("#login-form");
   const codeInput = loginForm.elements.namedItem("code") as HTMLInputElement;
@@ -351,7 +363,7 @@ function showLogin() {
   };
 }
 function shell() {
-  app.innerHTML = `<div class="workspace"><aside id="session-sidebar" class="sidebar"><div class="sidebar-head"><a class="brand" href="/">${mark}<span>HMux</span><small>WORKSPACE</small></a><button id="sidebar-close" class="icon-button" title="목록 닫기" aria-label="목록 닫기">${icon("close")}</button></div><div class="home-card"><span class="status-dot" id="home-dot"></span><div><strong>Home</strong><small id="home-state">연결 확인 중</small></div></div><div class="search-box">${icon("search")}<input id="search" type="search" placeholder="세션 검색" aria-label="세션 검색"><kbd>⌘ K</kbd></div><div class="list-heading"><span>세션 <b id="count">0</b></span><button id="new-session" class="icon-button" title="새 세션" aria-label="새 세션">${icon("plus")}</button></div><div id="session-list" class="session-list"></div><label class="hidden-toggle"><input id="show-hidden" type="checkbox"> 숨긴 세션 표시</label><div class="sidebar-bottom"><span id="username"></span><button id="logout" class="icon-button" title="로그아웃 (Alt+Q)" aria-label="로그아웃">${icon("logout")}</button></div></aside><div id="scrim"></div><main class="workarea"><button id="floating-tabs" class="icon-button" aria-label="탭 목록 펼치기" aria-expanded="false" aria-controls="tabs">${icon("menu")}</button><header class="tabbar"><button id="menu" class="icon-button" title="사이드바 전환 (Alt+L / Alt+&#96;)" aria-label="사이드바 전환" aria-controls="session-sidebar">${icon("menu")}</button><div id="tabs" role="tablist" aria-label="열린 세션"></div><div class="toolbar"><button id="terminal-refresh" class="icon-button" title="터미널 화면 새로고침" aria-label="터미널 화면 새로고침" disabled>${icon("refresh")}</button><button id="attach" class="icon-button" title="파일 첨부" aria-label="파일 첨부">${icon("attach")}</button><button id="tab-new" class="icon-button" title="새 세션" aria-label="새 세션">${icon("plus")}</button><button id="conversation" class="icon-button" title="대화 읽기" aria-label="대화 읽기" aria-pressed="false">${icon("book")}</button><button id="settings" class="icon-button" title="터미널 설정" aria-label="터미널 설정">${icon("settings")}</button></div></header><div id="notice" class="notice" role="status" hidden></div><div id="attachment-status" class="attachment-status" role="status" hidden></div><input id="attachment-picker" type="file" multiple hidden><div id="stage"><div id="empty"><div class="empty-mark">${icon("terminal")}</div><span class="eyebrow">READY WHEN YOU ARE</span><h2>이어서 할 작업을 선택하세요</h2><p>세션을 열면 Home의 작업에 연결됩니다.<br>이 화면을 닫아도 작업은 계속됩니다.</p><button id="browse" class="secondary">세션 둘러보기 ${icon("arrow")}</button></div><div id="reader" hidden></div></div><div class="keybar" aria-label="터미널 보조 키"><button id="terminal-refresh-mobile" aria-label="터미널 화면 새로고침" title="터미널 화면 새로고침" disabled>${icon("refresh")}</button><button id="attach-mobile" aria-label="파일 첨부" title="파일 첨부">${icon("attach")}</button><button data-key="\u001b">Esc</button><button data-key="\t">Tab</button><button id="ctrl" aria-pressed="false">Ctrl</button><button data-key="\u0003">Ctrl C</button><button data-key="\u001b[A">↑</button><button data-key="\u001b[B">↓</button><button data-key="\u001b[D">←</button><button data-key="\u001b[C">→</button></div><footer><span id="bedl" class="bedl" aria-hidden="true"></span><button id="usage" class="footer-button">Claude <span>—</span><i></i> Codex <span>—</span></button><span id="metrics">Home · 사용량 대기 중</span><span id="footer-connection" class="footer-connection" title="공용 탭 연결 중"><span id="terminal-state" role="status"></span><button id="reconnect" class="subtle-button" hidden>${icon("refresh")} 다시 연결</button></span></footer></main></div><dialog id="dialog" aria-labelledby="dialog-title"><div class="dialog-head"><h2 id="dialog-title"></h2><button id="dialog-close" class="icon-button" aria-label="닫기">${icon("close")}</button></div><div id="dialog-body"></div></dialog>`;
+  app.innerHTML = `<div class="workspace"><aside id="session-sidebar" class="sidebar"><div class="sidebar-head"><a class="brand" href="/">${mark}<span>HMux</span></a><button id="sidebar-close" class="icon-button" title="목록 닫기" aria-label="목록 닫기">${icon("close")}</button></div><div class="home-card"><span class="status-dot" id="home-dot"></span><div><strong>Home</strong><small id="home-state">연결 확인 중</small></div></div><div class="search-box">${icon("search")}<input id="search" type="search" placeholder="세션 검색" aria-label="세션 검색"><kbd>⌘ K</kbd></div><div class="list-heading"><span>세션 <b id="count">0</b></span><button id="new-session" class="icon-button" title="새 세션" aria-label="새 세션">${icon("plus")}</button></div><div id="session-list" class="session-list"></div><label class="hidden-toggle"><input id="show-hidden" type="checkbox"> 숨긴 세션 표시</label><div class="sidebar-bottom"><span id="username"></span><button id="logout" class="icon-button" title="로그아웃 (Alt+Q)" aria-label="로그아웃">${icon("logout")}</button></div></aside><div id="scrim"></div><main class="workarea"><button id="floating-tabs" class="icon-button" aria-label="탭 목록 펼치기" aria-expanded="false" aria-controls="tabs">${icon("menu")}</button><header class="tabbar"><button id="menu" class="icon-button" title="사이드바 전환 (Alt+L / Alt+&#96;)" aria-label="사이드바 전환" aria-controls="session-sidebar">${icon("menu")}</button><div id="tabs" role="tablist" aria-label="열린 세션"></div><div class="toolbar"><button id="terminal-refresh" class="icon-button" title="터미널 화면 새로고침" aria-label="터미널 화면 새로고침" disabled>${icon("refresh")}</button><button id="attach" class="icon-button" title="파일 첨부" aria-label="파일 첨부">${icon("attach")}</button><button id="tab-new" class="icon-button" title="새 세션" aria-label="새 세션">${icon("plus")}</button><button id="conversation" class="icon-button" title="대화 읽기" aria-label="대화 읽기" aria-pressed="false">${icon("book")}</button><button id="settings" class="icon-button" title="터미널 설정" aria-label="터미널 설정">${icon("settings")}</button></div></header><div id="notice" class="notice" role="status" hidden></div><div id="attachment-status" class="attachment-status" role="status" hidden></div><input id="attachment-picker" type="file" multiple hidden><div id="stage"><div id="empty"><div class="empty-mark">${icon("terminal")}</div><h2>이어서 할 작업을 선택하세요</h2><p>세션을 열면 Home의 작업에 연결됩니다.<br>이 화면을 닫아도 작업은 계속됩니다.</p><button id="browse" class="secondary">세션 둘러보기 ${icon("arrow")}</button></div><div id="reader" hidden></div></div><div class="keybar" aria-label="터미널 보조 키"><button id="terminal-refresh-mobile" aria-label="터미널 화면 새로고침" title="터미널 화면 새로고침" disabled>${icon("refresh")}</button><button id="attach-mobile" aria-label="파일 첨부" title="파일 첨부">${icon("attach")}</button><button data-key="\u001b">Esc</button><button data-key="\t">Tab</button><button id="ctrl" aria-pressed="false">Ctrl</button><button data-key="\u0003">Ctrl C</button><button data-key="\u001b[A">↑</button><button data-key="\u001b[B">↓</button><button data-key="\u001b[D">←</button><button data-key="\u001b[C">→</button></div><footer><span id="bedl" class="bedl" aria-hidden="true"></span><button id="usage" class="footer-button">Codex <span>—</span><i></i> Claude <span>—</span></button><span id="metrics">Home · 사용량 대기 중</span><span id="footer-connection" class="footer-connection" title="공용 탭 연결 중"><span id="terminal-state" role="status"></span><button id="reconnect" class="subtle-button" hidden>${icon("refresh")} 다시 연결</button></span></footer></main></div><dialog id="dialog" aria-labelledby="dialog-title"><div class="dialog-head"><h2 id="dialog-title"></h2><button id="dialog-close" class="icon-button" aria-label="닫기">${icon("close")}</button></div><div id="dialog-body"></div></dialog>`;
   app.classList.toggle(
     "sidebar-collapsed",
     preferences.get("hmux.sidebar") === "hidden",
@@ -824,7 +836,7 @@ function openSession(s: Session, activate = true) {
   host.className = "terminal-host";
   $("#stage").append(host);
   const term = new Terminal({
-    theme,
+    theme: appearanceState.current().colors,
     fontFamily: terminalFonts.family(),
     fontSize,
     scrollback: 5000,
@@ -1281,9 +1293,19 @@ function settingsDialog() {
   const appearance = text("section", "", "settings-section");
   appearance.append(
     text("h3", "터미널"),
-    text("p", "이 기기에 편한 크기로 맞추세요.", "muted"),
+    text("p", "테마와 글자 크기는 이 기기에 저장됩니다.", "muted"),
   );
-  const preview = text("div", "❯ 이어지는 작업, 나만의 터미널", "font-preview");
+  installThemePicker(
+    appearance,
+    () => appearanceState.current(),
+    (id) => {
+      appearanceState.select(
+        id,
+        [...tabs.values()].map((tab) => tab.term),
+      );
+    },
+  );
+  const preview = text("div", "$ hmux · 한글 ABC 0123456789", "font-preview");
   preview.style.fontFamily = terminalFonts.family();
   preview.style.fontSize = `${fontSize}px`;
   appearance.append(preview);
@@ -1313,7 +1335,7 @@ function settingsDialog() {
   const details = text("div", "", "appearance-details");
   details.append(
     text("span", "Monatendard Mono"),
-    text("span", "Flexoki Dark"),
+    text("span", "한글 · 영문 · Nerd Font"),
   );
   appearance.append(details);
   const keys = text("section", "", "settings-section shortcut-guide");
@@ -1345,16 +1367,14 @@ function settingsDialog() {
   const security = text("section", "", "settings-section account-security");
   const diagnosticPanel = text("section", "", "settings-section");
   const usagePanel = text("section", "", "settings-section");
-  body.append(
-    appearance,
-    usagePanel,
-    notifications,
-    security,
-    loginSessions,
-    diagnosticPanel,
-    keys,
-    install,
-  );
+  installSettingsNavigation(body, [
+    { id: "terminal", label: "터미널", sections: [appearance] },
+    { id: "usage", label: "사용량", sections: [usagePanel] },
+    { id: "notifications", label: "알림", sections: [notifications] },
+    { id: "account", label: "계정", sections: [security, loginSessions] },
+    { id: "shortcuts", label: "단축키", sections: [keys] },
+    { id: "app", label: "앱 정보", sections: [install, diagnosticPanel] },
+  ]);
   let disposeSessions: (() => void) | undefined;
   const refreshSessions = () => {
     disposeSessions?.();

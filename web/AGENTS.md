@@ -12,7 +12,7 @@ logs and the native Android engine review are not current implementation instruc
 - Keep this a TypeScript/xterm.js client and one Go gateway/Home connector. Reuse
   Home catalog, conversation, quota and recovery code; do not infer provider IDs in tabs.
 - Keep `{id, created_at}` identity checks, profile isolation and shared tab ordering.
-  Selected tabs and font preferences are device-local; account profiles are not shell isolation.
+  Selected tabs, terminal theme and font preferences are device-local; account profiles are not shell isolation.
 - One live terminal view per visible browser, eight across the gateway. Releasing
   a browser view must never end the original tmux/provider process.
 - `viewport.ts` owns safe-area/keyboard geometry. Use visualViewport height once;
@@ -50,6 +50,9 @@ logs and the native Android engine review are not current implementation instruc
   selection dismisses the keyboard; the user accepted that limitation and stopped
   keyboard-open selection work. Preserve this behavior unless explicitly revisited.
   Never infer physical-device menu behavior from event tests alone.
+- `theme.ts` owns the validated device-local terminal palette. Apply changes to
+  all xterms without reconnect/reset, keep native pending-input colors in sync,
+  and retain pinned upstream palette notices. UI chrome remains independently dark.
 - `fonts.ts` owns font loading. Keep Monatendard Regular/Bold, Korean coverage,
   WOFF2/TTF compatibility and included licenses.
 - CSS order is `style.css` (base/viewport), `ios-native-input.css` (iOS input),

@@ -5,6 +5,31 @@ private-deployment checkpoints are preserved in
 [the historical validation log](archive/VALIDATION_PRE_PUBLICATION.md).
 They are not claims about a user's independent deployment.
 
+## 2026-09-22 — Cool workspace design and terminal themes
+
+The web UI now uses cool charcoal, blue/cyan accents, compact corners and flat
+SVG/PWA branding. Settings has keyboard-accessible categories. Terminal themes
+(HMux Dark, Tokyo Night Storm, Catppuccin Mocha, Dracula, Nord) persist per device
+and update existing/future xterms without reconnecting or resetting output.
+Pinned upstream palette licenses and the unmodified Pretendard Variable v1.3.9
+UI font are bundled. Monatendard Regular/Bold remain the terminal fonts.
+
+Web type/style checks, 151 tests and the production build passed. Independent
+read-only review found no material defects; its viewport-variable cleanup was
+applied before release. Chromium fixtures verified all five themes, existing/new
+tabs, saved selection after reload, unchanged connection count on palette changes,
+settings keyboard navigation, login, account/usage panels, Markdown tables/code,
+and 320/390/768/1440px layouts. Regular/Bold measured ASCII 8.32999px and Hangul
+16.65999px at 14px. Font-file audit confirms all 11,172 modern Hangul syllables;
+UI font loading and source hashes were also checked. These are automated browser
+checks, not new physical Safari/iOS/Android IME acceptance. Existing accepted
+input/clipboard/connection mechanics are preserved.
+
+Frontend-only release `20260921T185703Z` uses an atomic assets switch, retaining
+Home and gateway processes. HTTPS asset/font/icon hashes, anonymous API barriers,
+PWA CSP and gateway health are verified after activation. Installed launchers may
+update the new icon on their own schedule; no forced reinstall/reload is added.
+
 ## 2026-09-22 — Restore codex-lb account details
 
 Codex-lb uses `lastRefreshAt` for OAuth credentials. The web panel incorrectly

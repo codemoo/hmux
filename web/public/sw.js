@@ -13,8 +13,8 @@ self.addEventListener("fetch", (event) => {
       () =>
         new Response(
           `<!doctype html>
-<html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#100f0f"><title>HMux · 연결 대기</title>
-<style>body{margin:0;background:#100f0f;color:#cecdc3;font:16px/1.6 system-ui;display:grid;place-items:center;min-height:100dvh}main{padding:32px;max-width:360px}h1{font-size:28px}p{color:#9f9d96}a{color:#4385be}</style>
+<html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0f141b"><title>HMux · 연결 대기</title>
+<style>body{margin:0;background:#0f141b;color:#e6edf7;font:16px/1.6 system-ui;display:grid;place-items:center;min-height:100dvh}main{padding:32px;max-width:360px}h1{font-size:28px}p{color:#9baec5}a{color:#79b8ff}</style>
 <main><h1>HMux</h1><p>네트워크 연결을 확인해주세요.<br>Home에서 실행 중인 작업은 계속됩니다.</p><a href="/">다시 연결</a></main></html>`,
           {
             status: 503,
@@ -115,8 +115,8 @@ self.addEventListener("push", (event) => {
       }
       await self.registration.showNotification(notification.title || "HMux", {
         body: notification.body,
-        icon: "/icons/hmux-192.png",
-        badge: "/icons/hmux-192.png",
+        icon: "/icons/hmux-flat-192.png",
+        badge: "/icons/hmux-flat-192.png",
         tag: notification.tag,
         data: notification.data,
         timestamp: Date.now(),

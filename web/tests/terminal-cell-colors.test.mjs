@@ -26,7 +26,7 @@ test("pending input follows default, RGB and indexed terminal backgrounds", () =
   );
   assert.equal(
     terminalCellColors(cell("palette", 22)).backgroundColor,
-    "#1F271B",
+    "#18302b",
   );
   assert.equal(
     terminalCellColors(cell("palette", 8), { brightBlack: "#444444" })

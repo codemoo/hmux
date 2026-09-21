@@ -22,6 +22,8 @@ for versions. This is not a complete native static-library SBOM.
 | es-hangul | package-lock.json | `web/public/licenses/` |
 | marked | package-lock.json | `web/public/licenses/marked-LICENSE.txt` |
 | entities | package-lock.json | `web/public/licenses/entities-LICENSE.txt` |
+| Pretendard Variable | v1.3.9, unmodified | `web/public/fonts/Pretendard-LICENSE.txt`, `NOTICE.txt` |
+| Terminal palettes: Tokyo Night Storm, Catppuccin Mocha, Dracula, Nord | pinned upstream terminal ports | `web/public/licenses/terminal-themes-NOTICE.md` and linked license texts |
 | Monatendard / underlying fonts | bundled files | `web/public/fonts/NOTICE.txt`, `THIRD_PARTY_NOTICES.md` and license texts |
 | Ghostty / native libraries and sprites | pinned native manifest | `macos/HMux/ThirdPartyNotices.md`, `Dependencies.lock.json` |
 

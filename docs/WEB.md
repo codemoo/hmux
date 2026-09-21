@@ -223,8 +223,9 @@ review and verification; log collection does not execute code or apply changes.
   beside Attach in the keyboard-visible mobile row. Home limits redraws to one
   per second per view; unavailable views disable the control.
 - Alias-first A–Z session list, Home profile session creation, rename and hide/show.
-- Native HMux/Flexoki colors, 36px tab bar and 26px tab items, 296px desktop sidebar.
-  Selected tabs use a blue border/underline without changing their dimensions.
+- Cool charcoal chrome, blue/cyan accents and compact 4–5px corners. A 44px tab
+  bar contains 34px desktop tabs with visible inactive borders and an active blue
+  top accent. The wide desktop sidebar is 268px; the status bar stays on one line.
 - Alt+1–9 selects the corresponding tab in current sidebar-independent tab order
   (an absent tab number does nothing); Alt+Shift+Left/Right changes tabs; Alt+L or Alt+Backquote (` / ₩ on Korean layouts) toggles sidebar;
   Alt+W closes the active shared tab without terminating its tmux session; Alt+Q logs out; Cmd/Ctrl+K searches.
@@ -232,7 +233,7 @@ review and verification; log collection does not execute code or apply changes.
 - Conversation reads the active Codex session resolved by Home/tmux. User messages
   are included by default and kept in order; user fenced commands remain visible
   when assistant code is hidden. Initial opening scrolls to the latest message.
-- Settings → 사용량 표시 saves independent Claude/Codex visibility and source
+- Settings → 사용량 saves independent Claude/Codex visibility and source
   choices to the authenticated web account. Claude selects Claude CLI or cswap;
   Codex selects Codex CLI or codex-lb. Defaults remain cswap/codex-lb. Choices
   synchronize through state polling and survive gateway/browser restarts. A stale
@@ -306,7 +307,15 @@ after the color-preservation mitigation; do not report it as fixed. See
 [web troubleshooting](TROUBLESHOOTING.md#webpwa-installation-and-terminal-colors).
 
 Terminal colors live in `theme.ts`. Bold text does not automatically promote ANSI
-colors to bright variants. Extended indices 22/52 use muted Flexoki green/red for
+colors to bright variants. Settings → 터미널 offers HMux Dark (default), Tokyo
+Night Storm, Catppuccin Mocha, Dracula and Nord. The choice is device-local,
+validated on load and applied immediately to every existing/future terminal,
+without reconnecting or clearing output. Chrome stays cool/dark independently
+of the terminal palette. Settings categories support keyboard navigation and
+keep account requests tied to the original dialog. Pinned GitHub sources and
+licenses are in `web/public/licenses/terminal-themes-NOTICE.md`.
+
+Extended indices 22/52 use muted teal/red fills for
 observed tmux diff fills; other extended colors remain standard. Palette changes
 affect foregrounds and backgrounds; explicit truecolor output is unchanged.
 `color-scheme: only dark` opts out of user-agent auto-dark recoloring. Only xterm
@@ -317,7 +326,13 @@ Monatendard Nerd Font Mono Regular/Bold match `archive/terminal/config/ghostty.g
 licenses and all 11,172 modern Hangul syllables. Load both faces before measuring;
 Android explicitly registers FontFaces with WOFF2 then TTF fallback. Resume/network
 recovery retries loading and redraws terminals. Mobile font defaults to 10px,
-desktop 14px, both adjustable 8–24px with separate preferences.
+desktop 14px, both adjustable 8–24px with separate preferences. The self-hosted
+Pretendard Variable v1.3.9 font covers proportional UI and Korean labels; code
+blocks and terminal previews use Monatendard. Regular/Bold terminal metrics
+are identical, with modern Hangul syllables exactly twice the ASCII cell width.
+The flat SVG mark also supplies the PWA PNG icons; versioned icon paths preserve
+the manifest identity. Existing installed launchers may refresh icons on their
+own schedule; the application never reinstalls or reloads an active terminal.
 
 `viewport.ts` owns visualViewport height/offset and safe-area geometry. Reserve
 insets once, retain top inset during keyboard transitions, reset on rotation, and
@@ -421,7 +436,7 @@ for build/deployment details.
 | `pwa.ts`, `public/sw.js` | Install UI and network-only navigation fallback |
 | `terminal-scroll.ts`, `terminal-session.ts` | Touch scroll routing and generation-safe view release |
 | `shared-workspace.ts`, `preferences.ts` | Validated workspace shape and guarded local storage |
-| `usage.ts`, `types.ts`, `theme.ts` | Usage formatting, data types and Flexoki terminal colors |
+| `usage.ts`, `types.ts`, `theme.ts` | Usage formatting, data types and selectable terminal palettes |
 | `style.css` → `ios-native-input.css` → `chrome.css` → `dialogs.css` | Base/viewport → iOS input → workspace UI → dialog overrides |
 | `internal/webgateway` | Auth, bounded gateway/Home protocol, PTYs and account profiles |
 | `internal/hostmetrics` | Home platform resource collection, including disk allocation |
