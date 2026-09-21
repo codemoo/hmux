@@ -5,6 +5,42 @@ private-deployment checkpoints are preserved in
 [the historical validation log](archive/VALIDATION_PRE_PUBLICATION.md).
 They are not claims about a user's independent deployment.
 
+## 2026-09-21 — Account-scoped frontend diagnostics
+
+Added bounded browser connection/API/runtime diagnostics, an authenticated private
+server store, and Settings → 접속 진단 → 진단 로그 다운로드. Exports combine the
+current account's server history with this device's recent records; failed server
+access falls back to the device copy. Fixed categories exclude raw exceptions,
+stacks, URLs, terminal/input content and authentication secrets.
+
+Checks completed:
+
+- Full Go tests and vet; gateway race tests including isolated WebSocket tests.
+  After final review changes, full Go tests/vet and targeted diagnostics race tests
+  passed again. Coverage includes account/profile isolation, CSRF/Origin checks,
+  deduplication, rate/retention limits, private storage and concurrent intake.
+- Web type/style checks, 132 tests and production build. Tests cover bounded
+  retry, transport failure isolation, sanitized fields, logout/account transitions,
+  expired outbox sequence continuity and API failure callbacks.
+- Chromium against a production build with synthetic API/WebSocket responses:
+  terminal failure/recovery, runtime error redaction, failed upload without login
+  or terminal loss, reload/retry, JSON download and account transition isolation.
+  Desktop and 390×844 settings screenshots were inspected. These checks are not
+  physical Safari/iOS/Android or real-network acceptance.
+- Independent review identified and resolved sequence reuse after local expiry,
+  semantic validation of persisted records and a too-small reload decoder limit.
+  The full 2,048-record persisted history now survives restart; final focused
+  review found no remaining material defects.
+
+Release `20260921T102410Z` (UTC) updates the gateway and frontend, with the previous
+release retained and all 36 staged file hashes verified. The Home connector was
+not replaced. Existing tmux/provider sessions and account/push stores are preserved.
+Public HTTPS assets, anonymous API rejection, no-store/PWA CSP and Home transport
+were checked after activation. No production diagnostics records were present at
+that check: collection requires browsers to load the new frontend. Historical
+incidents cannot be reconstructed by this collector. HTTP 202 acknowledges memory
+intake; up to ten seconds of server data can be lost on an abrupt gateway crash.
+
 ## 2026-09-21 — Connection recovery regression
 
 Fixed recovery paths where refreshing the page succeeded but the existing client

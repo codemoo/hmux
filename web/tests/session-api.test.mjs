@@ -97,3 +97,22 @@ test("dialog cancellation does not cancel the account, and stale fetch rejection
   await assert.rejects(request, { name: "AbortError" });
   assert.deepEqual(await api.request("/api/session"), { ok: true });
 });
+
+test("diagnostics report current request metadata without error contents and cannot affect API errors", async () => {
+  const reports = [];
+  const api = createSessionAPI({
+    csrf: () => "",
+    unauthorized: () => {},
+    failure: (event) => {
+      reports.push(event);
+      throw Error("logger failure");
+    },
+    fetch: async () => ({ ok: false, status: 503, text: async () => "SECRET" }),
+  });
+  await assert.rejects(api.request("/api/state"), /SECRET/);
+  assert.equal(reports[0].status, 503);
+  assert.equal(reports[0].reason, "http");
+  assert.ok(!JSON.stringify(reports).includes("SECRET"));
+  await assert.rejects(api.request("/api/diagnostics"), /SECRET/);
+  assert.equal(reports.length, 1);
+});

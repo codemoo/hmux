@@ -1,3 +1,9 @@
+import {
+  createDiagnostics,
+  diagnosticRoute,
+  diagnosticReason,
+} from "./diagnostics";
+import { installDiagnosticSettings } from "./diagnostics-settings";
 import { installAttachments } from "./attachments";
 import { createSessionAPI } from "./session-api";
 import {
@@ -162,9 +168,40 @@ function notice(message: string) {
     n.hidden = !message;
   }
 }
+const diagnostics = createDiagnostics({
+  csrf: () => csrf,
+  build: import.meta.url,
+  storage: () => sessionStorage,
+  context: () => ({
+    online: navigator.onLine,
+    visible: document.visibilityState === "visible",
+    standalone:
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (navigator as Navigator & { standalone?: boolean }).standalone === true,
+  }),
+});
+window.addEventListener("error", (event) =>
+  diagnostics.record("runtime-error", {
+    reason: diagnosticReason(event.error),
+    line: event.lineno,
+    column: event.colno,
+  }),
+);
+window.addEventListener("unhandledrejection", (event) =>
+  diagnostics.record("unhandled-rejection", {
+    reason: diagnosticReason(event.reason),
+  }),
+);
 const sessionAPI = createSessionAPI({
   csrf: () => csrf,
   unauthorized: showLogin,
+  failure: (event) =>
+    diagnostics.record("api-failed", {
+      route: diagnosticRoute(event.path),
+      reason: event.reason,
+      code: event.status,
+      duration_ms: event.durationMs,
+    }),
 });
 const api = sessionAPI.request;
 function reportError(error: unknown) {
@@ -189,6 +226,7 @@ async function action(
   );
 }
 function disposeAll() {
+  diagnostics.dispose();
   accountEpoch++;
   sessionAPI.reset();
   refreshRequest?.abort();
@@ -924,6 +962,7 @@ function connect(t: Tab, manual = false) {
   t.nativeInput?.cancel();
   t.generation++;
   const gen = t.generation;
+  const connectionStarted = Date.now();
   t.ws?.close();
   t.fit.fit();
   t.status = "connecting";
@@ -946,6 +985,13 @@ function connect(t: Tab, manual = false) {
     const event = t.recovery.failed(kind);
     // Fixed categories only: no terminal text, URLs, account IDs or server reason strings.
     console.info("[HMux] terminal disconnected", { ...event, code });
+    diagnostics.record("terminal-failed", {
+      reason: kind,
+      code,
+      attempt: event.attempt,
+      retry_ms: event.retryMs,
+      duration_ms: Date.now() - connectionStarted,
+    });
     ws.close();
     if (active === key(t.identity)) {
       notice(
@@ -1000,6 +1046,10 @@ function connect(t: Tab, manual = false) {
               : undefined;
           clearTimeout(t.openTimer);
           t.openTimer = undefined;
+          if (t.recovery.description())
+            diagnostics.record("terminal-recovered", {
+              duration_ms: Date.now() - connectionStarted,
+            });
           t.recovery.ready();
           notice("");
           t.status = "connected";
@@ -1266,11 +1316,13 @@ function settingsDialog() {
     "settings-section push-notifications",
   );
   const security = text("section", "", "settings-section account-security");
+  const diagnosticPanel = text("section", "", "settings-section");
   body.append(
     appearance,
     notifications,
     security,
     loginSessions,
+    diagnosticPanel,
     keys,
     install,
   );
@@ -1295,7 +1347,13 @@ function settingsDialog() {
     refreshSessions,
   );
   const disposePush = installPushNotifications(notifications, api, loginID);
+  const disposeDiagnostics = installDiagnosticSettings(
+    diagnosticPanel,
+    api,
+    diagnostics,
+  );
   dialogCleanup = () => {
+    disposeDiagnostics();
     disposePush();
     disposeSecurity();
     disposeSessions?.();
@@ -1456,6 +1514,7 @@ async function start() {
       : "hmux.tabs";
     csrf = session.csrf;
     loginID = session.login_id;
+    diagnostics.bind(loginID);
     loggedIn = true;
     startFailures = 0;
     bootstrapping = true;
@@ -1764,6 +1823,7 @@ window.addEventListener("resize", scheduleTerminalLayout);
 resizeMobileViewport();
 function resumeConnection() {
   if (!loggedIn || document.visibilityState !== "visible") return;
+  diagnostics.record("resume");
   // Requests created before suspension may never complete on the old network.
   refreshRequest?.abort();
   refreshRequest = undefined;
@@ -1774,6 +1834,7 @@ function resumeConnection() {
 }
 window.addEventListener("pagehide", releaseActiveConnection);
 window.addEventListener("offline", () => {
+  if (loggedIn) diagnostics.record("offline");
   releaseActiveConnection();
   if (loggedIn) renderTabs();
 });

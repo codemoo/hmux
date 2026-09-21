@@ -5,6 +5,12 @@ export function createSessionAPI(options: {
   csrf: () => string;
   unauthorized: () => void;
   fetch?: typeof fetch;
+  failure?: (event: {
+    path: string;
+    status: number;
+    durationMs: number;
+    reason: "network" | "timeout" | "http" | "protocol";
+  }) => void;
 }) {
   let scope = new AbortController();
   return {
@@ -14,6 +20,8 @@ export function createSessionAPI(options: {
     },
     async request(path: string, body?: unknown, parent?: AbortSignal) {
       const owner = scope;
+      const started = Date.now();
+      let status = 0;
       const controller = new AbortController();
       const cancel = () => controller.abort();
       const signals = [owner.signal, parent].filter(
@@ -46,6 +54,7 @@ export function createSessionAPI(options: {
             signal,
           });
           check(signal);
+          status = response.status || 200;
           if (!response.ok) {
             if (response.status === 401 && path !== "/api/login") {
               options.unauthorized();
@@ -64,6 +73,30 @@ export function createSessionAPI(options: {
       } catch (error) {
         if (owner !== scope || controller.signal.aborted)
           throw new DOMException("Obsolete request", "AbortError");
+        const name = error instanceof Error ? error.name : "";
+        if (
+          name !== "AbortError" &&
+          path !== "/api/login" &&
+          path !== "/api/diagnostics"
+        ) {
+          try {
+            options.failure?.({
+              path,
+              status,
+              durationMs: Date.now() - started,
+              reason:
+                name === "TimeoutError"
+                  ? "timeout"
+                  : status >= 400
+                    ? "http"
+                    : status
+                      ? "protocol"
+                      : "network",
+            });
+          } catch {
+            /* Diagnostics must not change request behavior. */
+          }
+        }
         throw error;
       } finally {
         for (const signal of signals)

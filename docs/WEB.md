@@ -135,6 +135,49 @@ record only category, close code, attempt and retry delay, never terminal conten
 account identifiers or raw server reasons. The original tmux/provider processes
 remain running.
 
+### Connection diagnostics
+
+Authenticated browsers automatically report bounded connection diagnostics to
+the same gateway at `/api/diagnostics`. Settings → **접속 진단** shows the current
+account's recorded error count and downloads its server records together with
+this device's recent records as JSON for analysis.
+
+Events include terminal disconnect/recovery, API failure, offline/resume and
+uncaught JavaScript/rejection categories. Metadata is restricted to fixed reason
+and route codes, HTTP/WebSocket status, retry count/delay, elapsed time, script
+line/column, online/visible/PWA flags and the frontend bundle identifier. The
+server adds receipt time and a browser/OS family label. Raw exception messages,
+stacks, URLs, IP addresses, terminal text, keystrokes, request/response bodies and
+authentication secrets are excluded. Records are diagnostic client claims, never
+authorization evidence. No external analytics service receives them.
+
+The device keeps at most 100 sanitized records for 24 hours in optional
+`sessionStorage`, keyed by the server-issued public login ID. Unsent records
+survive refresh in that tab; logout/account disposal clears its outbox. Repeated
+same-category errors within a second are collapsed. Uploads have one in-flight
+request, a five-second deadline, batches of at most 20 and retries spaced 10–60
+seconds apart. Upload failures do not generate more diagnostic events or change
+the app's login/terminal state. Storage blocking does not prevent app startup.
+
+The gateway derives ownership from the authenticated username/profile, applies
+the usual Origin/CSRF checks, deduplicates client UUID/sequence pairs and limits
+each login to six batches per minute. Private `<credentials-path>.diagnostics.json`
+holds at most 2,048 records globally and 256 per account, pruned after seven days.
+The existing exclusive gateway state lock covers this adjacent store. One worker
+persists/prunes every ten seconds using atomic replacement and mode 0600; disk
+writes do not hold terminal or auth locks. HTTP 202 acknowledges in-memory intake,
+so an abrupt gateway crash can lose the last ten seconds of server records. Recent
+device records remain available in the download. A storage failure is reported in
+settings while terminal access remains available; malformed/private-mode-invalid
+files disable diagnostic writes without overwriting the original file.
+
+For investigation, compare event times, bundle/browser, API status and terminal
+failure/recovery pairs in the exported JSON. The `counts` field groups recorded
+errors by kind/reason. Server operators can inspect the private JSON locally;
+never commit it or include it in releases. A deployed collector cannot reconstruct
+errors that occurred before the browser loaded that version. Fixes still require
+review and verification; log collection does not execute code or apply changes.
+
 ## User interface
 
 - The redraw icon immediately left of Attach resynchronizes the PTY size, sends
