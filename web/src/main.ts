@@ -149,6 +149,7 @@ if (
 )
   removePushTargetFromURL();
 let dialogCleanup: (() => void) | undefined;
+let refreshUsageDialog: (() => void) | undefined;
 let loggingOut = false;
 let csrf = "",
   loginID = "",
@@ -1432,6 +1433,7 @@ function renderFooter() {
 function usageDialog() {
   const body = dialog("계정 사용량");
   const render = () => {
+    const scrollTop = body.scrollTop;
     body.replaceChildren();
     renderUsagePanel(
       body,
@@ -1439,10 +1441,15 @@ function usageDialog() {
       $("#metrics").textContent || "",
       usagePreferences,
     );
+    body.scrollTop = scrollTop;
   };
   render();
+  refreshUsageDialog = render;
   const timer = window.setInterval(render, 30000);
-  dialogCleanup = () => window.clearInterval(timer);
+  dialogCleanup = () => {
+    window.clearInterval(timer);
+    refreshUsageDialog = undefined;
+  };
 }
 
 async function refresh() {
@@ -1473,6 +1480,7 @@ async function refresh() {
     renderSessions();
     renderTabs();
     renderFooter();
+    refreshUsageDialog?.();
     ensureActiveConnection();
     resolvePushTarget();
     if (next.online) void syncSharedWorkspace();

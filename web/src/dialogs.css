@@ -277,6 +277,11 @@
   overflow-wrap: anywhere;
   min-width: 0;
 }
+.usage-account-updated {
+  margin: -7px 0 12px;
+  font-size: 10px;
+  color: #878580;
+}
 .usage-account-gauges {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

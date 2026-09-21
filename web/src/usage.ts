@@ -13,7 +13,11 @@ export function remaining(q?: Quota, now = Date.now()): string {
   return `${Math.round(100 * (1 - q.used_pct))}%`;
 }
 export function validUsage(u?: Usage, now = Date.now()): boolean {
-  if (!u || u.status.stale) return false;
+  if (!u) return false;
+  // A refresh failure does not invalidate a recent source measurement.
+  // Stale responses must carry their actual measurement time, never use the
+  // freshly generated transport timestamp as evidence of fresh quota.
+  if (u.status.stale && !u.status.quota_observed_at) return false;
   const age =
     now - Date.parse(u.status.quota_observed_at || u.generated_at_utc);
   return Number.isFinite(age) && age >= -60000 && age < 1800000;
@@ -62,16 +66,16 @@ export function diskCapacity(used?: number, total?: number): string {
 // Reset timestamps come from the selected source; never invent a weekly cycle.
 export function weeklyResetLabel(resetsAt?: string, now = Date.now()): string {
   const reset = Date.parse(resetsAt || "");
-  if (!Number.isFinite(reset)) return "리셋 시각 미제공";
-  if (reset <= now) return "리셋 정보 갱신 대기";
+  if (!Number.isFinite(reset)) return "초기화 일정 없음";
+  if (reset <= now) return "초기화 확인 중";
   const minutes = Math.ceil((reset - now) / 60000);
   const days = Math.floor(minutes / 1440);
   const hours = Math.floor((minutes % 1440) / 60);
   const parts = [];
   if (days) parts.push(`${days}일`);
   if (hours) parts.push(`${hours}시간`);
-  if (minutes % 60 || !parts.length) parts.push(`${minutes % 60}분`);
-  return `리셋까지 ${parts.join(" ")}`;
+  if (!days && (minutes % 60 || !parts.length)) parts.push(`${minutes % 60}분`);
+  return `${parts.join(" ")} 후 초기화`;
 }
 
 export function codexPlanLabel(plan?: string): string | undefined {
@@ -94,4 +98,26 @@ export function showFiveHourSummary(usage?: Usage): boolean {
     usage.provider !== "codex" ||
     !usage.accounts?.some((account) => account.active && !account.five_hour)
   );
+}
+
+export function observationLabel(
+  observedAt?: string,
+  now = Date.now(),
+): string | undefined {
+  const age = now - Date.parse(observedAt || "");
+  if (!Number.isFinite(age) || age < -60000) return;
+  const minutes = Math.floor(Math.max(0, age) / 60000);
+  return minutes < 1
+    ? "방금 업데이트"
+    : minutes < 60
+      ? `${minutes}분 전 업데이트`
+      : `${Math.floor(minutes / 60)}시간 전 업데이트`;
+}
+
+export function validAccountMeasurement(
+  observedAt?: string,
+  now = Date.now(),
+): boolean {
+  const age = now - Date.parse(observedAt || "");
+  return Number.isFinite(age) && age >= -60000 && age < 1800000;
 }

@@ -219,7 +219,7 @@ review and verification; log collection does not execute code or apply changes.
   account as headline; codex-lb means the configured weighted account pool.
   Missing/failed sources never silently use a different source. Account aliases
   come from codex-lb; cswap account details show authorized email labels. Never
-  sum percentages or treat missing/stale quota as available capacity. Keychain
+  sum percentages or treat missing/expired quota as available capacity. Keychain
   failure is an unavailable-account status, not zero usage.
 - Codex shows verified plan badges (including Plus/Pro) on CLI summaries and
   pool accounts when supplied by the selected source. Missing plans are not
@@ -229,8 +229,12 @@ review and verification; log collection does not execute code or apply changes.
   providers show weekly reset countdowns, refreshed every 30 seconds while the
   dialog is open, with the local reset date in the tooltip. Unknown timestamps
   remain unknown; expired windows wait for fresh quota instead of showing 100%.
-  Unavailable accounts can retain a known reset timestamp with a last-observed
-  label, while their stale percentage remains hidden.
+  A refresh error does not hide a measurement younger than 30 minutes: the
+  dialog shows its source observation time and refresh status. A generated
+  transport timestamp cannot make failed or missing measurements appear fresh.
+  Reset labels use at most two units (for example `6일 23시간 후 초기화`).
+  The open dialog updates when each new state response arrives, without waiting
+  for the separate 30-second countdown timer.
 - Visibility controls display only. One shared Home collector serves all web
   accounts; hiding usage does not change provider logins, execute an account
   switch or stop another user's collection. Private settings live in

@@ -331,7 +331,7 @@ test("both providers show weekly reset, absent 5h is hidden and Codex plans stay
   const providers = all(panel).filter((n) => n.className === "usage-provider");
   assert.equal(providers.length, 2);
   for (const provider of providers) {
-    assert.ok(provider.textContent.includes("리셋까지 2일"));
+    assert.ok(provider.textContent.includes("2일 후 초기화"));
     assert.ok(!provider.textContent.includes("5시간"));
   }
   assert.ok(!providers[1].textContent.includes("Plus"));
@@ -353,7 +353,7 @@ test("both providers show weekly reset, absent 5h is hidden and Codex plans stay
   assert.ok(withFive.textContent.includes("5시간0%"));
 });
 
-test("unavailable quota retains source reset time with a last-observed label", () => {
+test("unavailable quota keeps concise reset time without redundant stale wording", () => {
   const reset = new Date(Date.now() + 86400000).toISOString();
   const panel = root();
   const usage = {
@@ -375,9 +375,9 @@ test("unavailable quota retains source reset time with a last-observed label", (
     { online: true, usage: { claude: { sources: { cswap: usage } } } },
     "",
   );
-  assert.ok(panel.textContent.includes("리셋까지 1일 · 최근 조회 기준"));
+  assert.ok(panel.textContent.includes("1일 후 초기화"));
   assert.ok(!panel.textContent.includes("80%"));
-  assert.ok(panel.textContent.includes("재로그인 필요"));
+  assert.ok(panel.textContent.includes("갱신 대기"));
 });
 
 test("usage footer shows Codex then Claude with compact provider labels", () => {
@@ -392,4 +392,57 @@ test("usage footer shows Codex then Claude with compact provider labels", () => 
       .map((n) => n.dataset.provider),
     ["codex", "claude"],
   );
+});
+
+test("cswap last-good measurements render despite decision-status failures", () => {
+  const now = Date.now();
+  const observed = new Date(now - 3 * 60000).toISOString();
+  const reset = new Date(
+    now + 6 * 86400000 + 23 * 3600000 + 22 * 60000,
+  ).toISOString();
+  const source = {
+    provider: "claude",
+    generated_at_utc: new Date(now).toISOString(),
+    weekly_observed: true,
+    weekly: { used_pct: 0.27, resets_at: reset },
+    status: { state: "networkError", stale: true, quota_observed_at: observed },
+    accounts: [
+      {
+        number: 1,
+        active: true,
+        status: "token_expired",
+        last_refresh_at: observed,
+        seven_day: { used_pct: 0.27, resets_at: reset },
+      },
+      {
+        number: 2,
+        active: false,
+        status: "keychain_unavailable",
+        last_refresh_at: observed,
+        seven_day: { used_pct: 0.21, resets_at: reset },
+      },
+    ],
+  };
+  const state = {
+    online: true,
+    usage: { claude: { sources: { cswap: source } } },
+  };
+  const panel = root();
+  renderUsagePanel(panel, state, "");
+  assert.ok(panel.textContent.includes("73%"));
+  assert.ok(panel.textContent.includes("79%"));
+  assert.ok(panel.textContent.includes("3분 전 업데이트"));
+  assert.ok(panel.textContent.includes("갱신 지연"));
+  assert.ok(panel.textContent.includes("6일 23시간 후 초기화"));
+  assert.ok(!panel.textContent.includes("최근 조회 기준"));
+  const footer = { dog: root(), usageButton: root(), metrics: root() };
+  renderUsageFooter(state, footer);
+  assert.ok(footer.usageButton.textContent.includes("Claude73%"));
+  source.accounts[0].last_refresh_at = new Date(now - 31 * 60000).toISOString();
+  source.accounts[1].last_refresh_at = undefined;
+  source.status.quota_observed_at = undefined;
+  const stale = root();
+  renderUsagePanel(stale, state, "");
+  assert.ok(!stale.textContent.includes("73%"));
+  assert.ok(!stale.textContent.includes("79%"));
 });

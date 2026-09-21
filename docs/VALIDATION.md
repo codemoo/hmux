@@ -5,6 +5,27 @@ private-deployment checkpoints are preserved in
 [the historical validation log](archive/VALIDATION_PRE_PUBLICATION.md).
 They are not claims about a user's independent deployment.
 
+## 2026-09-22 — Display recent measurements during refresh failures
+
+A live `cswap list --json` observation returned recent `lastGoodUsage` values
+alongside `token_expired` and `keychain_unavailable` decision statuses. HMux was
+incorrectly hiding those display-grade measurements because it required status
+`ok`. Recent observations now remain visible with their actual update age and
+refresh status. Missing timestamps on failed observations, ages over 30 minutes,
+invalid quotas and reset windows remain unavailable; no credential was changed.
+The reset text uses at most two duration units and a concise `후 초기화` suffix.
+The open dialog now repaints on state response instead of delaying new values
+until its 30-second timer.
+
+Web checks, 146 tests and build passed. Chromium reproduced recent measurements
+with both cswap failure statuses, verified visible gauges and timestamps, and
+confirmed state changes appear within the five-second poll. Source switches,
+visibility, persisted preferences and mobile layout remained functional.
+Release `20260921T175810Z` updates web assets with the gateway/Home processes
+unchanged; HTTPS hashes, anonymous authentication barriers and service health
+are verified after activation. This corrects display and refresh timing, not
+upstream credentials or API availability.
+
 ## 2026-09-22 — Usage dialog refinement
 
 Codex now appears first in the footer, dialog and settings. Footer labels remain

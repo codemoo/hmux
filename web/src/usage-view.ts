@@ -8,6 +8,8 @@ import {
   representative,
   validUsage,
   showFiveHourSummary,
+  observationLabel,
+  validAccountMeasurement,
 } from "./usage.ts";
 import type { Snapshot } from "./types.ts";
 import {
@@ -68,7 +70,7 @@ function usageGauge(
   text: ReturnType<typeof createTextFactory>,
   label: string,
   value: string,
-  reset?: { at?: string; stale?: boolean },
+  reset?: { at?: string },
 ) {
   const box = text("div", "", "usage-gauge");
   const known = value !== "—";
@@ -95,7 +97,7 @@ function usageGauge(
   if (reset?.at && Number.isFinite(Date.parse(reset.at))) {
     const countdown = text("p", weeklyResetLabel(reset.at), "usage-reset");
     countdown.title = new Date(reset.at).toLocaleString();
-    if (reset.stale) countdown.append(text("span", " · 최근 조회 기준"));
+
     box.append(countdown);
   }
   return box;
@@ -142,11 +144,18 @@ export function renderUsagePanel(
       provider === "codex" ? codexPlanLabel(u?.plan_type) : undefined;
     if (plan) badges.append(text("span", plan, "usage-badge usage-plan"));
     header.append(heading, badges);
+    const observed = observationLabel(u?.status.quota_observed_at);
+    if (observed) heading.append(text("span", observed, "usage-provider-meta"));
+    if (u?.status.stale && validUsage(u)) {
+      const delayed = text("span", "갱신 지연", "usage-badge");
+      delayed.title =
+        "새 조회가 지연되어 마지막으로 확인한 사용량을 표시합니다.";
+      badges.append(delayed);
+    }
     const summary = text("div", "", "usage-account-gauges usage-summary");
     summary.append(
       usageGauge(text, "주간", representative(u), {
         at: u?.weekly_observed ? u.weekly.resets_at : undefined,
-        stale: !validUsage(u),
       }),
     );
     if (showFiveHourSummary(u))
@@ -190,24 +199,19 @@ export function renderUsagePanel(
         if (a.active) title.append(text("span", "활성", "usage-active"));
         if (a.status !== "ok")
           title.append(text("span", accountStatus(a.status), "muted"));
-        const age =
-          Date.now() -
-          Date.parse(
-            a.last_refresh_at ||
-              u?.status.quota_observed_at ||
-              u?.generated_at_utc ||
-              "",
-          );
-        const fresh =
-          Number.isFinite(age) &&
-          age >= -60000 &&
-          age < 1800000 &&
-          a.status === "ok";
+        const observedAt =
+          a.last_refresh_at ||
+          u?.status.quota_observed_at ||
+          (a.status === "ok" ? u?.generated_at_utc : undefined);
+        const fresh = validAccountMeasurement(observedAt);
+        const updated = observationLabel(observedAt);
+        const timestamp = updated
+          ? text("p", updated, "usage-account-updated")
+          : undefined;
         const gauges = text("div", "", "usage-account-gauges");
         gauges.append(
           usageGauge(text, "주간", remaining(fresh ? a.seven_day : undefined), {
             at: a.seven_day?.resets_at,
-            stale: !fresh,
           }),
         );
         if (a.five_hour)
@@ -218,7 +222,9 @@ export function renderUsagePanel(
               remaining(fresh ? a.five_hour : undefined),
             ),
           );
-        row.append(title, gauges);
+        row.append(title);
+        if (timestamp) row.append(timestamp);
+        row.append(gauges);
         accounts.append(row);
       }
       if (u?.accounts?.length) {
@@ -246,7 +252,7 @@ function accountStatus(status: string) {
   const labels: Record<string, string> = {
     keychain_unavailable: "키체인 확인 필요",
     stale: "업데이트 필요",
-    token_expired: "재로그인 필요",
+    token_expired: "갱신 대기",
     no_credentials: "로그인 정보 없음",
     rate_limited: "조회 일시 제한",
     relogin_required: "재로그인 필요",

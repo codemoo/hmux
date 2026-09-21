@@ -67,18 +67,18 @@ test("weekly reset countdown uses source time with no invented reset", () => {
       new Date(now + (2 * 1440 + 3 * 60 + 4) * 60000).toISOString(),
       now,
     ),
-    "리셋까지 2일 3시간 4분",
+    "2일 3시간 후 초기화",
   );
   assert.equal(
     weeklyResetLabel(new Date(now + 1000).toISOString(), now),
-    "리셋까지 1분",
+    "1분 후 초기화",
   );
   assert.equal(
     weeklyResetLabel(new Date(now).toISOString(), now),
-    "리셋 정보 갱신 대기",
+    "초기화 확인 중",
   );
-  assert.equal(weeklyResetLabel(undefined, now), "리셋 시각 미제공");
-  assert.equal(weeklyResetLabel("invalid", now), "리셋 시각 미제공");
+  assert.equal(weeklyResetLabel(undefined, now), "초기화 일정 없음");
+  assert.equal(weeklyResetLabel("invalid", now), "초기화 일정 없음");
 });
 test("Codex plan labels distinguish verified Plus and Pro without inference", () => {
   assert.equal(codexPlanLabel("plus"), "Plus");
@@ -115,4 +115,43 @@ test("Codex pool hides 5h when any active account has no 5h window", () => {
     false,
   );
   assert.equal(showFiveHourSummary({ ...usage, provider: "claude" }), true);
+});
+
+test("recent measured quota survives refresh failure but not expired observation", () => {
+  const source = {
+    ...snapshot,
+    status: {
+      state: "networkError",
+      stale: true,
+      quota_observed_at: new Date(now - 180000).toISOString(),
+    },
+  };
+  assert.equal(representative(source, now), "65%");
+  assert.equal(
+    representative(
+      {
+        ...source,
+        status: {
+          ...source.status,
+          quota_observed_at: new Date(now - 1800000).toISOString(),
+        },
+      },
+      now,
+    ),
+    "—",
+  );
+  assert.equal(
+    representative({ ...source, status: { stale: true } }, now),
+    "—",
+  );
+  assert.equal(
+    representative(
+      {
+        ...source,
+        weekly: { used_pct: 0.35, resets_at: new Date(now - 1).toISOString() },
+      },
+      now,
+    ),
+    "—",
+  );
 });
