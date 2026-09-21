@@ -147,23 +147,18 @@
 }
 .usage-panel {
   display: grid;
-  gap: 16px;
+  gap: 14px;
 }
 .usage-intro p {
-  margin: 6px 0 2px;
+  margin: 0;
   color: #b7b5ac;
   font-size: 12px;
-}
-.usage-eyebrow {
-  font-size: 9px;
-  letter-spacing: 0.16em;
-  color: #878580;
 }
 .usage-provider {
   padding: 18px;
   border: 1px solid #343331;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #242321, #1b1a19);
+  border-radius: 10px;
+  background: #22211f;
 }
 .usage-provider-head,
 .usage-account-head,
@@ -180,7 +175,29 @@
 }
 .usage-provider-head {
   flex-wrap: wrap;
-  margin-bottom: 18px;
+  margin-bottom: 20px;
+  align-items: flex-start;
+}
+.usage-provider-title {
+  display: grid;
+  gap: 5px;
+}
+.usage-provider-meta {
+  font-size: 10px;
+  color: #878580;
+}
+.usage-provider-badges {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.usage-section-label {
+  margin: 0 0 12px;
+  font-size: 10px;
+  color: #b7b5ac;
+}
+.usage-accounts-label {
+  margin: 24px 0 0;
 }
 .usage-badge,
 .usage-active {
@@ -207,7 +224,7 @@
   font-size: 16px;
   font-variant-numeric: tabular-nums;
 }
-.usage-provider > .usage-gauge .usage-gauge-heading strong {
+.usage-summary .usage-gauge-heading strong {
   font-size: 28px;
   letter-spacing: -0.04em;
 }
@@ -238,7 +255,7 @@
 }
 .usage-accounts {
   display: grid;
-  margin-top: 18px;
+  margin-top: 0;
 }
 .usage-account {
   border-top: 1px solid #353430;
@@ -247,7 +264,7 @@
   min-width: 0;
 }
 .usage-account:first-child {
-  margin-top: 0;
+  margin-top: 12px;
 }
 .usage-account-head {
   flex-wrap: wrap;

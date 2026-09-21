@@ -223,7 +223,9 @@ review and verification; log collection does not execute code or apply changes.
   failure is an unavailable-account status, not zero usage.
 - Codex shows verified plan badges (including Plus/Pro) on CLI summaries and
   pool accounts when supplied by the selected source. Missing plans are not
-  inferred. Five-hour gauges are omitted where that window is absent. Both
+  inferred. Five-hour gauges are omitted where that window is absent. The Codex
+  combined five-hour gauge is also hidden whenever any active account lacks
+  that window; inactive accounts do not control it. Both
   providers show weekly reset countdowns, refreshed every 30 seconds while the
   dialog is open, with the local reset date in the tooltip. Unknown timestamps
   remain unknown; expired windows wait for fresh quota instead of showing 100%.
@@ -239,6 +241,10 @@ review and verification; log collection does not execute code or apply changes.
   The cswap adapter uses the installed `cswap list --json` command with bounded
   execution/output and no shell. cswap owns its existing shared quota/cache and
   credential handling; HMux never calls switch/login/service-install commands.
+- Footer shows only `Codex` / `Claude` provider labels, with Codex first in the
+  footer, usage dialog and settings. Source names remain inside the dialog.
+  The dialog separates combined capacity from account rows, using larger summary
+  values and compact labels; unknown reset times are omitted.
 - Footer stays on one line. Under 540px, computer resource details are hidden;
   full provider labels remain. Resource details are also in the usage dialog.
   CPU/GPU/RAM are percentages; disk is used/total capacity in decimal GB or TB.

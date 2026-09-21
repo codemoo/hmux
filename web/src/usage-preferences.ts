@@ -51,7 +51,7 @@ export function selectedUsage(
   preferences: UsagePreferences,
 ) {
   const result: Partial<Record<"claude" | "codex", Usage>> = {};
-  for (const provider of ["claude", "codex"] as const) {
+  for (const provider of ["codex", "claude"] as const) {
     const choice = preferences[provider];
     if (choice.enabled)
       result[provider] = snapshot.usage?.[provider]?.sources?.[choice.source];
@@ -80,9 +80,9 @@ export function installUsagePreferences(
   }[] = [];
   root.append(
     make("h3", "사용량 표시"),
-    make("p", "계정에 저장되어 다른 기기에도 적용됩니다.", "muted"),
+    make("p", "표시할 서비스와 조회 방식을 선택하세요.", "muted"),
   );
-  for (const provider of ["claude", "codex"] as const) {
+  for (const provider of ["codex", "claude"] as const) {
     const row = make("div", "", "usage-preference-row");
     const heading = make("div", "", "security-toggle-row");
     const name = provider === "claude" ? "Claude" : "Codex";
@@ -93,7 +93,7 @@ export function installUsagePreferences(
     toggle.setAttribute("aria-checked", "false");
     toggle.append(make("span"));
     heading.append(make("strong", name), toggle);
-    const label = make("label", `${name} 사용량 소스`);
+    const label = make("label", "조회 방식");
     const select = make("select");
     select.setAttribute("aria-label", `${name} 사용량 소스`);
     for (const source of [

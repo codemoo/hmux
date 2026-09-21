@@ -5,6 +5,20 @@ private-deployment checkpoints are preserved in
 [the historical validation log](archive/VALIDATION_PRE_PUBLICATION.md).
 They are not claims about a user's independent deployment.
 
+## 2026-09-22 — Usage dialog refinement
+
+Codex now appears first in the footer, dialog and settings. Footer labels remain
+Codex/Claude; the dialog separates combined and account-level capacity with concise
+labels, larger summary percentages and compact source/plan badges. Missing reset
+timestamps are omitted. An active Codex account without a five-hour window hides
+the combined five-hour gauge too; inactive accounts do not affect that rule.
+
+Web type/style checks, 144 tests and production build passed. Chromium fixtures
+confirmed provider order, compact footer labels, combined-window suppression,
+settings persistence and desktop/mobile layout; screenshots were inspected.
+Release `20260921T174535Z` updates only web assets using an atomic release switch.
+The gateway and Home processes remain running, preserving existing connections.
+
 ## 2026-09-22 — Selectable usage sources, plans and reset countdowns
 
 Settings now stores independent Claude/Codex display switches and source choices

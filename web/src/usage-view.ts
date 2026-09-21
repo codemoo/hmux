@@ -7,6 +7,7 @@ import {
   remaining,
   representative,
   validUsage,
+  showFiveHourSummary,
 } from "./usage.ts";
 import type { Snapshot } from "./types.ts";
 import {
@@ -35,12 +36,16 @@ export function renderUsageFooter(
   dog.style.setProperty("--bedl-cycle", `${duration || 1}s`);
   usageButton.replaceChildren();
   const descriptions: string[] = [];
-  for (const provider of ["claude", "codex"] as const) {
+  for (const provider of ["codex", "claude"] as const) {
     if (!preferences[provider].enabled) continue;
     if (descriptions.length) usageButton.append(text("i"));
     const label = usageSourceLabel(provider, preferences[provider].source);
     usageButton.append(
-      text("span", label, `provider-label provider-${provider}`),
+      text(
+        "span",
+        provider === "codex" ? "Codex" : "Claude",
+        `provider-label provider-${provider}`,
+      ),
       text("strong", representative(usage[provider])),
     );
     descriptions.push(`${label} ${representative(usage[provider])}`);
@@ -69,10 +74,7 @@ function usageGauge(
   const known = value !== "—";
   const percent = known ? Number.parseInt(value, 10) : 0;
   const heading = text("div", "", "usage-gauge-heading");
-  heading.append(
-    text("span", label),
-    text("strong", known ? value : "확인 대기"),
-  );
+  heading.append(text("span", label), text("strong", known ? value : "—"));
   const track = text("div", "", "usage-track");
   if (known) {
     track.setAttribute("role", "meter");
@@ -85,14 +87,15 @@ function usageGauge(
     const fill = text("span", "", "usage-fill");
     fill.style.width = `${percent}%`;
     track.append(fill);
-  } else track.classList.add("unknown");
+  } else {
+    track.classList.add("unknown");
+    track.setAttribute("aria-label", `${label} 정보 없음`);
+  }
   box.append(heading, track);
-  if (reset) {
+  if (reset?.at && Number.isFinite(Date.parse(reset.at))) {
     const countdown = text("p", weeklyResetLabel(reset.at), "usage-reset");
-    if (reset.at && Number.isFinite(Date.parse(reset.at))) {
-      countdown.title = new Date(reset.at).toLocaleString();
-      if (reset.stale) countdown.append(text("span", " · 최근 조회 기준"));
-    }
+    countdown.title = new Date(reset.at).toLocaleString();
+    if (reset.stale) countdown.append(text("span", " · 최근 조회 기준"));
     box.append(countdown);
   }
   return box;
@@ -106,20 +109,29 @@ export function renderUsagePanel(
   const text = createTextFactory(body.ownerDocument);
   const panel = text("div", "", "usage-panel");
   const intro = text("div", "", "usage-intro");
-  intro.append(
-    text("span", "REMAINING CAPACITY", "usage-eyebrow"),
-    text("p", "얼마나 더 사용할 수 있는지 한눈에 확인하세요."),
-  );
+  intro.append(text("p", "계정별 남은 한도와 초기화 일정"));
   panel.append(intro);
   const usage = selectedUsage(snapshot, preferences);
-  for (const provider of ["claude", "codex"] as const) {
+  for (const provider of ["codex", "claude"] as const) {
     if (!preferences[provider].enabled) continue;
     const u = usage[provider];
     const section = text("section", "", "usage-provider");
     section.dataset.provider = provider;
     const header = text("div", "", "usage-provider-head");
-    header.append(
-      text("h3", provider === "claude" ? "Claude" : "Codex"),
+    const heading = text("div", "", "usage-provider-title");
+    heading.append(text("h3", provider === "codex" ? "Codex" : "Claude"));
+    if (u?.accounts?.length) {
+      const active = u.accounts.filter((account) => account.active).length;
+      heading.append(
+        text(
+          "span",
+          `${u.accounts.length}개 계정 · ${active}개 활성`,
+          "usage-provider-meta",
+        ),
+      );
+    }
+    const badges = text("div", "", "usage-provider-badges");
+    badges.append(
       text(
         "span",
         usageSourceLabel(provider, preferences[provider].source),
@@ -128,25 +140,36 @@ export function renderUsagePanel(
     );
     const plan =
       provider === "codex" ? codexPlanLabel(u?.plan_type) : undefined;
-    if (plan) header.append(text("span", plan, "usage-badge usage-plan"));
-    const summary = text("div", "", "usage-account-gauges");
+    if (plan) badges.append(text("span", plan, "usage-badge usage-plan"));
+    header.append(heading, badges);
+    const summary = text("div", "", "usage-account-gauges usage-summary");
     summary.append(
-      usageGauge(text, "주간 잔여량", representative(u), {
+      usageGauge(text, "주간", representative(u), {
         at: u?.weekly_observed ? u.weekly.resets_at : undefined,
         stale: !validUsage(u),
       }),
     );
-    if (u?.rolling_5h_observed)
+    if (showFiveHourSummary(u))
       summary.append(
         usageGauge(
           text,
-          "5시간 잔여량",
-          validUsage(u) ? remaining(u.rolling_5h) : "—",
+          "5시간",
+          validUsage(u) ? remaining(u?.rolling_5h) : "—",
         ),
       );
-    section.append(header, summary);
+    section.append(
+      header,
+      text(
+        "p",
+        provider === "codex" && preferences.codex.source === "codex-lb"
+          ? "통합 잔여량"
+          : "현재 계정 잔여량",
+        "usage-section-label",
+      ),
+      summary,
+    );
     if (!validUsage(u)) {
-      section.append(text("p", "최신 사용량을 확인하는 중입니다.", "muted"));
+      section.append(text("p", "현재 사용량을 확인할 수 없습니다.", "muted"));
     }
     {
       const accounts = text("div", "", "usage-accounts");
@@ -164,7 +187,7 @@ export function renderUsagePanel(
           provider === "codex" ? codexPlanLabel(a.plan_type) : undefined;
         if (accountPlan)
           title.append(text("span", accountPlan, "usage-badge usage-plan"));
-        if (a.active) title.append(text("span", "현재 활성", "usage-active"));
+        if (a.active) title.append(text("span", "활성", "usage-active"));
         if (a.status !== "ok")
           title.append(text("span", accountStatus(a.status), "muted"));
         const age =
@@ -182,29 +205,34 @@ export function renderUsagePanel(
           a.status === "ok";
         const gauges = text("div", "", "usage-account-gauges");
         gauges.append(
-          usageGauge(
-            text,
-            "1주 잔여",
-            remaining(fresh ? a.seven_day : undefined),
-            { at: a.seven_day?.resets_at, stale: !fresh },
-          ),
+          usageGauge(text, "주간", remaining(fresh ? a.seven_day : undefined), {
+            at: a.seven_day?.resets_at,
+            stale: !fresh,
+          }),
         );
         if (a.five_hour)
           gauges.append(
             usageGauge(
               text,
-              "5시간 잔여",
+              "5시간",
               remaining(fresh ? a.five_hour : undefined),
             ),
           );
         row.append(title, gauges);
         accounts.append(row);
       }
-      section.append(accounts);
-      if (!u?.accounts?.length && preferences[provider].source !== "cli")
+      if (u?.accounts?.length) {
         section.append(
-          text("p", "선택한 소스의 계정 정보를 기다리고 있습니다.", "muted"),
+          text(
+            "p",
+            "계정별 잔여량",
+            "usage-section-label usage-accounts-label",
+          ),
+          accounts,
         );
+      }
+      if (!u?.accounts?.length && preferences[provider].source !== "cli")
+        section.append(text("p", "연결된 계정 정보가 없습니다.", "muted"));
     }
     panel.append(section);
   }
@@ -216,16 +244,16 @@ export function renderUsagePanel(
 
 function accountStatus(status: string) {
   const labels: Record<string, string> = {
-    keychain_unavailable: "키체인 접근 확인 필요",
-    stale: "최근 정보 확인 필요",
-    token_expired: "로그인 갱신 필요",
+    keychain_unavailable: "키체인 확인 필요",
+    stale: "업데이트 필요",
+    token_expired: "재로그인 필요",
     no_credentials: "로그인 정보 없음",
-    rate_limited: "조회 제한 · 잠시 후 확인",
-    relogin_required: "다시 로그인 필요",
+    rate_limited: "조회 일시 제한",
+    relogin_required: "재로그인 필요",
     disabled: "사용 안 함",
-    paused: "사용 일시중지",
-    reauth_required: "다시 로그인 필요",
+    paused: "일시 중지",
+    reauth_required: "재로그인 필요",
     unavailable: "사용량 확인 불가",
   };
-  return labels[status] || "사용량 확인 대기";
+  return labels[status] || "정보 없음";
 }

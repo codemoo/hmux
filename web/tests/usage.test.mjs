@@ -86,3 +86,33 @@ test("Codex plan labels distinguish verified Plus and Pro without inference", ()
   assert.equal(codexPlanLabel(undefined), undefined);
   assert.equal(codexPlanLabel("unknown"), undefined);
 });
+
+import { showFiveHourSummary } from "../src/usage.ts";
+test("Codex pool hides 5h when any active account has no 5h window", () => {
+  const limited = { active: true, five_hour: { used_pct: 0 } };
+  const noLimit = { active: true };
+  const usage = {
+    provider: "codex",
+    rolling_5h_observed: true,
+    accounts: [limited, noLimit],
+  };
+  assert.equal(showFiveHourSummary(usage), false);
+  assert.equal(
+    showFiveHourSummary({
+      ...usage,
+      accounts: [limited, { ...noLimit, active: false }],
+    }),
+    true,
+  );
+  assert.equal(showFiveHourSummary({ ...usage, accounts: [limited] }), true);
+  assert.equal(showFiveHourSummary({ ...usage, accounts: undefined }), true);
+  assert.equal(
+    showFiveHourSummary({
+      ...usage,
+      rolling_5h_observed: false,
+      accounts: [limited],
+    }),
+    false,
+  );
+  assert.equal(showFiveHourSummary({ ...usage, provider: "claude" }), true);
+});

@@ -87,3 +87,11 @@ export function codexPlanLabel(plan?: string): string | undefined {
   };
   return plan ? labels[plan] : undefined;
 }
+
+export function showFiveHourSummary(usage?: Usage): boolean {
+  if (!usage?.rolling_5h_observed) return false;
+  return (
+    usage.provider !== "codex" ||
+    !usage.accounts?.some((account) => account.active && !account.five_hour)
+  );
+}

@@ -212,7 +212,7 @@ test("usage panel keeps missing data distinct from zero remaining capacity", () 
   const panel = root();
   renderUsagePanel(panel, { online: false }, "");
   assert.equal(all(panel).filter((n) => n.attrs.role === "meter").length, 0);
-  assert.ok(panel.textContent.includes("확인 대기"));
+  assert.ok(panel.textContent.includes("현재 사용량을 확인할 수 없습니다."));
   const now = new Date().toISOString();
   const usage = {
     provider: "codex",
@@ -334,9 +334,9 @@ test("both providers show weekly reset, absent 5h is hidden and Codex plans stay
     assert.ok(provider.textContent.includes("리셋까지 2일"));
     assert.ok(!provider.textContent.includes("5시간"));
   }
-  assert.ok(!providers[0].textContent.includes("Plus"));
+  assert.ok(!providers[1].textContent.includes("Plus"));
   assert.deepEqual(
-    all(providers[1])
+    all(providers[0])
       .filter((n) => n.className.includes("usage-plan"))
       .map((n) => n.textContent),
     ["Plus", "Pro"],
@@ -350,7 +350,7 @@ test("both providers show weekly reset, absent 5h is hidden and Codex plans stay
     ).length,
     1,
   );
-  assert.ok(withFive.textContent.includes("5시간 잔여0%"));
+  assert.ok(withFive.textContent.includes("5시간0%"));
 });
 
 test("unavailable quota retains source reset time with a last-observed label", () => {
@@ -377,5 +377,19 @@ test("unavailable quota retains source reset time with a last-observed label", (
   );
   assert.ok(panel.textContent.includes("리셋까지 1일 · 최근 조회 기준"));
   assert.ok(!panel.textContent.includes("80%"));
-  assert.ok(panel.textContent.includes("로그인 갱신 필요"));
+  assert.ok(panel.textContent.includes("재로그인 필요"));
+});
+
+test("usage footer shows Codex then Claude with compact provider labels", () => {
+  const elements = { dog: root(), usageButton: root(), metrics: root() };
+  renderUsageFooter({ online: false }, elements);
+  assert.equal(elements.usageButton.textContent, "Codex—Claude—");
+  const panel = root();
+  renderUsagePanel(panel, { online: false }, "");
+  assert.deepEqual(
+    all(panel)
+      .filter((n) => n.className === "usage-provider")
+      .map((n) => n.dataset.provider),
+    ["codex", "claude"],
+  );
 });
