@@ -152,6 +152,7 @@ type hub struct {
 	terminals    map[string]*terminalOutput
 	uploads      map[string]*gatewayUpload
 	uploadCap    bool
+	outputCap    bool
 	catalog      json.RawMessage
 	usage        map[string]json.RawMessage
 	updated      time.Time
@@ -206,7 +207,25 @@ func (h *hub) send(ctx context.Context, m Message) error {
 	}
 	return p.send(ctx, m)
 }
+
+// Terminal capabilities and all later frames belong to the same Home connection.
+func (h *hub) sendTo(ctx context.Context, p *peer, m Message) error {
+	h.mu.Lock()
+	current := p != nil && h.home == p
+	h.mu.Unlock()
+	if !current {
+		return errors.New("Home connection changed")
+	}
+	return p.send(ctx, m)
+}
 func (h *hub) request(ctx context.Context, m Message) (json.RawMessage, error) {
+	return h.requestTo(ctx, m, nil)
+}
+func (h *hub) requestTo(ctx context.Context, m Message, target *peer) (json.RawMessage, error) {
+	send := h.send
+	if target != nil {
+		send = func(ctx context.Context, m Message) error { return h.sendTo(ctx, target, m) }
+	}
 	if m.ID == "" {
 		m.ID = RandomToken()
 	}
@@ -219,14 +238,14 @@ func (h *hub) request(ctx context.Context, m Message) (json.RawMessage, error) {
 	h.pending[m.ID] = ch
 	h.mu.Unlock()
 	defer func() { h.mu.Lock(); delete(h.pending, m.ID); h.mu.Unlock() }()
-	if err := h.send(ctx, m); err != nil {
+	if err := send(ctx, m); err != nil {
 		return nil, err
 	}
 	select {
 	case <-ctx.Done():
 		c, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
-		_ = h.send(c, Message{Type: "cancel", ID: m.ID})
+		_ = send(c, Message{Type: "cancel", ID: m.ID})
 		return nil, ctx.Err()
 	case r := <-ch:
 		if r.Error != "" {
@@ -243,6 +262,7 @@ func (h *hub) serve(ctx context.Context, p *peer) bool {
 	}
 	h.home = p
 	h.uploadCap = false
+	h.outputCap = false
 	h.catalog = nil
 	h.usage = map[string]json.RawMessage{}
 	h.mu.Unlock()
@@ -252,6 +272,7 @@ func (h *hub) serve(ctx context.Context, p *peer) bool {
 			h.home = nil
 		}
 		h.uploadCap = false
+		h.outputCap = false
 		h.catalog = nil
 		h.usage = map[string]json.RawMessage{}
 		h.updated = time.Time{}
@@ -282,6 +303,9 @@ func (h *hub) serve(ctx context.Context, p *peer) bool {
 		switch m.Type {
 		case "hello":
 			for _, capability := range m.Capabilities {
+				if capability == terminalFlowCapability {
+					h.outputCap = true
+				}
 				if capability == "web-upload-v1" {
 					h.uploadCap = true
 				}

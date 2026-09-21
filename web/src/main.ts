@@ -1018,6 +1018,7 @@ function connect(t: Tab, manual = false) {
     renderTabs();
     scheduleReconnect(t);
   };
+  let outputFlow = false;
   t.openTimer = window.setTimeout(() => fail("timeout"), 20000);
   ws.onopen = () => {
     if (t.generation !== gen) {
@@ -1027,6 +1028,7 @@ function connect(t: Tab, manual = false) {
     ws.send(
       JSON.stringify({
         type: "open",
+        capabilities: ["terminal-output-flow-v1"],
         session: t.identity,
         ...terminalSize(t.term.cols, t.term.rows),
       }),
@@ -1054,6 +1056,7 @@ function connect(t: Tab, manual = false) {
           }
         }
         if (message.type === "ready") {
+          outputFlow = message.output_flow === true;
           t.heartbeat?.dispose();
           t.heartbeat =
             message.heartbeat === true
@@ -1077,7 +1080,24 @@ function connect(t: Tab, manual = false) {
         fail("protocol");
       }
     } else {
-      if (!t.output.enqueue(new Uint8Array(e.data))) {
+      const bytes = new Uint8Array(e.data);
+      if (
+        !t.output.enqueue(bytes, () => {
+          // Old xterm callbacks must never credit a replacement connection.
+          if (
+            outputFlow &&
+            t.generation === gen &&
+            ws.readyState === WebSocket.OPEN
+          ) {
+            ws.send(
+              JSON.stringify({
+                type: "output-ack",
+                received: bytes.byteLength,
+              }),
+            );
+          }
+        })
+      ) {
         fail("output-overflow");
       }
     }

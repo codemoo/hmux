@@ -7,12 +7,17 @@ export function createTerminalOutput(
   let bytes = 0;
   return {
     pending: () => bytes,
-    enqueue(data: Uint8Array) {
+    enqueue(data: Uint8Array, rendered?: () => void) {
       if (bytes + data.byteLength > 1 << 20) return false;
       bytes += data.byteLength;
+      // Pinned xterm 6 consumes its write buffer and callbacks in FIFO order.
       write(data, () => {
         bytes -= data.byteLength;
-        if (bytes === 0) drained();
+        try {
+          rendered?.();
+        } finally {
+          if (bytes === 0) drained();
+        }
       });
       return true;
     },

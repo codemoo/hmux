@@ -439,10 +439,22 @@ func (s *Server) terminal(w http.ResponseWriter, r *http.Request, token string, 
 	id := RandomToken()
 	output := &terminalOutput{frames: make(chan Message, 64)}
 	s.hub.mu.Lock()
+	if s.hub.home == nil {
+		s.hub.mu.Unlock()
+		_ = conn.Close(terminalHomeOffline, "Home unavailable")
+		return
+	}
 	if len(s.hub.terminals) >= maxTerminals {
 		s.hub.mu.Unlock()
 		_ = conn.Close(websocket.StatusTryAgainLater, "Terminal limit reached")
 		return
+	}
+	homePeer := s.hub.home
+	homeFlow := s.hub.outputCap
+	browserFlow := homeFlow && hasTerminalFlow(m.Capabilities)
+	var window *outputWindow
+	if browserFlow {
+		window = newOutputWindow()
 	}
 	s.hub.terminals[id] = output
 	s.hub.mu.Unlock()
@@ -452,16 +464,25 @@ func (s *Server) terminal(w http.ResponseWriter, r *http.Request, token string, 
 		s.hub.mu.Unlock()
 		c, stop := context.WithTimeout(context.Background(), 2*time.Second)
 		defer stop()
-		_ = s.hub.send(c, Message{Type: "close", ID: id})
+		_ = s.hub.sendTo(c, homePeer, Message{Type: "close", ID: id})
 	}()
 	openCtx, stop := context.WithTimeout(ctx, 20*time.Second)
-	_, err = s.hub.request(openCtx, Message{Type: "open", ID: id, Session: m.Session, Cols: m.Cols, Rows: m.Rows})
+	open := Message{Type: "open", ID: id, Session: m.Session, Cols: m.Cols, Rows: m.Rows}
+	if homeFlow {
+		open.Capabilities = []string{terminalFlowCapability}
+	}
+	_, err = s.hub.requestTo(openCtx, open, homePeer)
 	stop()
 	if err != nil {
 		_ = conn.Close(websocket.StatusPolicyViolation, "Terminal unavailable")
 		return
 	}
-	if err = conn.Write(ctx, websocket.MessageText, []byte(`{"type":"ready","heartbeat":true}`)); err != nil {
+	ready, _ := json.Marshal(struct {
+		Type       string `json:"type"`
+		Heartbeat  bool   `json:"heartbeat"`
+		OutputFlow bool   `json:"output_flow,omitempty"`
+	}{"ready", true, browserFlow})
+	if err = conn.Write(ctx, websocket.MessageText, ready); err != nil {
 		return
 	}
 	readStopped := make(chan websocket.StatusCode, 1)
@@ -471,10 +492,6 @@ func (s *Server) terminal(w http.ResponseWriter, r *http.Request, token string, 
 		for {
 			kind, raw, err := conn.Read(ctx)
 			if err != nil {
-				return
-			}
-			if _, _, ok := s.auth.get(token, true); !ok {
-				code = websocket.StatusPolicyViolation
 				return
 			}
 			var frame Message
@@ -490,6 +507,12 @@ func (s *Server) terminal(w http.ResponseWriter, r *http.Request, token string, 
 					return
 				}
 				switch frame.Type {
+				case "output-ack":
+					if window == nil || !window.acknowledge(frame.Received) {
+						code = websocket.StatusProtocolError
+						return
+					}
+					frame = Message{Type: "output-ack", ID: id, Received: frame.Received}
 				case "resize":
 					if !validSize(frame) {
 						code = websocket.StatusProtocolError
@@ -503,7 +526,13 @@ func (s *Server) terminal(w http.ResponseWriter, r *http.Request, token string, 
 					return
 				}
 			}
-			if s.hub.send(ctx, frame) != nil {
+			// Rendering acknowledgements are passive output, not user activity.
+			// Still revalidate revocation/expiry before forwarding every frame.
+			if _, _, ok := s.auth.get(token, frame.Type != "output-ack"); !ok {
+				code = websocket.StatusPolicyViolation
+				return
+			}
+			if s.hub.sendTo(ctx, homePeer, frame) != nil {
 				code = terminalHomeOffline
 				return
 			}
@@ -524,6 +553,10 @@ func (s *Server) terminal(w http.ResponseWriter, r *http.Request, token string, 
 		case <-done:
 			return
 		case <-tick.C:
+			if window != nil && window.stalled(time.Now()) {
+				_ = conn.Close(terminalOutputFull, "Terminal rendering stalled")
+				return
+			}
 			if _, _, ok := s.auth.get(token, false); !ok {
 				return
 			}
@@ -541,7 +574,11 @@ func (s *Server) terminal(w http.ResponseWriter, r *http.Request, token string, 
 				return
 			}
 			if frame.Type == "exit" {
-				_ = conn.Close(terminalViewExited, "Terminal view ended")
+				code := terminalViewExited
+				if frame.Error == "output-stalled" {
+					code = terminalOutputFull
+				}
+				_ = conn.Close(code, "Terminal view ended")
 				return
 			}
 			c, stop := context.WithTimeout(ctx, 5*time.Second)
@@ -553,7 +590,18 @@ func (s *Server) terminal(w http.ResponseWriter, r *http.Request, token string, 
 				}{"refresh-result", frame.Error == ""})
 				err = conn.Write(c, websocket.MessageText, raw)
 			} else {
+				// Register before writing: a fast browser can ACK during Write.
+				if window != nil && !window.add(len(frame.Data)) {
+					stop()
+					_ = conn.Close(terminalOutputFull, "Terminal output window exceeded")
+					return
+				}
 				err = conn.Write(c, websocket.MessageBinary, frame.Data)
+				// Older clients cannot acknowledge xterm rendering. Pace their
+				// Home output at socket writes until they load the new client.
+				if err == nil && homeFlow && !browserFlow {
+					err = s.hub.sendTo(c, homePeer, Message{Type: "output-ack", ID: id, Received: int64(len(frame.Data))})
+				}
 			}
 			stop()
 			if err != nil {

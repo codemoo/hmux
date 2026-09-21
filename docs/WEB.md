@@ -174,12 +174,35 @@ files disable diagnostic writes without overwriting the original file.
 All terminal open, resize and redraw requests use the same 2–500 column and
 2–250 row bounds. A one-row browser viewport must not emit an invalid PTY resize.
 Known gateway endings use fixed WebSocket close codes: `4001` for Home transport
-unavailable, `4002` for gateway output queue overflow, `4003` for disposable view
+unavailable, `4002` for output overflow or stalled rendering, `4003` for disposable view
 exit and `1002` for invalid client frames. Browser output overflow and gateway
 output overflow both retain the bounded pressure cooldown; the code distinguishes
 their origin. Actual transport loss can still surface as `1006`. Close reasons
 never contain raw Home errors. A `4003` ends only the disposable view and does
 not establish that the original tmux session ended.
+
+Terminal output negotiates `terminal-output-flow-v1` across the browser, gateway
+and Home. Home keeps at most 32 unacknowledged frames (512 KiB, 16 KiB per frame)
+per disposable view, plus one pending PTY read. The browser returns credit only
+from xterm's ordered write callbacks. ACKs recheck login validity without
+extending idle activity; old socket callbacks cannot credit a new
+connection. Home waits for credit without blocking its shared message reader.
+Both frame count and bytes are bounded, including bursts of very small writes.
+No terminal bytes are discarded to relieve pressure.
+
+An unacknowledged browser frame older than 30 seconds releases only that view
+with `4002`, checked on the five-second heartbeat tick. Small trickle ACKs do not
+extend older frames' deadlines. Home also bounds a blocked credit wait at 40
+seconds. These deadlines prevent a frozen renderer from retaining an attached
+PTY indefinitely; the original tmux session/provider is not terminated. Existing
+overflow guards remain for legacy or noncompliant peers. The bounds cover HMux
+buffers, not tmux's internal per-client buffering or overall process RSS.
+
+For rolling upgrades, old browsers receive Home credit after the gateway writes
+to their socket; render-aware pacing requires loading the new browser assets.
+Old Home connectors keep their prior protocol and never receive unknown ACKs.
+Negotiation, ACKs and cleanup are bound to the exact Home connection used to open
+the view, so replacing Home cannot route stale controls to its successor.
 
 For investigation, compare event times, bundle/browser, API status and terminal
 failure/recovery pairs in the exported JSON. The `counts` field groups recorded

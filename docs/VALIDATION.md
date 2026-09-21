@@ -5,6 +5,35 @@ private-deployment checkpoints are preserved in
 [the historical validation log](archive/VALIDATION_PRE_PUBLICATION.md).
 They are not claims about a user's independent deployment.
 
+## 2026-09-22 — Pace terminal output at browser consumption
+
+Negotiated output credits now connect xterm write completion to each disposable
+Home PTY reader. Each view is limited to 32 outstanding frames / 512 KiB plus one
+read, preventing both tiny-frame gateway saturation and browser byte overflow.
+ACKs are FIFO, view-scoped, generation-scoped and passive for login activity.
+An oldest unacknowledged frame reaching 30 seconds releases only its view with
+4002; Home has a separate 40-second credit-wait deadline. Original tmux/provider
+sessions survive. Rolling upgrades retain legacy behavior until both endpoints
+support render-aware flow control.
+
+Verification: full Go tests with isolated fake-Home socket tests, Go vet, gateway
+race tests and focused final race checks; web type/style checks, 148 tests and
+production build; native smoke tests and the isolated tmux view lifecycle test.
+The socket fixture sends 4,096 one-byte frames followed by 16 MiB per stream,
+checks exact SHA-256/order, independent healthy-view/control progress, legacy
+clients, malformed ACK rejection, passive login activity and stalled-renderer
+cleanup. Unit checks cover Home replacement binding and trickle ACK deadlines.
+Chromium with synthetic binary events and real xterm consumed 32,811,968 bytes
+in 6,145 frames without reconnecting; maximum pending output was 512,000 bytes.
+Delayed writes resumed, the final marker rendered, FIFO ACK sizes matched and
+abandoned callbacks did not credit a replacement connection. These are automated
+fixtures, not physical mobile-device acceptance or a tmux RSS benchmark.
+
+Release `20260921T181921Z` updates web, gateway and Home. Gateway-only follow-up
+`20260921T182209Z` preserves passive login activity on ACKs. Previous releases
+and the Home binary are retained for rollback. HTTPS asset hashes, anonymous
+API barriers, PWA CSP and gateway service health are checked after activation.
+
 ## 2026-09-22 — Display recent measurements during refresh failures
 
 A live `cswap list --json` observation returned recent `lastGoodUsage` values

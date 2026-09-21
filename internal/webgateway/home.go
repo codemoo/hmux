@@ -24,8 +24,9 @@ import (
 )
 
 type homeTerminal struct {
-	view  *client.AppViewPTY
-	input chan Message
+	view   *client.AppViewPTY
+	input  chan Message
+	output *outputWindow
 }
 
 type homeUpload struct {
@@ -78,7 +79,7 @@ func connectOnce(parent context.Context, endpoint, token string, cfg config.Clie
 	conn.SetReadLimit(maxMessage)
 	p := &peer{conn: conn}
 	go heartbeat(ctx, p)
-	if err := p.send(ctx, Message{Type: "hello", Capabilities: []string{"web-upload-v1", "codex-completion-v1"}}); err != nil {
+	if err := p.send(ctx, Message{Type: "hello", Capabilities: []string{"web-upload-v1", "codex-completion-v1", terminalFlowCapability}}); err != nil {
 		return err
 	}
 	var mu sync.Mutex
@@ -284,11 +285,15 @@ func connectOnce(parent context.Context, endpoint, token string, cfg config.Clie
 							view, err = client.OpenAppViewPTY(requestCtx, cfg, m.Session, m.Cols, m.Rows)
 							if err == nil {
 								t := &homeTerminal{view: view, input: make(chan Message, 32)}
+								if hasTerminalFlow(m.Capabilities) {
+									t.output = newOutputWindow()
+								}
 								terminals[m.ID] = t
 								workers.Add(2)
 								go func() {
 									defer workers.Done()
 									defer view.Close()
+									defer requestCancel()
 									var lastRefresh time.Time
 									for {
 										select {
@@ -321,6 +326,7 @@ func connectOnce(parent context.Context, endpoint, token string, cfg config.Clie
 								}()
 								go func() {
 									defer workers.Done()
+									exitReason := ""
 									defer func() {
 										_ = view.Close()
 										mu.Lock()
@@ -328,17 +334,13 @@ func connectOnce(parent context.Context, endpoint, token string, cfg config.Clie
 										delete(requests, m.ID)
 										requestCancel()
 										mu.Unlock()
-										_ = p.send(ctx, Message{Type: "exit", ID: m.ID})
+										_ = p.send(ctx, Message{Type: "exit", ID: m.ID, Error: exitReason})
 									}()
-									buf := make([]byte, 16<<10)
-									for {
-										n, e := view.Read(buf)
-										if n > 0 && p.send(ctx, Message{Type: "data", ID: m.ID, Data: buf[:n]}) != nil {
-											return
-										}
-										if e != nil {
-											return
-										}
+									streamErr := streamTerminalOutput(requestCtx, view.Done, view, t.output, func(data []byte) error {
+										return p.send(requestCtx, Message{Type: "data", ID: m.ID, Data: data})
+									})
+									if errors.Is(streamErr, errTerminalOutputStalled) {
+										exitReason = "output-stalled"
 									}
 								}()
 							}
@@ -367,6 +369,18 @@ func connectOnce(parent context.Context, endpoint, token string, cfg config.Clie
 					cancel()
 				}
 			}(m)
+		case "output-ack":
+			mu.Lock()
+			t := terminals[m.ID]
+			// Late ACKs for a closed view are harmless; malformed ACKs close
+			// only their own disposable view, never the shared Home link.
+			if t != nil && (t.output == nil || !t.output.acknowledge(m.Received)) {
+				if stop := requests[m.ID]; stop != nil {
+					stop()
+				}
+				_ = t.view.Close()
+			}
+			mu.Unlock()
 		case "input", "resize", "refresh", "close", "cancel":
 			if len(m.Data) > 32<<10 || m.Type == "resize" && !validSize(m) {
 				return errors.New("invalid terminal frame")
