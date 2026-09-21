@@ -1,6 +1,6 @@
 import type { Terminal } from "@xterm/xterm";
 import { preserveNativeEditableGestures } from "./native-clipboard.ts";
-import { terminalCellColors } from "./terminal-cell-colors.ts";
+import { createNativeInputPreview } from "./native-input-preview.ts";
 
 const hangul = /^[\u1100-\u11ff\u3130-\u318f\ua960-\ua97f\uac00-\ud7ff]+$/u;
 
@@ -35,16 +35,13 @@ function installNativeInput(
   if (!macSafari) textarea.classList.add("ios-native-paste-target");
   const doc = host.ownerDocument;
   const screen = term.element!.querySelector<HTMLElement>(".xterm-screen")!;
-  const preview = doc.createElement("span");
-  preview.className = "ios-native-composition";
-  preview.hidden = true;
-  screen.append(preview);
+  const preview = createNativeInputPreview(term, screen, true);
   let pending = false;
   let base = 0;
   let standardComposition = false;
   let standardCommit: string | null = null;
   let lastNativeValue = "";
-  let echoPreview: HTMLElement | undefined;
+  let echoPreview: ReturnType<typeof createNativeInputPreview> | undefined;
   let echoTimer: ReturnType<typeof setTimeout> | undefined;
   let echoAnchor:
     { row: number; col: number; cols: number; text: string } | undefined;
@@ -57,7 +54,7 @@ function installNativeInput(
   };
   const retainUntilEcho = (value: string) => {
     clearEcho();
-    if (preview.hidden || !value) return;
+    if (!preview.visible || !value) return;
     const buffer = term.buffer.active;
     echoAnchor = {
       row: buffer.baseY + buffer.cursorY,
@@ -65,11 +62,9 @@ function installNativeInput(
       cols: term.cols,
       text: value,
     };
-    echoPreview = doc.createElement("span");
-    echoPreview.className = preview.className;
-    echoPreview.style.cssText = preview.style.cssText;
-    echoPreview.textContent = value;
-    screen.append(echoPreview);
+    echoPreview = createNativeInputPreview(term, screen, false);
+    echoPreview.setText(value);
+    echoPreview.position(echoAnchor.row, echoAnchor.col);
     // A password prompt or TUI may not echo. Never leave stale visual text.
     echoTimer = setTimeout(clearEcho, 700);
   };
@@ -84,16 +79,7 @@ function installNativeInput(
       clearEcho();
       return;
     }
-    echoPreview.style.top = `${((echoAnchor.row - buffer.viewportY) * screen.clientHeight) / term.rows}px`;
-    Object.assign(
-      echoPreview.style,
-      terminalCellColors(
-        buffer
-          .getLine(echoAnchor.row)
-          ?.getCell(Math.min(echoAnchor.col, term.cols - 1)),
-        term.options.theme,
-      ),
-    );
+    echoPreview.position(echoAnchor.row, echoAnchor.col);
     let actual = "";
     let row = echoAnchor.row;
     let col = echoAnchor.col;
@@ -107,6 +93,19 @@ function installNativeInput(
       const cell = buffer.getLine(row)?.getCell(col++);
       if (!cell) break;
       if (cell.getWidth() === 0) continue;
+      // xterm leaves the last cell empty when a wide glyph wraps. That padding
+      // is not an echoed space and must not keep a stale preview alive.
+      if (
+        !cell.getChars() &&
+        col === term.cols &&
+        buffer.getLine(row + 1)?.isWrapped &&
+        buffer
+          .getLine(row + 1)
+          ?.getCell(0)
+          ?.getWidth() === 2 &&
+        !echoAnchor.text.startsWith(actual + " ")
+      )
+        continue;
       actual += cell.getChars() || " ";
       if (!echoAnchor.text.startsWith(actual)) break;
       if (actual === echoAnchor.text) {
@@ -118,38 +117,41 @@ function installNativeInput(
   const ready = () => enabled() && doc.activeElement === textarea;
   const text = () => textarea.value.slice(base);
   const position = () => {
-    if (preview.hidden) return;
     const buffer = term.buffer.active;
-    const row = buffer.baseY + buffer.cursorY - buffer.viewportY;
-    const left =
-      (Math.min(buffer.cursorX, term.cols - 1) * screen.clientWidth) /
-      term.cols;
-    Object.assign(preview.style, {
-      ...terminalCellColors(
-        buffer
-          .getLine(buffer.baseY + buffer.cursorY)
-          ?.getCell(Math.min(buffer.cursorX, term.cols - 1)),
-        term.options.theme,
-      ),
-      left: `${left}px`,
-      top: `${(Math.max(0, Math.min(row, term.rows - 1)) * screen.clientHeight) / term.rows}px`,
-      maxWidth: `${Math.max(1, screen.clientWidth - left)}px`,
-      fontFamily: term.options.fontFamily,
-      fontSize: `${term.options.fontSize}px`,
-      lineHeight: `${screen.clientHeight / term.rows}px`,
-    });
+    const cellHeight = screen.clientHeight / term.rows;
+    const col = Math.min(buffer.cursorX, term.cols - 1);
+    const row = Math.max(0, Math.min(buffer.cursorY, term.rows - 1));
+    // xterm syncs this on cursor movement, but resize can leave the old inline
+    // coordinates outside the new screen. Match its normal geometry without
+    // touching browser-owned standard composition or textarea value/selection.
+    if (!standardComposition) {
+      textarea.style.left = `${(col * screen.clientWidth) / term.cols}px`;
+      textarea.style.top = `${row * cellHeight}px`;
+    }
+    if (!macSafari) {
+      // Preserve the native Paste target, but do not let its minimum touch size
+      // overflow the right/bottom edge of the terminal.
+      textarea.style.setProperty(
+        "--native-target-width",
+        `${Math.max(1, screen.clientWidth * (1 - col / term.cols))}px`,
+      );
+      textarea.style.setProperty(
+        "--native-target-height",
+        `${Math.max(1, screen.clientHeight - row * cellHeight)}px`,
+      );
+    }
+    if (pending)
+      preview.position(buffer.baseY + buffer.cursorY, buffer.cursorX);
   };
   const show = () => {
     lastNativeValue = text();
-    preview.textContent = lastNativeValue;
-    preview.hidden = !preview.textContent;
+    preview.setText(lastNativeValue);
     position();
   };
   const clear = (resetDOM = true) => {
     pending = false;
     base = 0;
-    preview.hidden = true;
-    preview.textContent = "";
+    preview.setText("");
     lastNativeValue = "";
     if (resetDOM) textarea.value = "";
   };
@@ -175,6 +177,7 @@ function installNativeInput(
     listeners.push([type, listener]);
   };
   on("compositionstart", () => {
+    clearEcho();
     // Real composition events belong to stock xterm, including hardware IMEs.
     // The browser may already have mutated its next composition. Commit only
     // the last observed local run, preserving DOM for xterm's start position.
@@ -280,6 +283,7 @@ function installNativeInput(
       if (value && enabled()) term.input(value, true);
     }
   });
+  position();
   const render = term.onRender(() => {
     reconcileEcho();
     position();
@@ -298,6 +302,8 @@ function installNativeInput(
       render.dispose();
       disposeGestures();
       textarea.classList.remove("ios-native-paste-target");
+      textarea.style.removeProperty("--native-target-width");
+      textarea.style.removeProperty("--native-target-height");
       preview.remove();
     },
   };

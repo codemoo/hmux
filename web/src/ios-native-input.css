@@ -1,11 +1,54 @@
-.ios-native-composition {
+.native-input-layer {
   position: absolute;
+  inset: 0;
   z-index: 10;
+  overflow: hidden;
+  contain: strict;
+  pointer-events: none;
+}
+
+.native-input-flow {
+  position: absolute;
+  left: 0;
+  width: 100%;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
+.ios-native-composition {
   background: var(--terminal-bg, #17191d);
   color: var(--terminal-fg, #dce0e6);
-  pointer-events: none;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.native-input-caret {
+  display: inline-block;
+  width: 1px;
+  height: var(--native-caret-height);
+  vertical-align: top;
+  background: currentColor;
+  text-indent: 0;
+}
+
+/* The pending run owns one caret. Remove only xterm's cursor decoration; the
+   underlying glyph is still visible in its original terminal-cell colors. */
+.xterm
+  .xterm-screen.native-input-pending
+  .xterm-rows
+  .xterm-cursor:is(
+    .xterm-cursor-bar,
+    .xterm-cursor-block,
+    .xterm-cursor-underline,
+    .xterm-cursor-outline
+  ) {
+  animation: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  border-bottom-color: transparent !important;
+  background-color: var(--native-cursor-bg) !important;
+  color: var(--native-cursor-fg) !important;
 }
 
 /* Expose xterm's existing cursor-positioned textarea to native iOS hit testing.
@@ -13,8 +56,10 @@
 .xterm .xterm-helper-textarea.ios-native-paste-target {
   z-index: 6 !important;
   opacity: 1;
-  min-width: 44px;
-  min-height: 24px;
+  min-width: min(44px, var(--native-target-width, 44px));
+  min-height: min(24px, var(--native-target-height, 24px));
+  max-width: var(--native-target-width, 44px);
+  max-height: var(--native-target-height, 24px);
   background: transparent;
   color: transparent;
   -webkit-text-fill-color: transparent;

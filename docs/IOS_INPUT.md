@@ -34,6 +34,18 @@ The pending run and retained echo preview use the underlying cursor cell colors,
 including gray input rows, instead of a fixed black fill. This changes presentation
 only; native editing and boundary handoff remain the same.
 
+The visual run sits in a screen-sized, paint-contained layer. Only its first line
+is indented to the terminal cursor; subsequent lines use the full terminal width.
+The preview is clipped to the area from the cursor row to the screen bottom.
+Long runs scroll within that local area to keep their newest line visible, without
+covering earlier terminal rows or moving the terminal buffer/browser viewport.
+Resize also refreshes the existing textarea position, except during standard
+composition; the iOS Paste target is capped at the terminal right/bottom edges.
+A single local caret replaces the underlying xterm cursor decoration while the run is visible; echo copies never contain a caret.
+Scrolling away hides the preview, and deletion, blur, cancellation and standard
+composition handoff restore normal cursor presentation. The same layout serves
+iOS and macOS Safari. These visual changes do not alter native IME transactions.
+
 The provided sequence is captured in focused regression tests, including native
 replacement/deletion, visible previews, boundary ordering, safe view-transition
 flush and disconnected-view cancellation. Synthetic tests verify event handling;
@@ -42,7 +54,8 @@ user acceptance is recorded separately above.
 To remove the reported flash on space, the input bridge retains a visual-only copy
 at the original cursor until onRender finds
 the same echoed text in terminal cells (including wide cells/wrapping). Unrelated
-or partial output does not dismiss it. A 700 ms cap, new composition, blur and
+or partial output does not dismiss it. Wide-glyph wrap padding is skipped when
+matching the echo. A 700 ms cap, new composition, blur and
 teardown remove stale copies. This does not insert local terminal bytes or resend
 input. The user confirmed this visual handoff is clean.
 

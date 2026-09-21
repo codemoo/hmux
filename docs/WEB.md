@@ -278,7 +278,10 @@ review and verification; log collection does not execute code or apply changes.
 - Footer shows only `Codex` / `Claude` provider labels, with Codex first in the
   footer, usage dialog and settings. Source names remain inside the dialog.
   The dialog separates combined capacity from account rows, using larger summary
-  values and compact labels; unknown reset times are omitted.
+  values and compact labels; unknown reset times are omitted. Desktop uses a
+  dedicated dialog up to 1180px wide with Codex/Claude side by side. Narrow screens
+  stack providers and account labels above their gauges. A single enabled provider
+  uses the full width, and live refresh preserves the dialog scroll position.
 - Footer stays on one line. Under 540px, computer resource details are hidden;
   full provider labels remain. Resource details are also in the usage dialog.
   CPU/GPU/RAM are percentages; disk is used/total capacity in decimal GB or TB.
@@ -426,6 +429,7 @@ for build/deployment details.
 | `web/src/main.ts` | UI composition, tab/connection lifecycle, API and workspace coordination |
 | `dom.ts`, `icons.ts` | Typed text-only DOM construction and fixed local SVG icons |
 | `conversation-view.ts`, `markdown.ts` | Markdown conversation display, question/code filters and return controls; request/epoch ownership stays in `main.ts` |
+| `native-input-preview.ts` | Screen-bounded native pending/echo text and local caret; no input transaction logic |
 | `usage-view.ts` | Usage footer, account gauges and usage dialog; quota interpretation stays in `usage.ts` |
 | `account-security.ts`, `login-sessions.ts` | Account settings and login-session dialogs with abort/disposal ownership |
 | `viewport.ts`, `mobile.ts` | Viewport/keyboard state, font preference bounds |
@@ -599,8 +603,8 @@ through the current symlink. Backend changes require restart; Home-only disk
 collection also requires the updated Home connector. Never claim disk is live
 merely because the frontend or Linux binary was updated.
 
-Account usage dialog presents provider summary cards and per-account weekly/5-hour
-remaining-capacity gauges. Low remaining capacity (15% or less) is red, 35% or
+Account usage dialog presents provider summaries and per-account weekly/5-hour
+remaining-capacity gauges in a responsive, wide desktop layout. Low remaining capacity (15% or less) is red, 35% or
 less amber, otherwise green; unavailable values show a patterned waiting track.
 Percentages retain existing quota freshness/reset validation. Inactive tabs have
 a subtle border; the active tab retains its blue emphasis.

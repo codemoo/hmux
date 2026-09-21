@@ -7,21 +7,40 @@ import {
 import { releaseTerminalView } from "../src/terminal-session.ts";
 function setup(macSafari = false) {
   const host = new EventTarget();
-  const classes = new Set();
+  const classList = () => {
+    const classes = new Set();
+    return {
+      add: (name) => classes.add(name),
+      remove: (name) => classes.delete(name),
+      contains: (name) => classes.has(name),
+    };
+  };
+  const style = () => ({
+    setProperty(name, value) {
+      this[name] = value;
+    },
+    removeProperty(name) {
+      delete this[name];
+    },
+  });
   const textarea = {
     value: "",
     selectionStart: 0,
     selectionEnd: 0,
-    classList: {
-      add: (name) => classes.add(name),
-      remove: (name) => classes.delete(name),
-      contains: (name) => classes.has(name),
-    },
+    classList: classList(),
+    style: style(),
   };
   const elements = [];
   const makeElement = () => {
     const element = {
-      style: {},
+      style: style(),
+      classList: classList(),
+      children: [],
+      offsetHeight: 16,
+      setAttribute() {},
+      append(child) {
+        this.children.push(child);
+      },
       hidden: false,
       textContent: "",
       removed: false,
@@ -36,11 +55,32 @@ function setup(macSafari = false) {
     activeElement: textarea,
     createElement: makeElement,
   };
-  const screen = { clientWidth: 390, clientHeight: 160, append() {} };
+  const screen = {
+    clientWidth: 390,
+    clientHeight: 160,
+    append() {},
+    ownerDocument: host.ownerDocument,
+    classList: classList(),
+    style: style(),
+  };
+  const layers = () =>
+    elements.filter((e) => e.className === "native-input-layer");
+  const visual = (layer) => ({
+    get textContent() {
+      return layer.children[0].children[0].textContent;
+    },
+    get hidden() {
+      return layer.hidden;
+    },
+    get removed() {
+      return layer.removed;
+    },
+  });
   const sent = [];
   let enabled = true;
   let render;
   let painted = [];
+  const wrapped = new Set();
   const term = {
     textarea,
     element: { querySelector: () => screen },
@@ -51,6 +91,7 @@ function setup(macSafari = false) {
         viewportY: 0,
         cursorX: 0,
         getLine: (row) => ({
+          isWrapped: wrapped.has(row),
           getCell: (col) => ({
             getChars: () => painted[row * 40 + col] ?? "",
             getWidth: () => (painted[row * 40 + col] === null ? 0 : 2),
@@ -124,8 +165,16 @@ function setup(macSafari = false) {
     textarea,
     sent,
     reached,
-    preview: elements[0],
-    elements,
+    preview: visual(layers()[0]),
+    get elements() {
+      return layers().map(visual);
+    },
+    screen,
+    term,
+    flow: layers()[0].children[0],
+    layers,
+    wrapped,
+    render: () => render(),
     paint: (cells) => {
       painted = cells;
       render();
@@ -425,5 +474,106 @@ test("Mac Safari standard composition, desktop gestures and disabled lifecycle s
   f.disable();
   f.event("blur");
   assert.deepEqual(f.sent, []);
+  f.bridge.dispose();
+});
+
+test("wrapped preview stays inside the viewport and restores cursor ownership", () => {
+  for (const mac of [false, true]) {
+    const f = setup(mac);
+    f.term.buffer.active.cursorX = 39;
+    f.term.buffer.active.cursorY = 9;
+    f.flow.offsetHeight = 48;
+    if (!mac) f.key("ㅎ");
+    f.input("한글".repeat(10));
+    assert.equal(f.flow.style.textIndent, "380.25px");
+    assert.equal(f.flow.style.top, "-32px");
+    assert.equal(f.screen.classList.contains("native-input-pending"), true);
+    assert.equal(
+      f.flow.children.filter((e) => e.className === "native-input-caret")
+        .length,
+      1,
+    );
+    if (!mac) {
+      assert.ok(
+        Math.abs(parseFloat(f.textarea.style["--native-target-width"]) - 9.75) <
+          0.001,
+      );
+      assert.equal(f.textarea.style["--native-target-height"], "16px");
+    }
+    assert.equal(f.layers()[0].style.top, "144px");
+    assert.equal(f.textarea.style.top, "144px");
+    f.flow.offsetHeight = 320;
+    f.render();
+    assert.equal(f.flow.style.top, "-304px");
+    assert.deepEqual(f.sent, []);
+    // Scrolling away must hide the run instead of clamping it to another row.
+    f.term.buffer.active.baseY = 10;
+    f.render();
+    assert.equal(f.preview.hidden, true);
+    assert.equal(f.screen.classList.contains("native-input-pending"), false);
+    f.term.buffer.active.viewportY = 10;
+    f.render();
+    assert.equal(f.preview.hidden, false);
+    f.key(" ", 32);
+    assert.equal(f.screen.classList.contains("native-input-pending"), false);
+    assert.equal(
+      f.layers()[1].children[0].children.length,
+      1,
+      "echo has no local caret",
+    );
+    assert.deepEqual(f.sent, ["한글".repeat(10)]);
+    f.event("compositionstart");
+    assert.equal(f.elements[1].removed, true);
+    f.bridge.dispose();
+    assert.equal(f.elements[0].removed, true);
+  }
+});
+
+test("empty deletion, blur, cancel and standard composition remove the pending caret", () => {
+  for (const boundary of ["delete", "blur", "cancel", "compositionstart"]) {
+    const f = setup(true);
+    f.input("한");
+    assert.equal(f.screen.classList.contains("native-input-pending"), true);
+    if (boundary === "delete") f.input("", "deleteContentBackward", null);
+    else if (boundary === "cancel") f.bridge.cancel();
+    else f.event(boundary);
+    assert.equal(f.preview.hidden, true);
+    assert.equal(f.screen.classList.contains("native-input-pending"), false);
+    assert.deepEqual(
+      f.sent,
+      ["blur", "compositionstart"].includes(boundary) ? ["한"] : [],
+    );
+    f.bridge.dispose();
+  }
+});
+
+test("resize updates textarea geometry without moving standard composition", () => {
+  for (const mac of [false, true]) {
+    const f = setup(mac);
+    f.term.rows = 8;
+    f.screen.clientHeight = 128;
+    f.term.buffer.active.cursorY = 7;
+    f.textarea.style.top = "176px";
+    f.render();
+    assert.equal(f.textarea.style.top, "112px");
+    f.event("compositionstart");
+    f.textarea.style.top = "80px";
+    f.render();
+    assert.equal(f.textarea.style.top, "80px");
+    f.bridge.dispose();
+  }
+});
+
+test("wide glyph wrap padding does not leave an echo remnant", () => {
+  const f = setup(true);
+  f.term.buffer.active.cursorX = 39;
+  f.input("한글");
+  f.key(" ", 32);
+  f.wrapped.add(1);
+  const cells = Array(44).fill("");
+  cells.splice(40, 4, "한", null, "글", null);
+  f.paint(cells);
+  assert.equal(f.elements[1].removed, true);
+  assert.deepEqual(f.sent, ["한글"]);
   f.bridge.dispose();
 });

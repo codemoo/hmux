@@ -5,6 +5,35 @@ private-deployment checkpoints are preserved in
 [the historical validation log](archive/VALIDATION_PRE_PUBLICATION.md).
 They are not claims about a user's independent deployment.
 
+## 2026-09-22 — Bounded native input and wider usage details
+
+The native pending-input preview now wraps across the full terminal width after
+its first line. A contained layer starts at the cursor row; long runs scroll only
+inside that local area, leaving earlier output and the page viewport in place.
+The existing textarea follows resized terminal geometry, and its iOS Paste target
+cannot extend past the right/bottom edges. One local caret replaces xterm cursor
+decoration while pending. Echo copies contain no caret and correctly reconcile
+wide-glyph wrap padding. Native composition/deletion and boundary sends are unchanged.
+
+The usage dialog is up to 1180px wide on desktop, with Codex/Claude columns,
+larger overview gauges and aligned account rows. Mobile stacks the same content;
+source selection, quota freshness, missing-five-hour rules and scroll retention
+remain intact.
+
+Web check, 155 tests and production build passed. Chromium and WebKit real-xterm
+fixtures exercised both native bridge modes, 1–1000 Hangul characters at the
+right/bottom edge, deletion, flush/cancel/blur, scrollback, resize and wrapped echo.
+WebKit also checked the production bundle, gray truecolor cells, theme changes,
+first-line indent/full-width wrapping, and bar/block/underline cursor cleanup.
+Screenshots were inspected. Chromium usage fixtures verified six account rows,
+stale/missing quota handling, live refresh, single-provider/CLI views and widths
+320/390/768/1024/1440. These synthetic browser checks are not physical iPhone or
+macOS Safari IME acceptance.
+
+Frontend release `20260921T193447Z` updates only web assets; the gateway and Home
+processes remain running. HTTPS asset hashes, anonymous API barriers, no-store
+and PWA CSP are verified after activation.
+
 ## 2026-09-22 — Restrained graphite and monochrome branding
 
 Follow-up visual refinement replaces the two-color block logo with a single-color
