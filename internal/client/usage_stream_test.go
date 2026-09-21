@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -145,4 +146,43 @@ func (w *cancelWriter) Write(data []byte) (int, error) {
 		w.cancel = nil
 	}
 	return count, err
+}
+
+func TestRemoteUsageSourcesRequireAdvertisedCapability(t *testing.T) {
+	for _, capable := range []bool{false, true} {
+		t.Run(fmt.Sprint(capable), func(t *testing.T) {
+			dir := t.TempDir()
+			argsPath := filepath.Join(dir, "args")
+			frames := filepath.Join(dir, "frames")
+			capabilities := "usage-stream-v1"
+			if capable {
+				capabilities += "\\nusage-sources-v1"
+			}
+			script := "#!/bin/sh\nset -eu\ncase \"$*\" in *capabilities*) printf '" + capabilities + "\\n'; exit 0;; esac\nprintf '%s\\n' \"$@\" > \"$HMUX_FAKE_ARGS\"\ncat \"$HMUX_FAKE_FRAMES\"\nexec sleep 60\n"
+			if err := os.WriteFile(filepath.Join(dir, "ssh"), []byte(script), 0700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(frames, usageTestFrame(t, 1), 0600); err != nil {
+				t.Fatal(err)
+			}
+			t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+			t.Setenv("HMUX_FAKE_ARGS", argsPath)
+			t.Setenv("HMUX_FAKE_FRAMES", frames)
+			cfg := config.DefaultClientConfig()
+			cfg.Role = "remote"
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			out := cancelWriter{cancel: cancel}
+			if err := StreamUsageWithSources(ctx, cfg, &out); !errors.Is(err, context.Canceled) {
+				t.Fatal(err)
+			}
+			raw, err := os.ReadFile(argsPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if strings.Contains(string(raw), "--sources") != capable {
+				t.Fatal("source option ignored capability", string(raw))
+			}
+		})
+	}
 }

@@ -233,7 +233,7 @@ test("usage panel keeps missing data distinct from zero remaining capacity", () 
   const ready = root();
   renderUsagePanel(
     ready,
-    { online: true, usage: { codex: usage } },
+    { online: true, usage: { codex: { sources: { "codex-lb": usage } } } },
     "Home metrics",
   );
   const meters = all(ready).filter((n) => n.attrs.role === "meter");
@@ -270,4 +270,112 @@ test("footer replaces stale metrics and animation when host goes offline", () =>
   assert.equal(elements.metrics.textContent, "Home · 사용량 대기 중");
   assert.equal(elements.dog.className, "");
   assert.equal(elements.usageButton.children.length, 5);
+});
+
+test("usage visibility hides disabled providers and keeps host metrics", async () => {
+  const { defaultUsagePreferences } =
+    await import("../src/usage-preferences.ts");
+  const preferences = defaultUsagePreferences();
+  preferences.claude.enabled = false;
+  preferences.codex.enabled = false;
+  const elements = { dog: root(), usageButton: root(), metrics: root() };
+  renderUsageFooter({ online: false }, elements, preferences);
+  assert.equal(elements.usageButton.hidden, true);
+  assert.equal(elements.dog.hidden, true);
+  assert.equal(elements.usageButton.children.length, 0);
+  assert.ok(elements.metrics.textContent.includes("Home"));
+  const panel = root();
+  renderUsagePanel(panel, { online: false }, "Host", preferences);
+  assert.equal(
+    all(panel).filter((n) => n.className === "usage-provider").length,
+    0,
+  );
+});
+
+test("both providers show weekly reset, absent 5h is hidden and Codex plans stay account specific", () => {
+  const now = new Date().toISOString();
+  const reset = new Date(Date.now() + 2 * 86400000).toISOString();
+  const usage = (provider) => ({
+    provider,
+    generated_at_utc: now,
+    weekly_observed: true,
+    weekly: { used_pct: 0.5, resets_at: reset },
+    rolling_5h_observed: false,
+    status: { stale: false, state: "ok" },
+    accounts: [
+      {
+        number: 1,
+        status: "ok",
+        plan_type: "plus",
+        seven_day: { used_pct: 0.3, resets_at: reset },
+      },
+      {
+        number: 2,
+        status: "ok",
+        plan_type: "pro",
+        seven_day: { used_pct: 0.4, resets_at: reset },
+      },
+    ],
+  });
+  const claude = usage("claude");
+  const codex = usage("codex");
+  const snapshot = {
+    online: true,
+    usage: {
+      claude: { sources: { cswap: claude } },
+      codex: { sources: { "codex-lb": codex } },
+    },
+  };
+  const panel = root();
+  renderUsagePanel(panel, snapshot, "");
+  const providers = all(panel).filter((n) => n.className === "usage-provider");
+  assert.equal(providers.length, 2);
+  for (const provider of providers) {
+    assert.ok(provider.textContent.includes("리셋까지 2일"));
+    assert.ok(!provider.textContent.includes("5시간"));
+  }
+  assert.ok(!providers[0].textContent.includes("Plus"));
+  assert.deepEqual(
+    all(providers[1])
+      .filter((n) => n.className.includes("usage-plan"))
+      .map((n) => n.textContent),
+    ["Plus", "Pro"],
+  );
+  codex.accounts[1].five_hour = { used_pct: 1 };
+  const withFive = root();
+  renderUsagePanel(withFive, snapshot, "");
+  assert.equal(
+    all(withFive).filter(
+      (n) => n.className === "usage-gauge" && n.textContent.includes("5시간"),
+    ).length,
+    1,
+  );
+  assert.ok(withFive.textContent.includes("5시간 잔여0%"));
+});
+
+test("unavailable quota retains source reset time with a last-observed label", () => {
+  const reset = new Date(Date.now() + 86400000).toISOString();
+  const panel = root();
+  const usage = {
+    provider: "claude",
+    generated_at_utc: new Date().toISOString(),
+    weekly_observed: true,
+    weekly: { used_pct: 0.2, resets_at: reset },
+    status: { stale: true, state: "networkError" },
+    accounts: [
+      {
+        number: 1,
+        status: "token_expired",
+        seven_day: { used_pct: 0.2, resets_at: reset },
+      },
+    ],
+  };
+  renderUsagePanel(
+    panel,
+    { online: true, usage: { claude: { sources: { cswap: usage } } } },
+    "",
+  );
+  assert.ok(panel.textContent.includes("리셋까지 1일 · 최근 조회 기준"));
+  assert.ok(!panel.textContent.includes("80%"));
+  assert.ok(panel.textContent.includes("로그인 갱신 필요"));
 });

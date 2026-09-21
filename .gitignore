@@ -35,6 +35,7 @@ coverage.out
 *.push.json
 *.push.json.lock
 *.diagnostics.json
+*.usage-preferences/
 
 # Python test/build intermediates
 __pycache__/

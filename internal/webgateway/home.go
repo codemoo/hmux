@@ -156,7 +156,11 @@ func connectOnce(parent context.Context, endpoint, token string, cfg config.Clie
 	}()
 	reader, writer := io.Pipe()
 	workers.Add(2)
-	go func() { defer workers.Done(); defer writer.Close(); _ = client.StreamUsage(ctx, cfg, writer) }()
+	go func() {
+		defer workers.Done()
+		defer writer.Close()
+		_ = client.StreamUsageWithSources(ctx, cfg, writer)
+	}()
 	go func() {
 		defer workers.Done()
 		defer reader.Close()

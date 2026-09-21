@@ -118,7 +118,29 @@ comes from the existing Home `codex-lb-accounts.json` export; missing or expired
 rows are unavailable rather than invented. An unavailable configured codex-lb
 source remains visibly unavailable instead of switching to one OAuth account.
 
-Claude first reads existing cswap metadata (`~/.claude-swap-backup/sequence.json`),
+Web source selection is explicit in Settings → 사용량 표시. The cswap web source
+uses the installed `cswap list --json`; inspect `usageStatus` and `usageFetchedAt`
+there when an account is unavailable. A keychain error is not zero usage. The
+CLI sources query the current signed-in provider account independently.
+
+Codex account plan badges require the existing export producer to preserve the
+allowlisted upstream `/api/accounts` field `planType` as `planType` (also accepted:
+`plan_type` or `plan`). Older exporters may omit it even when codex-lb knows the
+plan. Preserve that field in the producer; never infer Pro/Plus from quota size.
+The relevant producer mapping is, for example:
+
+```python
+"planType": acct.get("planType") if acct.get("planType") in {
+    "free", "plus", "pro", "team", "business", "enterprise", "edu", "go"
+} else None,
+```
+
+Weekly reset countdowns require `resetAtSecondary` in account exports or
+`resets_at` in normalized provider quota. Omit missing `fiveHourPct` instead of
+filling it with zero; the web UI then hides that absent window. Existing export
+schedules remain operator-managed; HMux does not install a background job.
+
+The legacy/native Claude collector reads existing cswap metadata (`~/.claude-swap-backup/sequence.json`),
 its schema-v2 usage cache (`cache/usage.json`), and the active email/organization
 from the Claude config file, using cswap’s legacy `.config.json` precedence and
 absolute `CLAUDE_CONFIG_DIR` override (otherwise `~/.claude.json`). HMux never runs

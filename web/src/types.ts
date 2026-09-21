@@ -28,14 +28,18 @@ export type Quota = { used_pct: number; resets_at?: string };
 export type Account = {
   number: number;
   display_name?: string;
+  plan_type?: string;
   email?: string;
   active: boolean;
   status: string;
   seven_day?: Quota;
   five_hour?: Quota;
+  last_refresh_at?: string;
 };
 export type Usage = {
+  sources?: Record<string, Usage>;
   burn_state?: string;
+  plan_type?: string;
   provider: string;
   generated_at_utc: string;
   weekly: Quota;
@@ -46,6 +50,7 @@ export type Usage = {
   status: { stale: boolean; state: string; quota_observed_at?: string };
 };
 export type Snapshot = {
+  usage_preferences?: import("./usage-preferences").UsagePreferences;
   online: boolean;
   catalog?: { sessions: Session[]; host_metrics?: Metrics };
   usage?: Record<string, Usage>;

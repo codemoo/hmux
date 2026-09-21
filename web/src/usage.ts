@@ -58,3 +58,32 @@ export function diskCapacity(used?: number, total?: number): string {
   const suffix = unit === 1e12 ? "TB" : "GB";
   return `${(used! / unit).toFixed(1)} / ${(total! / unit).toFixed(1)} ${suffix}`;
 }
+
+// Reset timestamps come from the selected source; never invent a weekly cycle.
+export function weeklyResetLabel(resetsAt?: string, now = Date.now()): string {
+  const reset = Date.parse(resetsAt || "");
+  if (!Number.isFinite(reset)) return "리셋 시각 미제공";
+  if (reset <= now) return "리셋 정보 갱신 대기";
+  const minutes = Math.ceil((reset - now) / 60000);
+  const days = Math.floor(minutes / 1440);
+  const hours = Math.floor((minutes % 1440) / 60);
+  const parts = [];
+  if (days) parts.push(`${days}일`);
+  if (hours) parts.push(`${hours}시간`);
+  if (minutes % 60 || !parts.length) parts.push(`${minutes % 60}분`);
+  return `리셋까지 ${parts.join(" ")}`;
+}
+
+export function codexPlanLabel(plan?: string): string | undefined {
+  const labels: Record<string, string> = {
+    free: "Free",
+    plus: "Plus",
+    pro: "Pro",
+    team: "Team",
+    business: "Business",
+    enterprise: "Enterprise",
+    edu: "Edu",
+    go: "Go",
+  };
+  return plan ? labels[plan] : undefined;
+}

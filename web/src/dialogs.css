@@ -179,6 +179,7 @@
   letter-spacing: -0.03em;
 }
 .usage-provider-head {
+  flex-wrap: wrap;
   margin-bottom: 18px;
 }
 .usage-badge,
@@ -249,9 +250,12 @@
   margin-top: 0;
 }
 .usage-account-head {
+  flex-wrap: wrap;
+  justify-content: flex-start;
   margin-bottom: 14px;
 }
 .usage-account-head strong {
+  flex: 1 1 120px;
   font-size: 12px;
   overflow-wrap: anywhere;
   min-width: 0;
@@ -260,6 +264,19 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
+}
+.usage-account-gauges > :only-child {
+  grid-column: 1 / -1;
+}
+.usage-reset {
+  margin: 7px 0 0;
+  font-size: 10px;
+  color: #aaa89f;
+  font-variant-numeric: tabular-nums;
+}
+.usage-plan {
+  color: #dbd6aa;
+  background: #39372d;
 }
 .usage-account .usage-track {
   height: 6px;
@@ -417,4 +434,19 @@
   min-height: 34px;
   padding: 8px 12px;
   font-size: 11px;
+}
+
+.usage-preference-row {
+  display: grid;
+  gap: 10px;
+  padding: 14px 0;
+}
+.usage-preference-row + .usage-preference-row {
+  border-top: 1px solid var(--border);
+}
+.usage-preference-row > label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
 }

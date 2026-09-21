@@ -179,9 +179,14 @@ SSH·소스 바인딩·파일 소유권·symlink·크기 검증은 유지한다.
 원격 producer는 기존 SSH 신뢰 경계를 사용한다. 프레임 크기·순서·heartbeat
 lease를 검증하고 앱 종료 시 helper를 회수한다.
 
-사용량은 Home의 기존 provider 인증을 읽어 수집한다. 인증을 새로 만들거나
-갱신하거나 다른 Mac으로 복사하지 않는다. 별도 고정 포트, 외부 usage
-서비스, macOS daemon을 추가하지 않는다.
+사용량은 Home의 기존 provider 인증을 읽어 수집한다. HMux가 인증을 새로
+만들거나 직접 갱신하거나 다른 Mac으로 복사하지 않는다. 사용자가 요청한 웹
+cswap 소스는 설치된 `cswap list --json` 조회를 제한된 시간·출력 크기로 실행하며,
+cswap 자체의 기존 캐시·인증 처리를 재사용한다. 계정 전환·로그인·서비스 설치
+명령은 호출하지 않는다. 별도 고정 포트, 외부 usage 서비스, macOS daemon을
+추가하지 않는다. 웹 설정은 계정별로 Claude/Codex 표시 on/off와
+Claude CLI/cswap, Codex CLI/codex-lb 소스를 저장한다. 다른 소스의 수치로
+조용히 대체하지 않으며, 표시를 꺼도 다른 사용자의 Home 수집을 변경하지 않는다.
 하단 사용량은 주간(1w) 잔여량이며, Codex는 설정된 codex-lb 계정 풀의
 공식 잔여 비율을 우선한다. 소유자가 요청한 codex-lb 계정 별칭(alias)과
 계정별 주간 잔여량·초기화 시각은 상세 화면에 전달한다. 별칭이 없으면

@@ -20,17 +20,18 @@ import (
 )
 
 type Server struct {
-	diagnostics  *diagnosticStore
-	push         *pushStore
-	locations    *sessionLocator
-	workspaceDir string
-	origin       string
-	host         string
-	token        string
-	auth         *authStore
-	hub          *hub
-	uploads      *uploadLimiter
-	assets       http.Handler
+	usagePreferences *usagePreferenceStore
+	diagnostics      *diagnosticStore
+	push             *pushStore
+	locations        *sessionLocator
+	workspaceDir     string
+	origin           string
+	host             string
+	token            string
+	auth             *authStore
+	hub              *hub
+	uploads          *uploadLimiter
+	assets           http.Handler
 }
 
 func NewServer(origin, credentialsPath, tokenPath string, assets fs.FS) (*Server, error) {
@@ -52,6 +53,7 @@ func NewServer(origin, credentialsPath, tokenPath string, assets fs.FS) (*Server
 	}
 	s := &Server{push: push, locations: newSessionLocator(), workspaceDir: filepath.Join(filepath.Dir(credentialsPath), "web-profiles"), origin: origin, host: u.Host, token: token, auth: a, hub: newHub(), uploads: newUploadLimiter(), assets: http.FileServer(http.FS(assets))}
 	s.diagnostics = newDiagnosticStore(credentialsPath + ".diagnostics.json")
+	s.usagePreferences = newUsagePreferenceStore(credentialsPath + ".usage-preferences")
 	s.hub.onCompletion = push.enqueue
 	s.runPush()
 	return s, nil
@@ -169,6 +171,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, map[string]bool{"ok": true})
 		case "/api/account/security":
 			s.accountSecurity(w, r, cookie.Value)
+		case "/api/account/usage":
+			s.usagePreferencesAPI(w, r, cookie.Value)
 		case "/api/push", "/api/push/subscribe", "/api/push/unsubscribe", "/api/push/presence", "/api/push/test":
 			s.pushAPI(w, r, cookie.Value)
 		case "/api/diagnostics":
@@ -178,7 +182,20 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Method not allowed", 405)
 				return
 			}
-			writeJSON(w, s.hub.snapshot())
+			snapshot := s.hub.snapshot()
+			login, valid := s.auth.pushLogin(cookie.Value)
+			if !valid {
+				http.Error(w, "Session expired", 401)
+				return
+			}
+			if preferences, err := s.usagePreferences.get(login); err == nil {
+				snapshot["usage_preferences"] = preferences
+			}
+			if _, valid := s.auth.pushLogin(cookie.Value); !valid {
+				http.Error(w, "Session expired", 401)
+				return
+			}
+			writeJSON(w, snapshot)
 		case "/api/action":
 			s.action(w, r, cookie.Value)
 		case "/api/terminal":

@@ -59,3 +59,30 @@ test("disk capacity displays used/total with units, never a percentage", () => {
   assert.equal(diskCapacity(600e9, 500e9), "—");
   assert.equal(diskCapacity(1, 0), "—");
 });
+
+import { weeklyResetLabel, codexPlanLabel } from "../src/usage.ts";
+test("weekly reset countdown uses source time with no invented reset", () => {
+  assert.equal(
+    weeklyResetLabel(
+      new Date(now + (2 * 1440 + 3 * 60 + 4) * 60000).toISOString(),
+      now,
+    ),
+    "리셋까지 2일 3시간 4분",
+  );
+  assert.equal(
+    weeklyResetLabel(new Date(now + 1000).toISOString(), now),
+    "리셋까지 1분",
+  );
+  assert.equal(
+    weeklyResetLabel(new Date(now).toISOString(), now),
+    "리셋 정보 갱신 대기",
+  );
+  assert.equal(weeklyResetLabel(undefined, now), "리셋 시각 미제공");
+  assert.equal(weeklyResetLabel("invalid", now), "리셋 시각 미제공");
+});
+test("Codex plan labels distinguish verified Plus and Pro without inference", () => {
+  assert.equal(codexPlanLabel("plus"), "Plus");
+  assert.equal(codexPlanLabel("pro"), "Pro");
+  assert.equal(codexPlanLabel(undefined), undefined);
+  assert.equal(codexPlanLabel("unknown"), undefined);
+});

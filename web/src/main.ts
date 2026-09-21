@@ -4,6 +4,12 @@ import {
   diagnosticReason,
 } from "./diagnostics";
 import { installDiagnosticSettings } from "./diagnostics-settings";
+import {
+  defaultUsagePreferences,
+  parseUsagePreferences,
+  installUsagePreferences,
+  type UsagePreferences,
+} from "./usage-preferences";
 import { installAttachments } from "./attachments";
 import { createSessionAPI } from "./session-api";
 import {
@@ -109,6 +115,12 @@ function scheduleTerminalLayout() {
 }
 let refreshRequest: AbortController | undefined;
 let accountEpoch = 0;
+let usagePreferences = defaultUsagePreferences();
+function applyUsagePreferences(value: UsagePreferences) {
+  if (value.revision < usagePreferences.revision) return;
+  usagePreferences = value;
+  renderFooter();
+}
 let startRequest: object | undefined;
 let startTimer: number | undefined;
 let startFailures = 0;
@@ -227,6 +239,7 @@ async function action(
   );
 }
 function disposeAll() {
+  usagePreferences = defaultUsagePreferences();
   diagnostics.dispose();
   accountEpoch++;
   sessionAPI.reset();
@@ -1310,8 +1323,10 @@ function settingsDialog() {
   );
   const security = text("section", "", "settings-section account-security");
   const diagnosticPanel = text("section", "", "settings-section");
+  const usagePanel = text("section", "", "settings-section");
   body.append(
     appearance,
+    usagePanel,
     notifications,
     security,
     loginSessions,
@@ -1340,12 +1355,18 @@ function settingsDialog() {
     refreshSessions,
   );
   const disposePush = installPushNotifications(notifications, api, loginID);
+  const disposeUsagePreferences = installUsagePreferences(
+    usagePanel,
+    api,
+    applyUsagePreferences,
+  );
   const disposeDiagnostics = installDiagnosticSettings(
     diagnosticPanel,
     api,
     diagnostics,
   );
   dialogCleanup = () => {
+    disposeUsagePreferences();
     disposeDiagnostics();
     disposePush();
     disposeSecurity();
@@ -1398,18 +1419,30 @@ async function toggleReader() {
   }
 }
 function renderFooter() {
-  renderUsageFooter(snapshot, {
-    dog: $("#bedl"),
-    usageButton: $("#usage"),
-    metrics: $("#metrics"),
-  });
+  renderUsageFooter(
+    snapshot,
+    {
+      dog: $("#bedl"),
+      usageButton: $("#usage"),
+      metrics: $("#metrics"),
+    },
+    usagePreferences,
+  );
 }
 function usageDialog() {
-  renderUsagePanel(
-    dialog("계정 사용량"),
-    snapshot,
-    $("#metrics").textContent || "",
-  );
+  const body = dialog("계정 사용량");
+  const render = () => {
+    body.replaceChildren();
+    renderUsagePanel(
+      body,
+      snapshot,
+      $("#metrics").textContent || "",
+      usagePreferences,
+    );
+  };
+  render();
+  const timer = window.setInterval(render, 30000);
+  dialogCleanup = () => window.clearInterval(timer);
 }
 
 async function refresh() {
@@ -1426,6 +1459,12 @@ async function refresh() {
     if (!loggedIn || epoch !== accountEpoch || refreshRequest !== request)
       return;
     snapshot = next;
+    const nextPreferences = parseUsagePreferences(next.usage_preferences);
+    if (
+      nextPreferences &&
+      nextPreferences.revision >= usagePreferences.revision
+    )
+      usagePreferences = nextPreferences;
     if (next.catalog?.sessions) sessions = next.catalog.sessions;
     $("#home-state").textContent = next.online
       ? "연결됨 · Home에서 실행 중"

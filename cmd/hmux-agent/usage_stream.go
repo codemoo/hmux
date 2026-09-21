@@ -10,8 +10,8 @@ import (
 )
 
 func runAgentUsageStream(ctx context.Context, args []string, stdin io.Reader, stdout io.Writer) error {
-	if len(args) != 1 || args[0] != "--stdio" {
-		return errors.New("usage: hmux-agent usage-stream --stdio")
+	if !validUsageStreamArgs(args) {
+		return errors.New("usage: hmux-agent usage-stream --stdio [--sources]")
 	}
 	cfg, err := config.LoadClient("")
 	if err != nil {
@@ -21,8 +21,15 @@ func runAgentUsageStream(ctx context.Context, args []string, stdin io.Reader, st
 		return errors.New("usage stream is available only on the Home Mac")
 	}
 	return serveAgentUsageStream(ctx, stdin, func(streamCtx context.Context) error {
+		if len(args) == 2 {
+			return usagestream.RunWithSources(streamCtx, stdout)
+		}
 		return usagestream.Run(streamCtx, stdout)
 	})
+}
+
+func validUsageStreamArgs(args []string) bool {
+	return (len(args) == 1 || (len(args) == 2 && args[1] == "--sources")) && args[0] == "--stdio"
 }
 
 func serveAgentUsageStream(ctx context.Context, stdin io.Reader, produce func(context.Context) error) error {

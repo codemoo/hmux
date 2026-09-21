@@ -40,3 +40,16 @@ func TestAgentUsageStreamReturnsProducerFailure(t *testing.T) {
 		t.Fatalf("producer error=%v", err)
 	}
 }
+
+func TestUsageStreamSourceOptInArguments(t *testing.T) {
+	for _, args := range [][]string{{"--stdio"}, {"--stdio", "--sources"}} {
+		if !validUsageStreamArgs(args) {
+			t.Fatal("allowed stream args rejected", args)
+		}
+	}
+	for _, args := range [][]string{nil, {}, {"--sources"}, {"--stdio", "--sources", "secret"}, {"--stdio", "--command=anything"}} {
+		if validUsageStreamArgs(args) {
+			t.Fatal("unsafe stream args accepted", args)
+		}
+	}
+}

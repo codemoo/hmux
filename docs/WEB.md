@@ -209,9 +209,36 @@ review and verification; log collection does not execute code or apply changes.
 - Conversation reads the active Codex session resolved by Home/tmux. User messages
   are included by default and kept in order; user fenced commands remain visible
   when assistant code is hidden. Initial opening scrolls to the latest message.
-- Codex headline is Home's weighted weekly pool; account aliases come from codex-lb.
-  Claude headline is the cswap active account; account details show email addresses.
-  Never sum quota percentages or treat missing/stale usage as available capacity.
+- Settings → 사용량 표시 saves independent Claude/Codex visibility and source
+  choices to the authenticated web account. Claude selects Claude CLI or cswap;
+  Codex selects Codex CLI or codex-lb. Defaults remain cswap/codex-lb. Choices
+  synchronize through state polling and survive gateway/browser restarts. A stale
+  device cannot overwrite a newer revision; it must reload the settings.
+- Source choices select genuinely separate quota snapshots. CLI means the current
+  provider login; cswap means its registered accounts with the unique active
+  account as headline; codex-lb means the configured weighted account pool.
+  Missing/failed sources never silently use a different source. Account aliases
+  come from codex-lb; cswap account details show authorized email labels. Never
+  sum percentages or treat missing/stale quota as available capacity. Keychain
+  failure is an unavailable-account status, not zero usage.
+- Codex shows verified plan badges (including Plus/Pro) on CLI summaries and
+  pool accounts when supplied by the selected source. Missing plans are not
+  inferred. Five-hour gauges are omitted where that window is absent. Both
+  providers show weekly reset countdowns, refreshed every 30 seconds while the
+  dialog is open, with the local reset date in the tooltip. Unknown timestamps
+  remain unknown; expired windows wait for fresh quota instead of showing 100%.
+  Unavailable accounts can retain a known reset timestamp with a last-observed
+  label, while their stale percentage remains hidden.
+- Visibility controls display only. One shared Home collector serves all web
+  accounts; hiding usage does not change provider logins, execute an account
+  switch or stop another user's collection. Private settings live in
+  `<credentials-path>.usage-preferences/` as atomic mode-0600 per-account files.
+- Web Home collection opts into provider-matched `sources` snapshots. The legacy
+  usage stream remains unchanged; remote source support requires the advertised
+  `usage-sources-v1` capability and fixed `usage-stream --stdio --sources` command.
+  The cswap adapter uses the installed `cswap list --json` command with bounded
+  execution/output and no shell. cswap owns its existing shared quota/cache and
+  credential handling; HMux never calls switch/login/service-install commands.
 - Footer stays on one line. Under 540px, computer resource details are hidden;
   full provider labels remain. Resource details are also in the usage dialog.
   CPU/GPU/RAM are percentages; disk is used/total capacity in decimal GB or TB.

@@ -16,6 +16,10 @@ import (
 var usageStreamSourceLease = usagestream.SourceLease
 
 func UsageStreamSupported(ctx context.Context, cfg config.ClientConfig) (bool, error) {
+	return usageStreamCapability(ctx, cfg, "usage-stream-v1")
+}
+
+func usageStreamCapability(ctx context.Context, cfg config.ClientConfig, capability string) (bool, error) {
 	if cfg.Role == "home" {
 		return true, nil
 	}
@@ -35,17 +39,30 @@ func UsageStreamSupported(ctx context.Context, cfg config.ClientConfig) (bool, e
 	if err != nil {
 		return false, fmt.Errorf("query remote usage stream capability: %w", err)
 	}
-	return capabilityOutputContains(output, "usage-stream-v1"), nil
+	return capabilityOutputContains(output, capability), nil
 }
 
 // StreamUsage writes a validated Home-owned usage stream to writer. Local
 // callers collect directly as the current user; remote callers reuse the
 // already configured HMux SSH identity and never receive provider secrets.
 func StreamUsage(ctx context.Context, cfg config.ClientConfig, writer io.Writer) error {
+	return streamUsage(ctx, cfg, writer, false)
+}
+
+// The web client opts into source-separated quotas; legacy consumers keep
+// their original frames. An older remote Home remains a valid legacy source.
+func StreamUsageWithSources(ctx context.Context, cfg config.ClientConfig, writer io.Writer) error {
+	return streamUsage(ctx, cfg, writer, true)
+}
+
+func streamUsage(ctx context.Context, cfg config.ClientConfig, writer io.Writer, sources bool) error {
 	if writer == nil {
 		return errors.New("usage stream writer is required")
 	}
 	if cfg.Role == "home" {
+		if sources {
+			return usagestream.RunWithSources(ctx, writer)
+		}
 		return usagestream.Run(ctx, writer)
 	}
 	if !safeAlias(cfg.HomeAlias) || !safeRemotePath(cfg.AgentPath) {
@@ -53,13 +70,22 @@ func StreamUsage(ctx context.Context, cfg config.ClientConfig, writer io.Writer)
 	}
 	commandCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	command := exec.CommandContext(
-		commandCtx, "ssh",
+	args := []string{
 		"-o", "BatchMode=yes",
 		"-o", "ForwardAgent=no",
 		"-o", "ClearAllForwardings=yes",
 		cfg.HomeAlias, "--", cfg.AgentPath, "usage-stream", "--stdio",
-	)
+	}
+	if sources {
+		supported, err := usageStreamCapability(ctx, cfg, "usage-sources-v1")
+		if err != nil {
+			return err
+		}
+		if supported {
+			args = append(args, "--sources")
+		}
+	}
+	command := exec.CommandContext(commandCtx, "ssh", args...)
 	stdin, err := command.StdinPipe()
 	if err != nil {
 		return err

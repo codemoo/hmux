@@ -5,6 +5,47 @@ private-deployment checkpoints are preserved in
 [the historical validation log](archive/VALIDATION_PRE_PUBLICATION.md).
 They are not claims about a user's independent deployment.
 
+## 2026-09-22 — Selectable usage sources, plans and reset countdowns
+
+Settings now stores independent Claude/Codex display switches and source choices
+per authenticated web account. The Home collector opts into separate CLI/cswap
+and CLI/codex-lb snapshots. cswap is queried with the installed `list --json`
+command; CLI requests cannot delay the alternate sources. Codex plan badges use
+explicit upstream plan fields, absent five-hour windows are hidden, and weekly
+reset countdowns update while the dialog is open. Missing source data never uses
+another source. Unavailable accounts retain status and explicitly marked last-known
+reset timestamps without presenting stale percentages as current capacity.
+
+Checks completed:
+
+- Full root Go tests and vet; gateway/client/agent race suites. Settings tests
+  cover account/profile isolation, restart persistence, private file mode,
+  optimistic revision conflicts, auth/Origin/CSRF and failed writes.
+- Full vendored collector tests and vet; stream/cswap/account/state race suites.
+  Review fixes cover measurement-age expiry through command failures, strict
+  source-key/provenance matching and atomic activity merge during quota refresh.
+  Focused stream race/vet checks passed after the final concurrency correction.
+- Web type/style checks, 142 tests and production build. Chromium synthetic
+  API/WebSocket tests verify independent source values, both visibility switches,
+  saved settings after reload, Plus/Pro labels, absent five-hour rows and weekly
+  resets. Desktop and 390×844 screenshots were inspected. These are automated
+  browser checks, not physical Safari/iOS/Android acceptance.
+- `make native-smoke` passed after rerunning with access to its isolated local
+  test server. No existing tmux session was used by tests.
+- A bounded real collector run verified both source maps, codex-lb account plans,
+  optional five-hour windows and account reset timestamps. At that observation,
+  cswap reported token-expired/keychain-unavailable accounts and Claude CLI was
+  rate-limited; those source failures remain visible, not fabricated quota.
+  The existing local export producer was backed up and corrected to retain the
+  upstream plan field, with its 15 focused tests passing. No scheduler was added.
+
+Release `20260921T172939Z` (UTC) updates gateway, web and Home connector. All 46
+staged file hashes were verified; previous releases and the previous Home binary
+were retained. Public HTTPS assets, anonymous API rejection (including usage
+settings), no-store/PWA CSP, gateway health and Home transport were checked after
+activation. Existing tmux/provider work and private login/push stores were preserved.
+Reload the browser/PWA to receive the new settings and display.
+
 ## 2026-09-22 — First production diagnostics investigation
 
 The inspected account-scoped diagnostic snapshot contained four macOS Safari

@@ -192,6 +192,7 @@ func run(args []string) error {
 		fmt.Println("host-metrics-v1")
 		fmt.Println("conversation-v1")
 		fmt.Println("usage-stream-v1")
+		fmt.Println("usage-sources-v1")
 		fmt.Println("native-app-view-v1")
 		fmt.Println("file-stage-v1")
 		fmt.Println("structured-create-v1")

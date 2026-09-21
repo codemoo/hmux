@@ -195,7 +195,7 @@ failure cannot steer or block a Codex task. See [Codex workflows](CODEX_WORKFLOW
 
 Usage is collected on Home through the embedded Token Terrier stream module.
 A remote app uses `hmux-agent usage-stream --stdio` over existing SSH.
-Provider credentials remain read-only Home inputs. The owner-requested codex-lb
+Direct CLI credential reads remain read-only Home inputs. The owner-requested codex-lb
 account alias is transmitted as bounded, sanitized `display_name`. A missing
 alias becomes `Account N`; email and other display-name fields are never used as
 fallbacks. Claude cswap emails are explicitly authorized, bounded account labels.
@@ -222,15 +222,29 @@ lets the usage detail show a localized retry-eligibility time, including while
 last-good quota is stale. Automatic collection normally retries on the next
 60-second tick after that deadline.
 
-Claude cswap integration reads the existing roster, schema-v2 usage cache and
+Legacy/native Claude cswap integration reads the existing roster, schema-v2 usage cache and
 Claude active-account metadata on Home. Cached quota is joined by slot number
 and email/organization identity, with roster/config rechecks across the read.
-No cswap process, credential refresh, file writer or background job is added.
+This legacy cache reader adds no cswap process, credential refresh or file writer.
 Reads are throttled to two seconds and use cswap’s config-path precedence.
 Freshness is per account (5 min warning, 30 min expiry; passed reset is unknown).
 The optional existing JSON export remains supported; explicit export configuration
 selects that source. Claude's unrelated OAuth fetch status cannot override a valid
 active cswap cache reading.
+
+The web connector opts into `RunWithSources` (remote: advertised
+`usage-sources-v1`, fixed `usage-stream --stdio --sources`). Each provider frame
+carries its allowlisted CLI and cswap/codex-lb snapshots separately. Legacy
+`Run` consumers keep their original frames. The explicit web source selection
+never falls back from a pool to CLI, or from unavailable CLI to a pool.
+
+The web cswap source invokes the installed `cswap list --json` with a deadline,
+bounded output and discarded raw stderr. It reuses cswap's shared scheduler and
+structured usage/freshness statuses instead of guessing from stale cache files.
+cswap may maintain its own existing cache/credentials; HMux does not directly
+write those credentials or invoke account switching/login/service commands.
+No additional daemon or launch agent is introduced. Account-scoped web settings
+control visibility/source selection, while collection stays shared on Home.
 
 ## Native workspace chrome
 
