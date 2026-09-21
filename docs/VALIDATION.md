@@ -5,6 +5,27 @@ private-deployment checkpoints are preserved in
 [the historical validation log](archive/VALIDATION_PRE_PUBLICATION.md).
 They are not claims about a user's independent deployment.
 
+## 2026-09-22 — Mobile accessory key labels and focus
+
+The mobile key row no longer includes the redraw button; the top toolbar retains
+it. Buttons use content-based widths so `Ctrl+C` stays readable at narrow widths.
+Accessory touch handling preserves the terminal textarea focus, activates once
+on a completed tap and suppresses duplicate compatibility clicks. Swipes,
+canceled touches and multitouch do not send keys. Mouse/keyboard activation and
+the separate attachment picker remain available.
+
+Web check, 158 tests and build passed. Production-bundle Playwright checks in
+WebKit/iPhone and Chromium/Pixel emulation verified 320/360/390/430/700px layouts
+without clipped labels or row overflow. Esc, Tab, Ctrl+C and all arrows sent the
+exact bytes once per tap; latched Ctrl plus typed c sent one interrupt and reset.
+Neither browser recorded a textarea blur during these key interactions. The
+keyboard viewport was simulated; physical-device OS keyboard behavior remains
+separate from these automated focus checks.
+
+Frontend release `20260921T194735Z` changes only web assets. HTTPS asset hashes,
+authentication barriers, no-store and PWA CSP are verified after activation;
+the gateway and Home stay running.
+
 ## 2026-09-22 — Bounded native input and wider usage details
 
 The native pending-input preview now wraps across the full terminal width after

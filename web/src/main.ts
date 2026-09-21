@@ -1,3 +1,4 @@
+import { bindTerminalKeyButton } from "./terminal-key-button.ts";
 import {
   createDiagnostics,
   diagnosticRoute,
@@ -363,7 +364,7 @@ function showLogin() {
   };
 }
 function shell() {
-  app.innerHTML = `<div class="workspace"><aside id="session-sidebar" class="sidebar"><div class="sidebar-head"><a class="brand" href="/">${mark}<span>HMux</span></a><button id="sidebar-close" class="icon-button" title="목록 닫기" aria-label="목록 닫기">${icon("close")}</button></div><div class="home-card"><span class="status-dot" id="home-dot"></span><div><strong>Home</strong><small id="home-state">연결 확인 중</small></div></div><div class="search-box">${icon("search")}<input id="search" type="search" placeholder="세션 검색" aria-label="세션 검색"><kbd>⌘ K</kbd></div><div class="list-heading"><span>세션 <b id="count">0</b></span><button id="new-session" class="icon-button" title="새 세션" aria-label="새 세션">${icon("plus")}</button></div><div id="session-list" class="session-list"></div><label class="hidden-toggle"><input id="show-hidden" type="checkbox"> 숨긴 세션 표시</label><div class="sidebar-bottom"><span id="username"></span><button id="logout" class="icon-button" title="로그아웃 (Alt+Q)" aria-label="로그아웃">${icon("logout")}</button></div></aside><div id="scrim"></div><main class="workarea"><button id="floating-tabs" class="icon-button" aria-label="탭 목록 펼치기" aria-expanded="false" aria-controls="tabs">${icon("menu")}</button><header class="tabbar"><button id="menu" class="icon-button" title="사이드바 전환 (Alt+L / Alt+&#96;)" aria-label="사이드바 전환" aria-controls="session-sidebar">${icon("menu")}</button><div id="tabs" role="tablist" aria-label="열린 세션"></div><div class="toolbar"><button id="terminal-refresh" class="icon-button" title="터미널 화면 새로고침" aria-label="터미널 화면 새로고침" disabled>${icon("refresh")}</button><button id="attach" class="icon-button" title="파일 첨부" aria-label="파일 첨부">${icon("attach")}</button><button id="tab-new" class="icon-button" title="새 세션" aria-label="새 세션">${icon("plus")}</button><button id="conversation" class="icon-button" title="대화 읽기" aria-label="대화 읽기" aria-pressed="false">${icon("book")}</button><button id="settings" class="icon-button" title="터미널 설정" aria-label="터미널 설정">${icon("settings")}</button></div></header><div id="notice" class="notice" role="status" hidden></div><div id="attachment-status" class="attachment-status" role="status" hidden></div><input id="attachment-picker" type="file" multiple hidden><div id="stage"><div id="empty"><div class="empty-mark">${icon("terminal")}</div><h2>이어서 할 작업을 선택하세요</h2><p>세션을 열면 Home의 작업에 연결됩니다.<br>이 화면을 닫아도 작업은 계속됩니다.</p><button id="browse" class="secondary">세션 둘러보기 ${icon("arrow")}</button></div><div id="reader" hidden></div></div><div class="keybar" aria-label="터미널 보조 키"><button id="terminal-refresh-mobile" aria-label="터미널 화면 새로고침" title="터미널 화면 새로고침" disabled>${icon("refresh")}</button><button id="attach-mobile" aria-label="파일 첨부" title="파일 첨부">${icon("attach")}</button><button data-key="\u001b">Esc</button><button data-key="\t">Tab</button><button id="ctrl" aria-pressed="false">Ctrl</button><button data-key="\u0003">Ctrl C</button><button data-key="\u001b[A">↑</button><button data-key="\u001b[B">↓</button><button data-key="\u001b[D">←</button><button data-key="\u001b[C">→</button></div><footer><span id="bedl" class="bedl" aria-hidden="true"></span><button id="usage" class="footer-button">Codex <span>—</span><i></i> Claude <span>—</span></button><span id="metrics">Home · 사용량 대기 중</span><span id="footer-connection" class="footer-connection" title="공용 탭 연결 중"><span id="terminal-state" role="status"></span><button id="reconnect" class="subtle-button" hidden>${icon("refresh")} 다시 연결</button></span></footer></main></div><dialog id="dialog" aria-labelledby="dialog-title"><div class="dialog-head"><h2 id="dialog-title"></h2><button id="dialog-close" class="icon-button" aria-label="닫기">${icon("close")}</button></div><div id="dialog-body"></div></dialog>`;
+  app.innerHTML = `<div class="workspace"><aside id="session-sidebar" class="sidebar"><div class="sidebar-head"><a class="brand" href="/">${mark}<span>HMux</span></a><button id="sidebar-close" class="icon-button" title="목록 닫기" aria-label="목록 닫기">${icon("close")}</button></div><div class="home-card"><span class="status-dot" id="home-dot"></span><div><strong>Home</strong><small id="home-state">연결 확인 중</small></div></div><div class="search-box">${icon("search")}<input id="search" type="search" placeholder="세션 검색" aria-label="세션 검색"><kbd>⌘ K</kbd></div><div class="list-heading"><span>세션 <b id="count">0</b></span><button id="new-session" class="icon-button" title="새 세션" aria-label="새 세션">${icon("plus")}</button></div><div id="session-list" class="session-list"></div><label class="hidden-toggle"><input id="show-hidden" type="checkbox"> 숨긴 세션 표시</label><div class="sidebar-bottom"><span id="username"></span><button id="logout" class="icon-button" title="로그아웃 (Alt+Q)" aria-label="로그아웃">${icon("logout")}</button></div></aside><div id="scrim"></div><main class="workarea"><button id="floating-tabs" class="icon-button" aria-label="탭 목록 펼치기" aria-expanded="false" aria-controls="tabs">${icon("menu")}</button><header class="tabbar"><button id="menu" class="icon-button" title="사이드바 전환 (Alt+L / Alt+&#96;)" aria-label="사이드바 전환" aria-controls="session-sidebar">${icon("menu")}</button><div id="tabs" role="tablist" aria-label="열린 세션"></div><div class="toolbar"><button id="terminal-refresh" class="icon-button" title="터미널 화면 새로고침" aria-label="터미널 화면 새로고침" disabled>${icon("refresh")}</button><button id="attach" class="icon-button" title="파일 첨부" aria-label="파일 첨부">${icon("attach")}</button><button id="tab-new" class="icon-button" title="새 세션" aria-label="새 세션">${icon("plus")}</button><button id="conversation" class="icon-button" title="대화 읽기" aria-label="대화 읽기" aria-pressed="false">${icon("book")}</button><button id="settings" class="icon-button" title="터미널 설정" aria-label="터미널 설정">${icon("settings")}</button></div></header><div id="notice" class="notice" role="status" hidden></div><div id="attachment-status" class="attachment-status" role="status" hidden></div><input id="attachment-picker" type="file" multiple hidden><div id="stage"><div id="empty"><div class="empty-mark">${icon("terminal")}</div><h2>이어서 할 작업을 선택하세요</h2><p>세션을 열면 Home의 작업에 연결됩니다.<br>이 화면을 닫아도 작업은 계속됩니다.</p><button id="browse" class="secondary">세션 둘러보기 ${icon("arrow")}</button></div><div id="reader" hidden></div></div><div class="keybar" aria-label="터미널 보조 키"><button id="attach-mobile" aria-label="파일 첨부" title="파일 첨부">${icon("attach")}</button><button data-key="\u001b">Esc</button><button data-key="\t">Tab</button><button id="ctrl" aria-pressed="false">Ctrl</button><button data-key="\u0003">Ctrl+C</button><button data-key="\u001b[A">↑</button><button data-key="\u001b[B">↓</button><button data-key="\u001b[D">←</button><button data-key="\u001b[C">→</button></div><footer><span id="bedl" class="bedl" aria-hidden="true"></span><button id="usage" class="footer-button">Codex <span>—</span><i></i> Claude <span>—</span></button><span id="metrics">Home · 사용량 대기 중</span><span id="footer-connection" class="footer-connection" title="공용 탭 연결 중"><span id="terminal-state" role="status"></span><button id="reconnect" class="subtle-button" hidden>${icon("refresh")} 다시 연결</button></span></footer></main></div><dialog id="dialog" aria-labelledby="dialog-title"><div class="dialog-head"><h2 id="dialog-title"></h2><button id="dialog-close" class="icon-button" aria-label="닫기">${icon("close")}</button></div><div id="dialog-body"></div></dialog>`;
   app.classList.toggle(
     "sidebar-collapsed",
     preferences.get("hmux.sidebar") === "hidden",
@@ -473,9 +474,10 @@ function shell() {
       if (t) focusTerminal(t);
     }
   });
-  for (const id of ["#terminal-refresh", "#terminal-refresh-mobile"]) {
-    $(id).onpointerdown = (e) => e.preventDefault();
-    $(id).onclick = () => {
+  {
+    const redraw = $("#terminal-refresh");
+    redraw.onpointerdown = (e) => e.preventDefault();
+    redraw.onclick = () => {
       const t = tabs.get(active);
       if (
         !loggedIn ||
@@ -505,13 +507,13 @@ function shell() {
     if (t) connect(t, true);
   };
   for (const b of document.querySelectorAll<HTMLButtonElement>("[data-key]")) {
-    b.onpointerdown = (e) => e.preventDefault();
-    b.onclick = () => {
+    bindTerminalKeyButton(b, () => {
       send(b.dataset.key!);
-    };
+      const t = tabs.get(active);
+      if (t) focusTerminal(t);
+    });
   }
-  $("#ctrl").onpointerdown = (e) => e.preventDefault();
-  $("#ctrl").onclick = () => {
+  bindTerminalKeyButton($<HTMLButtonElement>("#ctrl"), () => {
     tabs.get(active)?.nativeInput?.flush();
     ctrl = !ctrl;
     $("#ctrl").setAttribute("aria-pressed", String(ctrl));
@@ -519,7 +521,7 @@ function shell() {
       const t = tabs.get(active);
       if (t) focusTerminal(t);
     }
-  };
+  });
   const observer = new ResizeObserver(scheduleTerminalLayout);
   observer.observe($("#stage"));
   observer.observe(app);
@@ -709,10 +711,8 @@ function renderTabs() {
     !t || t.status !== "disconnected" || !snapshot.online;
   $("#empty").hidden = tabs.size > 0;
   $<HTMLButtonElement>("#conversation").disabled = !t;
-  for (const id of ["#terminal-refresh", "#terminal-refresh-mobile"]) {
-    $<HTMLButtonElement>(id).disabled =
-      !t || reading || !snapshot.online || t.status !== "connected";
-  }
+  $<HTMLButtonElement>("#terminal-refresh").disabled =
+    !t || reading || !snapshot.online || t.status !== "connected";
   attachments?.refresh();
 }
 function moveTab(source: string, target: string) {
@@ -1057,14 +1057,10 @@ function connect(t: Tab, manual = false) {
             notice("화면을 다시 그리지 못했습니다. 잠시 후 다시 시도하세요.");
           else {
             t.term.refresh(0, t.term.rows - 1);
-            for (const id of [
-              "#terminal-refresh",
-              "#terminal-refresh-mobile",
-            ]) {
-              $(id).animate([{ color: "#8cb7d9" }, { color: "#878580" }], {
-                duration: 700,
-              });
-            }
+            $("#terminal-refresh").animate(
+              [{ color: "#8cb7d9" }, { color: "#878580" }],
+              { duration: 700 },
+            );
           }
         }
         if (message.type === "ready") {

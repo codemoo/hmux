@@ -790,19 +790,16 @@ input[type="range"] {
   color: var(--ink);
   font-size: 16px;
 }
-#attach-mobile,
-#terminal-refresh-mobile {
+#attach-mobile {
   display: none;
 }
 @media (max-width: 700px), (pointer: coarse) and (max-height: 500px) {
-  .keyboard-visible #attach-mobile,
-  .keyboard-visible #terminal-refresh-mobile {
+  .keyboard-visible #attach-mobile {
     display: inline-flex;
     align-items: center;
     justify-content: center;
   }
-  #attach-mobile svg,
-  #terminal-refresh-mobile svg {
+  #attach-mobile svg {
     width: 14px;
     height: 14px;
   }

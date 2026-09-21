@@ -219,9 +219,14 @@ review and verification; log collection does not execute code or apply changes.
   the running program recompute its display as well as repainting tmux's stored
   screen. Home derives and rechecks pane/process identities; the browser cannot
   supply a PID or device. It does not reload, reconnect or send application input.
-  Success briefly highlights the icon; failure shows an error. The same icon is available
-  beside Attach in the keyboard-visible mobile row. Home limits redraws to one
-  per second per view; unavailable views disable the control.
+  Success briefly highlights the icon; failure shows an error. The top toolbar
+  retains this control; the compact mobile accessory row omits it to keep room for
+  input keys. Home limits redraws to one per second per view; unavailable views
+  disable the control.
+- Mobile accessory keys reserve enough width for their labels, including `Ctrl+C`.
+  Tapping Esc/Tab/Ctrl/Ctrl+C/arrows preserves terminal input focus and sends once.
+  Swipe/cancel/multitouch does not send a key; horizontal overflow remains scrollable.
+  File attachment keeps its separate native picker behavior.
 - Alias-first A–Z session list, Home profile session creation, rename and hide/show.
 - Neutral graphite chrome, restrained slate accents and compact 4–5px corners. A 44px tab
   bar contains 34px desktop tabs with visible inactive borders and an active muted

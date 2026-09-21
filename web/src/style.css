@@ -724,7 +724,7 @@ strong {
   min-width: 37px;
   height: 31px;
   font-size: 12px;
-  flex: 1;
+  flex: 1 0 auto;
   white-space: nowrap;
   padding: 0 6px;
 }
@@ -1102,7 +1102,7 @@ body {
   }
   .keybar button {
     height: 23px;
-    min-width: 0;
+    min-width: 26px;
     padding: 0 4px;
     font-size: 12px;
     border-radius: 3px;
