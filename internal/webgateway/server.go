@@ -328,7 +328,8 @@ func (s *Server) action(w http.ResponseWriter, r *http.Request, token string) {
 		return
 	}
 	switch m.Operation {
-	case "profiles", "create", "alias", "hidden", "conversation", "workspace":
+	case "profiles", "create", "alias", "hidden", "conversation", "workspace",
+		"providers", "provider-key", "provider-job-start", "provider-job", "provider-job-input", "provider-job-cancel":
 	default:
 		http.Error(w, "Unknown operation", 400)
 		return

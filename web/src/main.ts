@@ -59,6 +59,12 @@ import { renderConversation, type Conversation } from "./conversation-view";
 import { createTerminalAppearance } from "./theme";
 import { installThemePicker } from "./theme-picker";
 import { installSettingsNavigation } from "./settings-navigation";
+import {
+  installProviderSettings,
+  needsProviderSetup,
+  parseProviderResult,
+  startableProviders,
+} from "./provider-settings";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
@@ -364,7 +370,7 @@ function showLogin() {
   };
 }
 function shell() {
-  app.innerHTML = `<div class="workspace"><aside id="session-sidebar" class="sidebar"><div class="sidebar-head"><a class="brand" href="/">${mark}<span>HMux</span></a><button id="sidebar-close" class="icon-button" title="목록 닫기" aria-label="목록 닫기">${icon("close")}</button></div><div class="home-card"><span class="status-dot" id="home-dot"></span><div><strong>Home</strong><small id="home-state">연결 확인 중</small></div></div><div class="search-box">${icon("search")}<input id="search" type="search" placeholder="세션 검색" aria-label="세션 검색"><kbd>⌘ K</kbd></div><div class="list-heading"><span>세션 <b id="count">0</b></span><button id="new-session" class="icon-button" title="새 세션" aria-label="새 세션">${icon("plus")}</button></div><div id="session-list" class="session-list"></div><label class="hidden-toggle"><input id="show-hidden" type="checkbox"> 숨긴 세션 표시</label><div class="sidebar-bottom"><span id="username"></span><button id="logout" class="icon-button" title="로그아웃 (Alt+Q)" aria-label="로그아웃">${icon("logout")}</button></div></aside><div id="scrim"></div><main class="workarea"><button id="floating-tabs" class="icon-button" aria-label="탭 목록 펼치기" aria-expanded="false" aria-controls="tabs">${icon("menu")}</button><header class="tabbar"><button id="menu" class="icon-button" title="사이드바 전환 (Alt+L / Alt+&#96;)" aria-label="사이드바 전환" aria-controls="session-sidebar">${icon("menu")}</button><div id="tabs" role="tablist" aria-label="열린 세션"></div><div class="toolbar"><button id="terminal-refresh" class="icon-button" title="터미널 화면 새로고침" aria-label="터미널 화면 새로고침" disabled>${icon("refresh")}</button><button id="attach" class="icon-button" title="파일 첨부" aria-label="파일 첨부">${icon("attach")}</button><button id="tab-new" class="icon-button" title="새 세션" aria-label="새 세션">${icon("plus")}</button><button id="conversation" class="icon-button" title="대화 읽기" aria-label="대화 읽기" aria-pressed="false">${icon("book")}</button><button id="settings" class="icon-button" title="터미널 설정" aria-label="터미널 설정">${icon("settings")}</button></div></header><div id="notice" class="notice" role="status" hidden></div><div id="attachment-status" class="attachment-status" role="status" hidden></div><input id="attachment-picker" type="file" multiple hidden><div id="stage"><div id="empty"><div class="empty-mark">${icon("terminal")}</div><h2>이어서 할 작업을 선택하세요</h2><p>세션을 열면 Home의 작업에 연결됩니다.<br>이 화면을 닫아도 작업은 계속됩니다.</p><button id="browse" class="secondary">세션 둘러보기 ${icon("arrow")}</button></div><div id="reader" hidden></div></div><div class="keybar" aria-label="터미널 보조 키"><button id="attach-mobile" aria-label="파일 첨부" title="파일 첨부">${icon("attach")}</button><button data-key="\u001b">Esc</button><button data-key="\t">Tab</button><button id="ctrl" aria-pressed="false">Ctrl</button><button data-key="\u0003">Ctrl+C</button><button data-key="\u001b[A">↑</button><button data-key="\u001b[B">↓</button><button data-key="\u001b[D">←</button><button data-key="\u001b[C">→</button></div><footer><span id="bedl" class="bedl" aria-hidden="true"></span><button id="usage" class="footer-button">Codex <span>—</span><i></i> Claude <span>—</span></button><span id="metrics">Home · 사용량 대기 중</span><span id="footer-connection" class="footer-connection" title="공용 탭 연결 중"><span id="terminal-state" role="status"></span><button id="reconnect" class="subtle-button" hidden>${icon("refresh")} 다시 연결</button></span></footer></main></div><dialog id="dialog" aria-labelledby="dialog-title"><div class="dialog-head"><h2 id="dialog-title"></h2><button id="dialog-close" class="icon-button" aria-label="닫기">${icon("close")}</button></div><div id="dialog-body"></div></dialog>`;
+  app.innerHTML = `<div class="workspace"><aside id="session-sidebar" class="sidebar"><div class="sidebar-head"><a class="brand" href="/">${mark}<span>HMux</span></a><button id="sidebar-close" class="icon-button" title="목록 닫기" aria-label="목록 닫기">${icon("close")}</button></div><div class="home-card"><span class="status-dot" id="home-dot"></span><div><strong>Home</strong><small id="home-state">연결 확인 중</small></div></div><div class="search-box">${icon("search")}<input id="search" type="search" placeholder="세션 검색" aria-label="세션 검색"><kbd>⌘ K</kbd></div><div class="list-heading"><span>세션 <b id="count">0</b></span><button id="new-session" class="icon-button" title="새 세션" aria-label="새 세션">${icon("plus")}</button></div><div id="session-list" class="session-list"></div><label class="hidden-toggle"><input id="show-hidden" type="checkbox"> 숨긴 세션 표시</label><div class="sidebar-bottom"><span id="username"></span><button id="logout" class="icon-button" title="로그아웃 (Alt+Q)" aria-label="로그아웃">${icon("logout")}</button></div></aside><div id="scrim"></div><main class="workarea"><button id="floating-tabs" class="icon-button" aria-label="탭 목록 펼치기" aria-expanded="false" aria-controls="tabs">${icon("menu")}</button><header class="tabbar"><button id="menu" class="icon-button" title="사이드바 전환 (Alt+L / Alt+&#96;)" aria-label="사이드바 전환" aria-controls="session-sidebar">${icon("menu")}</button><div id="tabs" role="tablist" aria-label="열린 세션"></div><div class="toolbar"><button id="terminal-refresh" class="icon-button" title="터미널 화면 새로고침" aria-label="터미널 화면 새로고침" disabled>${icon("refresh")}</button><button id="attach" class="icon-button" title="파일 첨부" aria-label="파일 첨부">${icon("attach")}</button><button id="tab-new" class="icon-button" title="새 세션" aria-label="새 세션">${icon("plus")}</button><button id="conversation" class="icon-button" title="대화 읽기" aria-label="대화 읽기" aria-pressed="false">${icon("book")}</button><button id="settings" class="icon-button" title="터미널 설정" aria-label="터미널 설정">${icon("settings")}</button></div></header><div id="notice" class="notice" role="status" hidden></div><div id="attachment-status" class="attachment-status" role="status" hidden></div><input id="attachment-picker" type="file" multiple hidden><div id="stage"><div id="empty"><div class="empty-mark">${icon("terminal")}</div><h2>이어서 할 작업을 선택하세요</h2><p>세션을 열면 Home의 작업에 연결됩니다.<br>이 화면을 닫아도 작업은 계속됩니다.</p><button id="browse" class="secondary">세션 둘러보기 ${icon("arrow")}</button><div id="ai-onboarding" class="ai-onboarding" hidden></div></div><div id="reader" hidden></div></div><div class="keybar" aria-label="터미널 보조 키"><button id="attach-mobile" aria-label="파일 첨부" title="파일 첨부">${icon("attach")}</button><button data-key="\u001b">Esc</button><button data-key="\t">Tab</button><button id="ctrl" aria-pressed="false">Ctrl</button><button data-key="\u0003">Ctrl+C</button><button data-key="\u001b[A">↑</button><button data-key="\u001b[B">↓</button><button data-key="\u001b[D">←</button><button data-key="\u001b[C">→</button></div><footer><span id="bedl" class="bedl" aria-hidden="true"></span><button id="usage" class="footer-button">Codex <span>—</span><i></i> Claude <span>—</span></button><span id="metrics">Home · 사용량 대기 중</span><span id="footer-connection" class="footer-connection" title="공용 탭 연결 중"><span id="terminal-state" role="status"></span><button id="reconnect" class="subtle-button" hidden>${icon("refresh")} 다시 연결</button></span></footer></main></div><dialog id="dialog" aria-labelledby="dialog-title"><div class="dialog-head"><h2 id="dialog-title"></h2><button id="dialog-close" class="icon-button" aria-label="닫기">${icon("close")}</button></div><div id="dialog-body"></div></dialog>`;
   app.classList.toggle(
     "sidebar-collapsed",
     preferences.get("hmux.sidebar") === "hidden",
@@ -388,7 +394,7 @@ function shell() {
   $("#search").oninput = renderSessions;
   $("#show-hidden").onchange = renderSessions;
   $("#new-session").onclick = $("#tab-new").onclick = () => void createDialog();
-  $("#settings").onclick = settingsDialog;
+  $("#settings").onclick = () => settingsDialog();
   attachments = installAttachments({
     root: $(".workarea"),
     stage: $("#stage"),
@@ -746,6 +752,7 @@ function closeTab(k: string) {
   renderTabs();
   renderSessions();
   persistTabs();
+  if (!tabs.size) void checkProviderOnboarding(true);
 }
 function selectTab(k: string) {
   const changed = active !== k || reading;
@@ -1110,7 +1117,11 @@ function connect(t: Tab, manual = false) {
       }
     }
   };
-  ws.onclose = (event) => fail(disconnectKind(event.code), event.code);
+  ws.onclose = (event) => {
+    // The session may have ended on Home; show that without waiting for polling.
+    refreshSoon();
+    fail(disconnectKind(event.code), event.code);
+  };
   // close carries the actual capacity/policy code; error alone does not.
   ws.onerror = () => ws.close();
 }
@@ -1200,6 +1211,7 @@ function editDialog(s: Session) {
       renderSessions();
       renderTabs();
       await refresh();
+      refreshSoon();
     } catch (e) {
       error.textContent = (e as Error).message;
     } finally {
@@ -1221,6 +1233,7 @@ function editDialog(s: Session) {
       $<HTMLDialogElement>("#dialog").close();
       renderSessions();
       await refresh();
+      refreshSoon();
     } catch (e) {
       error.textContent = (e as Error).message;
       hide.disabled = false;
@@ -1230,6 +1243,112 @@ function editDialog(s: Session) {
     hide,
     text("p", "숨기거나 탭을 닫아도 Home의 작업은 종료되지 않습니다.", "muted"),
   );
+}
+// First-run hint in the empty workspace: point to Settings → AI 연결 until one
+// CLI is connected, then offer to start a session with each connected CLI.
+// Checked once per login, after Settings closes and when the last tab closes.
+const providerOnboardingKey = "hmux.ai-onboarding.dismissed";
+let providerOnboardingEpoch = -1;
+let providerOnboardingRequest: AbortController | undefined;
+async function checkProviderOnboarding(force = false) {
+  const card = document.querySelector<HTMLElement>("#ai-onboarding");
+  if (!card || !loggedIn) return;
+  if (!force && providerOnboardingEpoch === accountEpoch) return;
+  providerOnboardingEpoch = accountEpoch;
+  providerOnboardingRequest?.abort();
+  const request = new AbortController();
+  providerOnboardingRequest = request;
+  const epoch = accountEpoch;
+  try {
+    const result = parseProviderResult(
+      await action("providers", undefined, undefined, request.signal),
+    );
+    if (request.signal.aborted || epoch !== accountEpoch) return;
+    const providers = result.providers || [];
+    if (needsProviderSetup(providers)) {
+      if (preferences.get(providerOnboardingKey) === "1") {
+        card.hidden = true;
+        return;
+      }
+      const open = text("button", "AI 연결하기", "secondary");
+      open.type = "button";
+      open.onclick = () => settingsDialog("providers");
+      const later = text("button", "나중에", "subtle-button");
+      later.type = "button";
+      later.onclick = () => {
+        preferences.set(providerOnboardingKey, "1");
+        card.hidden = true;
+      };
+      const actions = text("div", "", "ai-onboarding-actions");
+      actions.append(open, later);
+      card.replaceChildren(
+        text("strong", "AI 연결이 필요합니다"),
+        text(
+          "p",
+          "Codex, Claude Code, Gemini 중 하나를 설치하고 계정이나 API 키로 연결하면 바로 작업을 시작할 수 있습니다.",
+        ),
+        actions,
+      );
+      card.hidden = false;
+      return;
+    }
+    const ready = startableProviders(providers);
+    if (!ready.length) {
+      card.hidden = true;
+      return;
+    }
+    const actions = text("div", "", "ai-onboarding-actions");
+    for (const p of ready) {
+      const start = text("button", `${p.label} 시작`, "secondary");
+      start.type = "button";
+      start.onclick = () => startProfile(p.profile_id);
+      actions.append(start);
+    }
+    card.replaceChildren(
+      text("strong", "바로 시작하세요"),
+      text("p", "연결된 AI로 새 세션을 열어 작업을 시작합니다."),
+      actions,
+    );
+    card.hidden = false;
+  } catch {
+    // Optional hint: a failed check must never block the workspace.
+  } finally {
+    if (providerOnboardingRequest === request)
+      providerOnboardingRequest = undefined;
+  }
+}
+async function startProfile(profile: string) {
+  try {
+    const result = await action("create", undefined, { name: "", profile });
+    await openCreatedSession(result);
+  } catch (e) {
+    notice((e as Error).message);
+  }
+}
+// Home publishes its catalog every few seconds, so a session created a moment
+// ago may not be listed yet. Poll briefly and open it as soon as it appears.
+async function openCreatedSession(result: Identity) {
+  $<HTMLDialogElement>("#dialog").close();
+  const epoch = accountEpoch;
+  const deadline = Date.now() + 12_000;
+  while (loggedIn && epoch === accountEpoch) {
+    try {
+      await refresh();
+    } catch {
+      // Keep waiting; the final notice covers a persistent failure.
+    }
+    const s = sessions.find(
+      (s) => s.id === result.id && s.created_at === result.created_at,
+    );
+    if (s) {
+      openSession(s);
+      return;
+    }
+    if (Date.now() >= deadline) break;
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  }
+  if (loggedIn && epoch === accountEpoch)
+    notice("세션을 만들었습니다. 목록이 갱신되면 열어주세요.");
 }
 async function createDialog() {
   const body = dialog("새 작업 시작");
@@ -1264,7 +1383,8 @@ async function createDialog() {
     }
     save.disabled = !profiles.length;
     if (!profiles.length)
-      error.textContent = "Home에 등록된 프로파일이 없습니다.";
+      error.textContent =
+        "Home에 등록된 프로파일이 없습니다. 설정 → AI 연결에서 추가하세요.";
   } catch (e) {
     error.textContent = (e as Error).message;
   }
@@ -1276,20 +1396,14 @@ async function createDialog() {
         name: name.value,
         profile: select.value,
       });
-      $<HTMLDialogElement>("#dialog").close();
-      await refresh();
-      const s = sessions.find(
-        (s) => s.id === result.id && s.created_at === result.created_at,
-      );
-      if (s) openSession(s);
-      else notice("세션을 만들었습니다. 목록이 갱신되면 열어주세요.");
+      await openCreatedSession(result);
     } catch (e) {
       error.textContent = (e as Error).message;
       save.disabled = false;
     }
   };
 }
-function settingsDialog() {
+function settingsDialog(initialTab?: string) {
   const body = dialog("설정");
   $("#dialog").classList.add("settings-dialog");
   const appearance = text("section", "", "settings-section");
@@ -1369,14 +1483,20 @@ function settingsDialog() {
   const security = text("section", "", "settings-section account-security");
   const diagnosticPanel = text("section", "", "settings-section");
   const usagePanel = text("section", "", "settings-section");
-  installSettingsNavigation(body, [
-    { id: "terminal", label: "터미널", sections: [appearance] },
-    { id: "usage", label: "사용량", sections: [usagePanel] },
-    { id: "notifications", label: "알림", sections: [notifications] },
-    { id: "account", label: "계정", sections: [security, loginSessions] },
-    { id: "shortcuts", label: "단축키", sections: [keys] },
-    { id: "app", label: "앱 정보", sections: [install, diagnosticPanel] },
-  ]);
+  const providerPanel = text("section", "", "settings-section");
+  installSettingsNavigation(
+    body,
+    [
+      { id: "terminal", label: "터미널", sections: [appearance] },
+      { id: "providers", label: "AI 연결", sections: [providerPanel] },
+      { id: "usage", label: "사용량", sections: [usagePanel] },
+      { id: "notifications", label: "알림", sections: [notifications] },
+      { id: "account", label: "계정", sections: [security, loginSessions] },
+      { id: "shortcuts", label: "단축키", sections: [keys] },
+      { id: "app", label: "앱 정보", sections: [install, diagnosticPanel] },
+    ],
+    initialTab,
+  );
   let disposeSessions: (() => void) | undefined;
   const refreshSessions = () => {
     disposeSessions?.();
@@ -1408,7 +1528,14 @@ function settingsDialog() {
     api,
     diagnostics,
   );
+  const disposeProviders = installProviderSettings(
+    providerPanel,
+    api,
+    (profile) => void startProfile(profile),
+  );
   dialogCleanup = () => {
+    disposeProviders();
+    void checkProviderOnboarding(true);
     disposeUsagePreferences();
     disposeDiagnostics();
     disposePush();
@@ -1515,7 +1642,10 @@ async function refresh() {
       nextPreferences.revision >= usagePreferences.revision
     )
       usagePreferences = nextPreferences;
-    if (next.catalog?.sessions) sessions = next.catalog.sessions;
+    if (next.catalog?.sessions) {
+      sessions = next.catalog.sessions;
+      if (next.online) closeEndedSessionTabs();
+    }
     $("#home-state").textContent = next.online
       ? "연결됨 · Home에서 실행 중"
       : "오프라인 · Home 연결 대기";
@@ -1526,10 +1656,45 @@ async function refresh() {
     refreshUsageDialog?.();
     ensureActiveConnection();
     resolvePushTarget();
-    if (next.online) void syncSharedWorkspace();
+    if (next.online) {
+      void syncSharedWorkspace();
+      void checkProviderOnboarding();
+    }
   } finally {
     if (refreshRequest === request) refreshRequest = undefined;
   }
+}
+// A tab whose tmux session has ended (for example Ctrl+D in Claude) closes
+// itself instead of lingering as "세션 없음". Only an online catalog counts,
+// and the session must be missing from two consecutive catalogs so a transient
+// gap cannot close a live tab. Closing is an explicit shared-workspace removal.
+const endedSessionMisses = new Map<string, number>();
+function closeEndedSessionTabs() {
+  if (!sharedLoaded) return;
+  const live = new Set(sessions.map(key));
+  for (const k of [...endedSessionMisses.keys()])
+    if (!tabs.has(k) || live.has(k)) endedSessionMisses.delete(k);
+  for (const k of [...tabs.keys()]) {
+    if (live.has(k)) continue;
+    const misses = (endedSessionMisses.get(k) || 0) + 1;
+    endedSessionMisses.set(k, misses);
+    if (misses >= 2) {
+      endedSessionMisses.delete(k);
+      closeTab(k);
+    }
+  }
+}
+// Home publishes changes right after an operation; check a few times quickly
+// instead of waiting for the regular five-second poll.
+let quickRefreshTimers: number[] = [];
+function refreshSoon() {
+  for (const timer of quickRefreshTimers) clearTimeout(timer);
+  const epoch = accountEpoch;
+  quickRefreshTimers = [300, 1000, 2000].map((delay) =>
+    window.setTimeout(() => {
+      if (loggedIn && epoch === accountEpoch) void refresh().catch(() => {});
+    }, delay),
+  );
 }
 async function poll() {
   if (!loggedIn) return;

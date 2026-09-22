@@ -99,6 +99,14 @@ func connectOnce(parent context.Context, endpoint, token string, cfg config.Home
 		mu.Unlock()
 		workers.Wait()
 	}()
+	// Operations that change tmux state ask for an immediate catalog poll.
+	catalogRefresh := make(chan struct{}, 1)
+	refreshCatalog := func() {
+		select {
+		case catalogRefresh <- struct{}{}:
+		default:
+		}
+	}
 	// One shared catalog collector and one usage collector for all web sessions.
 	var latestMu sync.Mutex
 	var latest json.RawMessage
@@ -113,7 +121,7 @@ func connectOnce(parent context.Context, endpoint, token string, cfg config.Home
 	go func() {
 		defer workers.Done()
 		defer cancel()
-		_ = home.StreamCatalogsObserved(ctx, cfg, completion.enqueue, func(c model.Catalog) error {
+		_ = home.StreamCatalogsObservedWithRefresh(ctx, cfg, catalogRefresh, completion.enqueue, func(c model.Catalog) error {
 			// Enrich only the web stream so older strict catalog decoders continue
 			// receiving the existing negotiated host-metrics shape.
 			if used, total, ok := hostmetrics.DiskUsage(); ok {
@@ -155,38 +163,73 @@ func connectOnce(parent context.Context, endpoint, token string, cfg config.Home
 			}
 		}
 	}()
-	reader, writer := io.Pipe()
-	workers.Add(2)
-	go func() {
-		defer workers.Done()
-		defer writer.Close()
-		_ = usagestream.RunWithSources(ctx, writer)
-	}()
-	go func() {
-		defer workers.Done()
-		defer reader.Close()
-		defer func() {
-			if ctx.Err() == nil {
-				_ = p.send(ctx, Message{Type: "usage-unavailable"})
-			}
-		}()
-		decoder, err := usagestream.NewDecoder(reader)
-		if err != nil {
-			return
+	// The usage collector re-reads CLI credentials only once a minute, so a new
+	// login or API key restarts it; a fresh collector reads them immediately.
+	usageRestart := make(chan struct{}, 1)
+	restartUsage := func() {
+		select {
+		case usageRestart <- struct{}{}:
+		default:
 		}
+	}
+	workers.Add(1)
+	go func() {
+		defer workers.Done()
 		for {
-			f, err := decoder.Decode()
-			if err != nil {
-				return
+			streamCtx, stop := context.WithCancel(ctx)
+			reader, writer := io.Pipe()
+			var stream sync.WaitGroup
+			stream.Add(2)
+			go func() {
+				defer stream.Done()
+				<-streamCtx.Done()
+				_ = reader.Close()
+				_ = writer.Close()
+			}()
+			go func() {
+				defer stream.Done()
+				defer writer.Close()
+				_ = usagestream.RunWithSources(streamCtx, writer)
+			}()
+			ended := make(chan struct{})
+			go func() {
+				defer close(ended)
+				defer reader.Close()
+				decoder, err := usagestream.NewDecoder(reader)
+				if err != nil {
+					return
+				}
+				for {
+					f, err := decoder.Decode()
+					if err != nil {
+						return
+					}
+					if f.Type == "snapshot" && p.send(ctx, Message{Type: "usage", Payload: f.Snapshot}) != nil {
+						return
+					}
+				}
+			}()
+			restart := false
+			select {
+			case <-ctx.Done():
+			case <-usageRestart:
+				restart = true
+			case <-ended:
 			}
-			if f.Type == "snapshot" && p.send(ctx, Message{Type: "usage", Payload: f.Snapshot}) != nil {
+			stop()
+			<-ended
+			stream.Wait()
+			if !restart {
+				if ctx.Err() == nil {
+					_ = p.send(ctx, Message{Type: "usage-unavailable"})
+				}
 				return
 			}
 		}
 	}()
 
 	// Closing the socket and pipe unblocks readers on cancellation.
-	go func() { <-ctx.Done(); _ = conn.CloseNow(); _ = reader.Close(); _ = writer.Close() }()
+	go func() { <-ctx.Done(); _ = conn.CloseNow() }()
 	slots := make(chan struct{}, 8)
 	for {
 		m, err := p.read(ctx)
@@ -334,6 +377,7 @@ func connectOnce(parent context.Context, endpoint, token string, cfg config.Home
 										delete(requests, m.ID)
 										requestCancel()
 										mu.Unlock()
+										refreshCatalog()
 										_ = p.send(ctx, Message{Type: "exit", ID: m.ID, Error: exitReason})
 									}()
 									streamErr := streamTerminalOutput(requestCtx, view.Done, view, t.output, func(data []byte) error {
@@ -352,6 +396,12 @@ func connectOnce(parent context.Context, endpoint, token string, cfg config.Home
 					bounded, stop := context.WithTimeout(requestCtx, 15*time.Second)
 					data, err = homeAction(bounded, cfg, m)
 					stop()
+					if err == nil && changesCatalog(m.Operation) {
+						refreshCatalog()
+					}
+					if err == nil && changesProviderAuth(m.Operation, data) {
+						restartUsage()
+					}
 				}
 				reply := Message{Type: "response", ID: m.ID}
 				if err != nil {
@@ -523,6 +573,14 @@ func runHomeFileStageSweeper(ctx context.Context, root string, interval time.Dur
 		}
 	}
 }
+func changesCatalog(operation string) bool {
+	switch operation {
+	case "create", "alias", "hidden":
+		return true
+	}
+	return false
+}
+
 func homeAction(ctx context.Context, cfg config.HomeConfig, m Message) (any, error) {
 	switch m.Operation {
 	case "workspace":
@@ -543,6 +601,8 @@ func homeAction(ctx context.Context, cfg config.HomeConfig, m Message) (any, err
 			profiles = append(profiles, map[string]string{"id": p.ID, "label": p.Label})
 		}
 		return profiles, nil
+	case "providers", "provider-key", "provider-job-start", "provider-job", "provider-job-input", "provider-job-cancel":
+		return providerAction(ctx, cfg, m.Operation, m.Payload)
 	case "create":
 		var q struct {
 			Profile string `json:"profile"`

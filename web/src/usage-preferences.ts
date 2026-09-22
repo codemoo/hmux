@@ -1,5 +1,6 @@
 import { createTextFactory } from "./dom.ts";
 import type { Usage, Snapshot } from "./types.ts";
+import { validUsage } from "./usage.ts";
 
 export type UsagePreferences = {
   version: 1;
@@ -46,15 +47,38 @@ export function usageSourceLabel(provider: "claude" | "codex", source: string) {
         ? "Claude CLI"
         : "Codex CLI";
 }
+// A pooled source (cswap / codex-lb) that is unavailable on this Home falls back
+// to the CLI source when that one has a valid measurement, so hosts without
+// those tools still show usage. Labels follow the source actually shown.
+export function effectiveUsageSource(
+  snapshot: Snapshot,
+  preferences: UsagePreferences,
+  provider: "claude" | "codex",
+): string {
+  const choice = preferences[provider].source;
+  const sources = snapshot.usage?.[provider]?.sources;
+  const selected = sources?.[choice];
+  const unavailable =
+    !selected ||
+    (selected.status?.state !== undefined &&
+      selected.status.state !== "ok" &&
+      !validUsage(selected));
+  const cli = sources?.cli;
+  if (choice !== "cli" && unavailable && cli?.status && validUsage(cli))
+    return "cli";
+  return choice;
+}
 export function selectedUsage(
   snapshot: Snapshot,
   preferences: UsagePreferences,
 ) {
   const result: Partial<Record<"claude" | "codex", Usage>> = {};
   for (const provider of ["codex", "claude"] as const) {
-    const choice = preferences[provider];
-    if (choice.enabled)
-      result[provider] = snapshot.usage?.[provider]?.sources?.[choice.source];
+    if (preferences[provider].enabled)
+      result[provider] =
+        snapshot.usage?.[provider]?.sources?.[
+          effectiveUsageSource(snapshot, preferences, provider)
+        ];
   }
   return result;
 }
