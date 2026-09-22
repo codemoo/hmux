@@ -1231,6 +1231,31 @@ function editDialog(s: Session) {
     text("p", "숨기거나 탭을 닫아도 Home의 작업은 종료되지 않습니다.", "muted"),
   );
 }
+// Home publishes its catalog every few seconds, so a session created a moment
+// ago may not be listed yet. Poll briefly and open it as soon as it appears.
+async function openCreatedSession(result: Identity) {
+  $<HTMLDialogElement>("#dialog").close();
+  const epoch = accountEpoch;
+  const deadline = Date.now() + 12_000;
+  while (loggedIn && epoch === accountEpoch) {
+    try {
+      await refresh();
+    } catch {
+      // Keep waiting; the final notice covers a persistent failure.
+    }
+    const s = sessions.find(
+      (s) => s.id === result.id && s.created_at === result.created_at,
+    );
+    if (s) {
+      openSession(s);
+      return;
+    }
+    if (Date.now() >= deadline) break;
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  }
+  if (loggedIn && epoch === accountEpoch)
+    notice("세션을 만들었습니다. 목록이 갱신되면 열어주세요.");
+}
 async function createDialog() {
   const body = dialog("새 작업 시작");
   body.append(text("p", "작업 환경을 선택하고 새 세션을 시작하세요.", "muted"));
@@ -1270,13 +1295,7 @@ async function createDialog() {
         name: name.value,
         profile: select.value,
       });
-      $<HTMLDialogElement>("#dialog").close();
-      await refresh();
-      const s = sessions.find(
-        (s) => s.id === result.id && s.created_at === result.created_at,
-      );
-      if (s) openSession(s);
-      else notice("세션을 만들었습니다. 목록이 갱신되면 열어주세요.");
+      await openCreatedSession(result);
     } catch (e) {
       error.textContent = (e as Error).message;
       save.disabled = false;

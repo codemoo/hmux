@@ -463,6 +463,12 @@ valid measurement) and the CLI source has a valid measurement, the footer and
 usage dialog show the CLI source instead and label it as such. A working pooled
 source is always used as chosen.
 
+## Session list latency
+
+Home polls tmux every five seconds. A newly created session is opened as soon as
+it appears in the catalog (checked for up to 12 seconds) instead of relying on a
+single refresh right after creation.
+
 ## Build and local provisioning
 
 ```sh
