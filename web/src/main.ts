@@ -1352,7 +1352,13 @@ async function openCreatedSession(result: Identity) {
 }
 async function createDialog() {
   const body = dialog("새 작업 시작");
-  body.append(text("p", "작업 환경을 선택하고 새 세션을 시작하세요.", "muted"));
+  body.append(
+    text(
+      "p",
+      "설정된 작업 경로 아래에 세션 이름으로 새 폴더를 만듭니다.",
+      "muted",
+    ),
+  );
   const form = document.createElement("form");
   const name = formField(form, "세션 이름 (선택)");
   name.maxLength = 80;

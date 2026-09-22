@@ -37,6 +37,21 @@ func run(args []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	switch args[0] {
+	case "setup-home":
+		flags := flag.NewFlagSet("setup-home", flag.ContinueOnError)
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return err
+		}
+		directory := flags.String("config-dir", filepath.Join(home, ".config", "hmux"), "Home configuration directory")
+		workspace := flags.String("workspace-dir", "", "new-session base (new installs: ~/.hmux; existing installs: preserve)")
+		if err := flags.Parse(args[1:]); err != nil {
+			return err
+		}
+		if flags.NArg() != 0 {
+			return errors.New("unexpected setup-home arguments")
+		}
+		return config.SetupHome(*directory, *workspace)
 	case "workspace":
 		return runAgentWorkspace(ctx, args[1:], os.Stdin, os.Stdout)
 	case "recovery":
@@ -377,5 +392,5 @@ func parseWorkflowArgs(args []string) (filter string, jsonOutput bool, err error
 }
 
 func usage() error {
-	return errors.New("usage: hmux-agent <catalog|recovery|conversation|workspace|workflow|workflow-hook|workflow-report|create|alias-set|hidden-set|terminate|metadata-migrate|doctor|version>")
+	return errors.New("usage: hmux-agent <catalog|recovery|conversation|workspace|workflow|workflow-hook|workflow-report|setup-home|create|alias-set|hidden-set|terminate|metadata-migrate|doctor|version>")
 }

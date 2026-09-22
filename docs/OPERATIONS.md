@@ -21,30 +21,52 @@ Install the Home binaries explicitly:
 python3 deploy/web/install-home.py
 ```
 
-The installer requires Python 3, preflights both source/target files, rejects
+The installer requires Python 3, preflights both source/target binaries, rejects
 symlinks and unsafe ownership/permissions, and creates private timestamped backups.
-Each binary is staged and atomically replaced. It never changes configuration,
-starts services or stops a running connector. `--source-dir` and `--bin-dir` support
-an explicit alternative build/install location. Coordinate connector restart
-separately; restore backup bytes with executable mode if rolling back.
+Each binary is staged and atomically replaced. It then calls `hmux-agent setup-home`
+to initialize Home configuration and Codex/Claude/shell profiles.
 
-Create private configuration only for a new installation:
+On a new interactive installation, it asks for the new-session base directory;
+press Enter for `~/.hmux`. Noninteractive new installations use that default.
+To choose a path explicitly:
 
 ```sh
-mkdir -p "$HOME/.config/hmux"
-chmod 700 "$HOME/.config/hmux"
-if [ ! -e "$HOME/.config/hmux/home.toml" ] && [ ! -e "$HOME/.config/hmux/client.toml" ]; then
-  install -m 600 config/home.example.toml "$HOME/.config/hmux/home.toml"
-fi
-if [ ! -e "$HOME/.config/hmux/inventory.toml" ]; then
-  install -m 600 config/inventory.example.toml "$HOME/.config/hmux/inventory.toml"
-fi
+python3 deploy/web/install-home.py --workspace-dir "$HOME/projects"
 ```
 
-Edit the inventory's profiles to use installed commands and existing directories.
-Commands are argument arrays selected by profile ID. Existing `client.toml` files
-continue to load; follow [MIGRATION.md](MIGRATION.md) before replacing configuration.
-Keep the same `state_dir` to retain aliases, hidden state, workflows and recovery.
+Reinstalling without `--workspace-dir` preserves every existing profile directory,
+including custom paths. An explicit `--workspace-dir` updates all profile bases
+with a timestamped inventory backup, preserving other settings and legacy fields.
+Existing `client.toml` remains authoritative when `home.toml` is absent; `state_dir`
+and provider command arguments are preserved. The installer never starts services
+or stops a running connector. `--binaries-only` skips configuration entirely.
+`--source-dir`, `--bin-dir` and `--config-dir` select alternative locations.
+Coordinate connector restart separately; restore binary backup bytes with executable
+mode if rolling back. Configuration errors stop the installer, but already installed
+binaries remain; fix the configuration error and rerun.
+
+Each inventory profile's `default_directory` is the **base**, not the session CWD.
+A new session creates a private child directory derived from the entered name:
+letters (including Korean), numbers, hyphens and underscores remain; spaces and
+other punctuation become hyphens. Empty names use the profile ID. Names are bounded
+for filesystem/tmux limits. Existing folders, files and symlinks are never reused;
+a short random suffix distinguishes a repeated name. The tmux name combines the
+actual child folder, a bounded profile ID and a random suffix. Two creates with
+the same input always create separate workspaces and sessions. `create --dry-run`
+only validates and prints the proposed folder slug; it reserves nothing.
+
+For example, `My Project` with the Codex profile creates `<base>/My-Project` and
+`My-Project-codex-<suffix>` in tmux. The base is created on first use if missing.
+Codex and Claude profiles whose command starts with `codex` or `claude` return to
+an interactive Home shell in the same directory after normal exit, failure or
+Ctrl+C. The same lifecycle applies to recovered provider sessions; ordinary shell
+profiles retain their normal exit behavior. Existing running panes are not rewritten.
+A regular recovery checkpoint clears the resume reference after a provider exits;
+until that checkpoint is saved, the preceding recovery snapshot may still resume it.
+
+Commands are argument arrays selected by profile ID. Existing configuration remains
+compatible; follow [MIGRATION.md](MIGRATION.md) before replacing it. Keep the same
+`state_dir` to retain aliases, hidden state, workflows and recovery.
 
 ## Start the gateway and connector
 
@@ -63,7 +85,7 @@ the original tmux/provider processes.
 
 ## Administration
 
-`hmux-agent` provides `doctor`, `catalog`, `recovery`, `workflow`, `workflow-hook`,
+`hmux-agent` provides `setup-home`, `doctor`, `catalog`, `recovery`, `workflow`, `workflow-hook`,
 `workflow-report`, `conversation`, `workspace`, `create`, `alias-set`, `hidden-set`,
 `terminate`, `metadata-migrate` and `version`. These are headless administration
 operations, not an alternate user interface. Destructive termination requires

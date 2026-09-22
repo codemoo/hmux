@@ -18,6 +18,7 @@ import (
 	"github.com/codemoo/hmux/internal/model"
 	"github.com/codemoo/hmux/internal/recovery"
 	"github.com/codemoo/hmux/internal/safeexec"
+	"github.com/codemoo/hmux/internal/sessionlaunch"
 	"github.com/codemoo/hmux/internal/sessionstate"
 	"github.com/codemoo/hmux/internal/workflow"
 )
@@ -56,7 +57,7 @@ func Create(ctx context.Context, inventory model.Inventory, profileID, requested
 }
 
 func CreateSession(ctx context.Context, inventory model.Inventory, profileID, requestedName, stateDir string) (CreateResult, error) {
-	profile, name, directory, commandPath, err := prepareCreate(inventory, profileID, requestedName)
+	profile, folder, baseDirectory, commandPath, err := prepareCreate(inventory, profileID, requestedName)
 	if err != nil {
 		return CreateResult{}, err
 	}
@@ -64,22 +65,22 @@ func CreateSession(ctx context.Context, inventory model.Inventory, profileID, re
 	if err != nil {
 		return CreateResult{}, err
 	}
-	const identityFormat = "#{session_id} #{session_created}"
-	if requestedName != "" && exec.CommandContext(ctx, tmuxPath, "has-session", "-t", "="+name).Run() == nil {
-		// display-message takes a pane target; ':' resolves the exact session's
-		// current window instead of treating its name as a pane/window name.
-		output, err := safeexec.Output(exec.CommandContext(ctx, tmuxPath, "display-message", "-p", "-t", "="+name+":", identityFormat), 4096)
-		if err != nil {
-			return CreateResult{}, fmt.Errorf("resolve existing session: %w", err)
-		}
-		result, err := parseCreatedIdentity(output)
-		result.Reused = true
-		// Reusing a name must not relabel an existing session with a different profile.
-		return result, err
+	directory, name, err := allocateWorkspace(baseDirectory, folder, profile.ID)
+	if err != nil {
+		return CreateResult{}, err
 	}
+	const identityFormat = "#{session_id} #{session_created}"
 	args := []string{"new-session", "-d", "-P", "-F", identityFormat, "-s", name, "-c", directory}
 	command := append([]string{commandPath}, profile.Command[1:]...)
-	args = append(args, shellCommand(command))
+	if profile.Command[0] == "codex" || profile.Command[0] == "claude" {
+		command = sessionlaunch.Provider(command)
+	}
+	// Multiple argv make tmux exec directly, without its default-shell parser.
+	// A single executable needs an explicit exec wrapper to avoid shell expansion.
+	if len(command) == 1 {
+		command = []string{"/bin/sh", "-c", `exec "$1"`, "hmux-launch", command[0]}
+	}
+	args = append(args, command...)
 	output, err := safeexec.Output(exec.CommandContext(ctx, tmuxPath, args...), 4096)
 	if err != nil {
 		return CreateResult{}, fmt.Errorf("tmux new-session: %w", err)
@@ -176,27 +177,30 @@ func prepareCreate(inventory model.Inventory, profileID, requestedName string) (
 	}
 	name := requestedName
 	if name == "" {
-		var suffix [8]byte
-		if _, err := rand.Read(suffix[:]); err != nil {
-			return nil, "", "", "", fmt.Errorf("generate session name: %w", err)
+		name = profile.ID
+	}
+	if !utf8.ValidString(name) || utf8.RuneCountInString(name) > 80 {
+		return nil, "", "", "", errors.New("session name must contain at most 80 characters")
+	}
+	for _, r := range name {
+		if unicode.IsControl(r) {
+			return nil, "", "", "", errors.New("session name cannot contain control characters")
 		}
-		// A profile ID is at most 63 ASCII characters, so the generated name
-		// remains within tmux's HMux limit of 80. Never reuse automatic names.
-		name = fmt.Sprintf("%s-%x", profile.ID, suffix)
 	}
-	if !validSessionName(name) {
-		return nil, "", "", "", errors.New("session name must be 1-80 safe letters, numbers, spaces, '_' or '-' and cannot contain ':' or '.'")
-	}
+	name = workspaceSlug(name, 36)
 	directory, err := expandHome(profile.DefaultDirectory)
 	if err != nil {
 		return nil, "", "", "", err
 	}
-	info, err := os.Stat(directory)
-	if err != nil {
-		return nil, "", "", "", fmt.Errorf("profile directory: %w", err)
+	directory = filepath.Clean(directory)
+	if directory == string(os.PathSeparator) {
+		return nil, "", "", "", errors.New("workspace base cannot be the filesystem root")
 	}
-	if !info.IsDir() {
-		return nil, "", "", "", fmt.Errorf("profile path %q is not a directory", directory)
+	// Validation has no side effects. A missing base is created only on actual create.
+	if info, err := os.Stat(directory); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return nil, "", "", "", fmt.Errorf("workspace base: %w", err)
+	} else if err == nil && !info.IsDir() {
+		return nil, "", "", "", errors.New("workspace base is not a directory")
 	}
 	if len(profile.Command) == 0 {
 		return nil, "", "", "", errors.New("profile command is empty")
@@ -208,18 +212,56 @@ func prepareCreate(inventory model.Inventory, profileID, requestedName string) (
 	return profile, name, directory, commandPath, nil
 }
 
-func validSessionName(name string) bool {
-	count := utf8.RuneCountInString(name)
-	if count < 1 || count > 80 {
-		return false
-	}
-	for _, r := range name {
-		if unicode.IsLetter(r) || unicode.IsNumber(r) || r == ' ' || r == '_' || r == '-' {
-			continue
+// workspaceSlug converts display text to one bounded filesystem component.
+// No separators, dot segments, shell syntax or leading option characters survive.
+func workspaceSlug(value string, limit int) string {
+	var result []rune
+	for _, r := range strings.TrimSpace(value) {
+		if unicode.IsLetter(r) || unicode.IsNumber(r) || r == '_' || r == '-' {
+			result = append(result, r)
+		} else if len(result) > 0 && result[len(result)-1] != '-' {
+			result = append(result, '-')
 		}
-		return false
+		if len(result) == limit {
+			break
+		}
 	}
-	return true
+	slug := strings.Trim(string(result), "-_")
+	if slug == "" {
+		return "session"
+	}
+	return slug
+}
+
+func allocateWorkspace(base, folder, profile string) (string, string, error) {
+	if err := os.MkdirAll(base, 0700); err != nil {
+		return "", "", fmt.Errorf("create workspace base: %w", err)
+	}
+	// Pin the administrator-selected base. Root.Mkdir never follows a child
+	// symlink; existing directories/files/links receive a different name.
+	root, err := os.OpenRoot(base)
+	if err != nil {
+		return "", "", err
+	}
+	defer root.Close()
+	for attempt := 0; attempt < 32; attempt++ {
+		var random [6]byte
+		if _, err := rand.Read(random[:]); err != nil {
+			return "", "", err
+		}
+		suffix := fmt.Sprintf("%x", random)
+		child := folder
+		if attempt > 0 {
+			child += "-" + suffix
+		}
+		if err := root.Mkdir(child, 0700); errors.Is(err, os.ErrExist) {
+			continue
+		} else if err != nil {
+			return "", "", fmt.Errorf("create session directory: %w", err)
+		}
+		return filepath.Join(base, child), child + "-" + workspaceSlug(profile, 16) + "-" + suffix, nil
+	}
+	return "", "", errors.New("could not allocate a unique session directory")
 }
 
 func shellCommand(args []string) string {

@@ -792,3 +792,12 @@ Partial uploads are cleaned up
 on cancellation; spool ownership, symlink checks, 512 MiB quota and 100-stage cap
 continue to apply. Only the temporary uploaded copy is removed; the original file
 on the attaching device is untouched.
+
+## New-session workspaces
+
+Home installation selects each profile's workspace base (new-install default:
+`~/.hmux`; existing custom bases are retained). Creating a session allocates a new
+child folder from its name and a unique folder/profile-prefixed tmux name. Repeated
+names never attach to existing work or reuse existing directories. Codex/Claude
+exit returns to an interactive shell, including for resumed sessions. See
+[Operations](OPERATIONS.md#build-and-install-home) for naming and installation flags.

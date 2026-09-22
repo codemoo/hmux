@@ -1,23 +1,24 @@
+# Base directories: each new session gets its own child folder here.
 schema_version = 1
 revision = "example"
 
 [[profiles]]
 id = "codex"
 label = "Codex"
-default_directory = "~/work"
+default_directory = "~/.hmux"
 command = ["codex"]
 tags = ["ai", "codex"]
 
 [[profiles]]
 id = "claude"
 label = "Claude Code"
-default_directory = "~/work"
+default_directory = "~/.hmux"
 command = ["claude"]
 tags = ["ai", "claude"]
 
 [[profiles]]
 id = "shell"
 label = "Shell"
-default_directory = "~"
+default_directory = "~/.hmux"
 command = ["zsh", "-l"]
 tags = ["shell"]

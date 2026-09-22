@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Install only Home binaries, with private backups and atomic per-file replacement."""
+"""Install Home binaries and configure the base directory for new sessions."""
 import argparse
 from datetime import datetime, timezone
 import os
 from pathlib import Path
 import stat
+import subprocess
+import sys
 import tempfile
 
 BINARIES = ("hmux-web", "hmux-agent")
@@ -32,7 +34,7 @@ def current(path):
         return None
 
 
-def check_directory(path, create=False):
+def check_directory(path, create=False, mode=0o755):
     path = Path(os.path.abspath(path))
     for directory in (path, *path.parents):
         try:
@@ -46,7 +48,7 @@ def check_directory(path, create=False):
                 or (info.st_mode & 0o022 and not sticky_root)):
             raise ValueError("directory path must be trusted and must not traverse symlinks")
     if create:
-        path.mkdir(mode=0o755, parents=True, exist_ok=True)
+        path.mkdir(mode=mode, parents=True, exist_ok=True)
     info = path.lstat()
     if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o022:
         raise ValueError("source and installation directories must be owner-controlled")
@@ -103,8 +105,25 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-dir", type=Path, default=Path("dist/web-darwin-arm64"))
     parser.add_argument("--bin-dir", type=Path, default=Path.home() / ".local/bin")
+    parser.add_argument("--config-dir", type=Path, default=Path.home() / ".config/hmux")
+    parser.add_argument("--workspace-dir", help="session base; new installs default to ~/.hmux")
+    parser.add_argument("--binaries-only", action="store_true", help="leave configuration untouched")
     args = parser.parse_args()
     try:
+        workspace = args.workspace_dir
+        if not args.binaries_only:
+            config_dir = check_directory(args.config_dir.expanduser(), create=True, mode=0o700)
+            existing = any(os.path.lexists(config_dir / name)
+                           for name in ("home.toml", "client.toml", "inventory.toml"))
+            if workspace is None and not existing and sys.stdin.isatty():
+                workspace = input("New-session base directory [~/.hmux]: ").strip() or "~/.hmux"
         install(args.source_dir, args.bin_dir)
-    except (OSError, ValueError) as error:
+        if not args.binaries_only:
+            command = [str(check_directory(args.bin_dir) / "hmux-agent"),
+                       "setup-home", "--config-dir", str(config_dir)]
+            if workspace is not None:
+                command.extend(["--workspace-dir", workspace])
+            subprocess.run(command, check=True)
+            print("Home configured; existing paths are preserved unless --workspace-dir is supplied.")
+    except (OSError, ValueError, subprocess.CalledProcessError, EOFError) as error:
         parser.exit(1, "Home installation refused: " + str(error) + "\n")
