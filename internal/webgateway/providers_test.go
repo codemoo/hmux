@@ -126,3 +126,27 @@ func TestProviderActionRejectsMalformedRequests(t *testing.T) {
 		t.Fatalf("remote role: %v %+v", err, value)
 	}
 }
+
+func TestChangesProviderAuth(t *testing.T) {
+	job := func(state string) providerResult {
+		return providerResult{Job: &providers.JobStatus{State: state}}
+	}
+	for _, tc := range []struct {
+		operation string
+		data      any
+		want      bool
+	}{
+		{"provider-key", providerResult{}, true},
+		{"provider-key", providerResult{Error: "bad"}, false},
+		{"provider-job", job(providers.JobConnected), true},
+		{"provider-job-input", job(providers.JobDone), true},
+		{"provider-job", job(providers.JobLogin), false},
+		{"provider-job", job(providers.JobFailed), false},
+		{"providers", providerResult{}, false},
+		{"create", map[string]string{}, false},
+	} {
+		if got := changesProviderAuth(tc.operation, tc.data); got != tc.want {
+			t.Fatalf("%s %+v = %v", tc.operation, tc.data, got)
+		}
+	}
+}

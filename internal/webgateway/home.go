@@ -163,38 +163,73 @@ func connectOnce(parent context.Context, endpoint, token string, cfg config.Home
 			}
 		}
 	}()
-	reader, writer := io.Pipe()
-	workers.Add(2)
-	go func() {
-		defer workers.Done()
-		defer writer.Close()
-		_ = usagestream.RunWithSources(ctx, writer)
-	}()
-	go func() {
-		defer workers.Done()
-		defer reader.Close()
-		defer func() {
-			if ctx.Err() == nil {
-				_ = p.send(ctx, Message{Type: "usage-unavailable"})
-			}
-		}()
-		decoder, err := usagestream.NewDecoder(reader)
-		if err != nil {
-			return
+	// The usage collector re-reads CLI credentials only once a minute, so a new
+	// login or API key restarts it; a fresh collector reads them immediately.
+	usageRestart := make(chan struct{}, 1)
+	restartUsage := func() {
+		select {
+		case usageRestart <- struct{}{}:
+		default:
 		}
+	}
+	workers.Add(1)
+	go func() {
+		defer workers.Done()
 		for {
-			f, err := decoder.Decode()
-			if err != nil {
-				return
+			streamCtx, stop := context.WithCancel(ctx)
+			reader, writer := io.Pipe()
+			var stream sync.WaitGroup
+			stream.Add(2)
+			go func() {
+				defer stream.Done()
+				<-streamCtx.Done()
+				_ = reader.Close()
+				_ = writer.Close()
+			}()
+			go func() {
+				defer stream.Done()
+				defer writer.Close()
+				_ = usagestream.RunWithSources(streamCtx, writer)
+			}()
+			ended := make(chan struct{})
+			go func() {
+				defer close(ended)
+				defer reader.Close()
+				decoder, err := usagestream.NewDecoder(reader)
+				if err != nil {
+					return
+				}
+				for {
+					f, err := decoder.Decode()
+					if err != nil {
+						return
+					}
+					if f.Type == "snapshot" && p.send(ctx, Message{Type: "usage", Payload: f.Snapshot}) != nil {
+						return
+					}
+				}
+			}()
+			restart := false
+			select {
+			case <-ctx.Done():
+			case <-usageRestart:
+				restart = true
+			case <-ended:
 			}
-			if f.Type == "snapshot" && p.send(ctx, Message{Type: "usage", Payload: f.Snapshot}) != nil {
+			stop()
+			<-ended
+			stream.Wait()
+			if !restart {
+				if ctx.Err() == nil {
+					_ = p.send(ctx, Message{Type: "usage-unavailable"})
+				}
 				return
 			}
 		}
 	}()
 
 	// Closing the socket and pipe unblocks readers on cancellation.
-	go func() { <-ctx.Done(); _ = conn.CloseNow(); _ = reader.Close(); _ = writer.Close() }()
+	go func() { <-ctx.Done(); _ = conn.CloseNow() }()
 	slots := make(chan struct{}, 8)
 	for {
 		m, err := p.read(ctx)
@@ -363,6 +398,9 @@ func connectOnce(parent context.Context, endpoint, token string, cfg config.Home
 					stop()
 					if err == nil && changesCatalog(m.Operation) {
 						refreshCatalog()
+					}
+					if err == nil && changesProviderAuth(m.Operation, data) {
+						restartUsage()
 					}
 				}
 				reply := Message{Type: "response", ID: m.ID}

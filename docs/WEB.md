@@ -456,6 +456,13 @@ for build/deployment details.
 See [web maintenance instructions](../web/AGENTS.md). Preserve CSS order and edit
 owning rules rather than appending a new conflicting override.
 
+## Usage after connecting
+
+The embedded usage collector re-reads CLI credentials once a minute. When an API
+key is saved or cleared, or a connect/update job finishes, the Home connector
+restarts its usage collector, which reads the credentials immediately; the new
+login is reflected in about a second instead of up to a minute.
+
 ## Usage source fallback
 
 Usage preferences default to the pooled sources (`cswap`, `codex-lb`). When the

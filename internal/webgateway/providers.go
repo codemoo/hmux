@@ -169,3 +169,16 @@ func addProviderProfile(path string, env providers.Env, id string) error {
 	}
 	return config.SaveInventory(path, inventory)
 }
+
+// changesProviderAuth reports a result after which CLI credentials may have
+// changed: a saved or cleared API key, or a connect/update job that finished.
+func changesProviderAuth(operation string, data any) bool {
+	result, ok := data.(providerResult)
+	if !ok || result.Error != "" {
+		return false
+	}
+	if operation == "provider-key" {
+		return true
+	}
+	return result.Job != nil && (result.Job.State == providers.JobConnected || result.Job.State == providers.JobDone)
+}
