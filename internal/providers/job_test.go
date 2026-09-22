@@ -156,3 +156,41 @@ echo "$code" > "`+record+`"
 		t.Fatalf("job left running: %+v", status)
 	}
 }
+
+func TestClaudeReadyAfterLoginAndKey(t *testing.T) {
+	env := testEnv(t)
+	fakeCLI(t, env, "claude", `echo "2.1.278 (Claude Code)"`)
+	path := filepath.Join(env.Home, ".claude.json")
+	writeFile(t, path, `{"projects":{"/w":{"x":1}},"theme":"dark"}`)
+	if err := markClaudeReady(context.Background(), env, ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := SetKey(context.Background(), env, "claude", fakeAnthropicKey); err != nil {
+		t.Fatal(err)
+	}
+	var state struct {
+		Projects        map[string]any `json:"projects"`
+		Theme           string         `json:"theme"`
+		Onboarded       bool           `json:"hasCompletedOnboarding"`
+		Version         string         `json:"lastOnboardingVersion"`
+		CustomResponses struct {
+			Approved []string `json:"approved"`
+		} `json:"customApiKeyResponses"`
+	}
+	raw, _ := os.ReadFile(path)
+	if err := json.Unmarshal(raw, &state); err != nil {
+		t.Fatal(err)
+	}
+	suffix := fakeAnthropicKey[len(fakeAnthropicKey)-20:]
+	if !state.Onboarded || state.Version != "2.1.278" || state.Theme != "dark" || state.Projects["/w"] == nil ||
+		len(state.CustomResponses.Approved) != 1 || state.CustomResponses.Approved[0] != suffix {
+		t.Fatalf("state = %s", raw)
+	}
+	// Idempotent: saving the same key again adds nothing.
+	if err := markClaudeReady(context.Background(), env, fakeAnthropicKey); err != nil {
+		t.Fatal(err)
+	}
+	if again, _ := os.ReadFile(path); string(again) != string(raw) {
+		t.Fatalf("rewrote unchanged state: %s", again)
+	}
+}

@@ -496,7 +496,11 @@ timeout.
   marker (Gemini: when `~/.gemini/oauth_creds.json` appears) and is then closed.
   Reopening Settings reattaches to a job still running on Home; 취소 kills it.
   Progress is read from a private state file (`~/.local/state/hmux-setup`), not
-  the pane, because CLIs such as Gemini clear the screen.
+  the pane, because CLIs such as Gemini clear the screen. After a successful
+  Claude login, and when a Claude key is saved, HMux records Claude Code's
+  first-run state in `~/.claude.json` (`hasCompletedOnboarding`,
+  `lastOnboardingVersion`, and the key's approval suffix) so the first session
+  opens ready instead of repeating onboarding and login.
 - **Install/update** (`setup.sh update`) installs only under `~/.local` and never
   uses sudo: Codex from the latest `openai/codex` GitHub release binary, Claude
   Code from `claude.ai/install.sh`, Gemini from npm `@google/gemini-cli`. When

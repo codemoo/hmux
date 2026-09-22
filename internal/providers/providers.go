@@ -264,7 +264,10 @@ func SetKey(ctx context.Context, env Env, id, key string) error {
 		}
 		return nil
 	case "claude":
-		return setClaudeKey(env, p.KeyName, key)
+		if err := setClaudeKey(env, p.KeyName, key); err != nil || key == "" {
+			return err
+		}
+		return markClaudeReady(ctx, env, key)
 	case "gemini":
 		if err := setDotenv(env.geminiEnvPath(), p.KeyName, key); err != nil || key == "" {
 			return err
@@ -408,7 +411,9 @@ func setDotenv(path, name, value string) error {
 	return replaceFile(path, []byte(out), raw)
 }
 
-func readSmall(path string) ([]byte, error) {
+func readSmall(path string) ([]byte, error) { return readLimited(path, 1<<20) }
+
+func readLimited(path string, limit int64) ([]byte, error) {
 	info, err := os.Lstat(path)
 	if err != nil {
 		return nil, err
@@ -416,7 +421,7 @@ func readSmall(path string) ([]byte, error) {
 	if !info.Mode().IsRegular() {
 		return nil, fmt.Errorf("%s is not a regular file", path)
 	}
-	if info.Size() > 1<<20 {
+	if info.Size() > limit {
 		return nil, fmt.Errorf("%s is too large", path)
 	}
 	return os.ReadFile(path)
@@ -462,4 +467,67 @@ func replaceFile(path string, data, previous []byte) error {
 		return err
 	}
 	return os.Rename(name, path)
+}
+
+// markClaudeReady records what Claude Code's first-run screens would ask, so a
+// session started right after HMux connected it opens ready instead of asking
+// to log in again: onboarding completed and, for an API key, approval of that
+// key (Claude stores the last 20 characters). Other state is preserved.
+func markClaudeReady(ctx context.Context, env Env, key string) error {
+	path := filepath.Join(env.Home, ".claude.json")
+	state := map[string]any{}
+	raw, err := readLimited(path, 64<<20)
+	switch {
+	case err == nil:
+		if len(bytes.TrimSpace(raw)) > 0 && json.Unmarshal(raw, &state) != nil {
+			return errors.New("~/.claude.json을 해석할 수 없어 수정하지 않았습니다")
+		}
+	case !errors.Is(err, os.ErrNotExist):
+		return err
+	}
+	changed := false
+	if done, _ := state["hasCompletedOnboarding"].(bool); !done {
+		state["hasCompletedOnboarding"] = true
+		changed = true
+	}
+	if _, ok := state["lastOnboardingVersion"].(string); !ok {
+		if path, ok := env.Executable("claude"); ok {
+			if out, err := env.output(ctx, path, "--version"); err == nil {
+				if version := cleanVersion(out); version != "" {
+					state["lastOnboardingVersion"] = version
+					changed = true
+				}
+			}
+		}
+	}
+	if key != "" {
+		suffix := key
+		if len(suffix) > 20 {
+			suffix = suffix[len(suffix)-20:]
+		}
+		responses, _ := state["customApiKeyResponses"].(map[string]any)
+		if responses == nil {
+			responses = map[string]any{}
+		}
+		approved, _ := responses["approved"].([]any)
+		found := false
+		for _, value := range approved {
+			if value == suffix {
+				found = true
+			}
+		}
+		if !found {
+			responses["approved"] = append(approved, suffix)
+			state["customApiKeyResponses"] = responses
+			changed = true
+		}
+	}
+	if !changed {
+		return nil
+	}
+	out, err := json.MarshalIndent(state, "", "  ")
+	if err != nil {
+		return err
+	}
+	return replaceFile(path, append(out, '\n'), raw)
 }

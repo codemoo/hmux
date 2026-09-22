@@ -156,6 +156,12 @@ func GetJob(ctx context.Context, env Env, id string) (JobStatus, error) {
 	if status.State == JobConnected || status.State == JobDone || status.State == JobFailed {
 		_ = CancelJob(ctx, env, id)
 	}
+	if id == "claude" && status.State == JobDone && strings.HasSuffix(strings.TrimSpace(string(phase)), ":login") {
+		// `claude auth login` stores credentials but not first-run completion.
+		if err := markClaudeReady(ctx, env, ""); err != nil {
+			status.Log = append(status.Log, err.Error())
+		}
+	}
 	return status, nil
 }
 
