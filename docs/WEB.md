@@ -455,6 +455,14 @@ for build/deployment details.
 See [web maintenance instructions](../web/AGENTS.md). Preserve CSS order and edit
 owning rules rather than appending a new conflicting override.
 
+## Usage source fallback
+
+Usage preferences default to the pooled sources (`cswap`, `codex-lb`). When the
+selected pooled source is unavailable on this Home (non-`ok` state without a
+valid measurement) and the CLI source has a valid measurement, the footer and
+usage dialog show the CLI source instead and label it as such. A working pooled
+source is always used as chosen.
+
 ## Build and local provisioning
 
 ```sh

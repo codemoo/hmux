@@ -14,6 +14,7 @@ import {
 import type { Snapshot } from "./types.ts";
 import {
   defaultUsagePreferences,
+  effectiveUsageSource,
   selectedUsage,
   usageSourceLabel,
   type UsagePreferences,
@@ -41,7 +42,10 @@ export function renderUsageFooter(
   for (const provider of ["codex", "claude"] as const) {
     if (!preferences[provider].enabled) continue;
     if (descriptions.length) usageButton.append(text("i"));
-    const label = usageSourceLabel(provider, preferences[provider].source);
+    const label = usageSourceLabel(
+      provider,
+      effectiveUsageSource(snapshot, preferences, provider),
+    );
     usageButton.append(
       text(
         "span",
@@ -143,7 +147,10 @@ export function renderUsagePanel(
     badges.append(
       text(
         "span",
-        usageSourceLabel(provider, preferences[provider].source),
+        usageSourceLabel(
+          provider,
+          effectiveUsageSource(snapshot, preferences, provider),
+        ),
         "usage-badge",
       ),
     );
@@ -256,7 +263,10 @@ export function renderUsagePanel(
           accounts,
         );
       }
-      if (!u?.accounts?.length && preferences[provider].source !== "cli")
+      if (
+        !u?.accounts?.length &&
+        effectiveUsageSource(snapshot, preferences, provider) !== "cli"
+      )
         details.append(
           text("p", "연결된 계정 정보가 없습니다.", "usage-message muted"),
         );
