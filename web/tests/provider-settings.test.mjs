@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   jobMessage,
+  startableProviders,
+  needsProviderSetup,
   parseProviderResult,
   providerSummary,
 } from "../src/provider-settings.ts";
@@ -146,5 +148,41 @@ test("provider summary describes install and connection state", () => {
   assert.equal(
     providerSummary({ ...base, auth: "api-key", key_hint: "…abcd" }),
     "설치되지 않음 · API 키 …abcd",
+  );
+});
+
+test("onboarding is needed until one provider is connected", () => {
+  const p = (id, auth) => ({ id, auth, installed: true, profile: false });
+  assert.equal(needsProviderSetup([]), true);
+  assert.equal(
+    needsProviderSetup([p("codex", "none"), p("gemini", "none")]),
+    true,
+  );
+  assert.equal(
+    needsProviderSetup([p("codex", "none"), p("claude", "account")]),
+    false,
+  );
+  assert.equal(needsProviderSetup([p("gemini", "api-key")]), false);
+});
+
+test("only installed, connected providers with a profile can be started", () => {
+  const p = (id, installed, auth, profile_id) => ({
+    id,
+    installed,
+    auth,
+    profile_id,
+  });
+  const ready = startableProviders([
+    p("codex", true, "account", "codex"),
+    p("claude", true, "none", "claude"),
+    p("gemini", true, "api-key", ""),
+  ]);
+  assert.deepEqual(
+    ready.map((x) => x.id),
+    ["codex"],
+  );
+  assert.deepEqual(
+    startableProviders([p("codex", false, "api-key", "codex")]),
+    [],
   );
 });

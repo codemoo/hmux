@@ -682,6 +682,32 @@ kbd {
   font-size: 12px;
 }
 
+.ai-onboarding {
+  display: grid;
+  gap: 8px;
+  max-width: 420px;
+  margin-top: 28px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--panel);
+  text-align: left;
+}
+.ai-onboarding[hidden] {
+  display: none;
+}
+.ai-onboarding strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+.ai-onboarding-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#empty .ai-onboarding .secondary {
+  margin-top: 0;
+}
 .provider-row {
   display: grid;
   gap: 10px;

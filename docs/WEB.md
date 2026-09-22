@@ -518,6 +518,12 @@ timeout.
   after a timestamped backup; existing profiles are never rewritten. Connected
   providers show **시작**, which creates and opens a session with that profile.
 
+The empty workspace shows a provider card. Until one provider is connected it
+reads "AI 연결이 필요합니다" and opens Settings directly on AI 연결 ("나중에" hides
+it on that device). Once a provider is connected it offers "<provider> 시작"
+buttons instead. The card is refreshed once per login, when Settings closes and
+when the last tab closes.
+
 Provider credentials are Home-wide: every web account on this Home uses the same
 CLI logins and keys. The feature requires the Home role. Gemini tabs are ordinary
 sessions; provider-specific recovery, usage and conversation reading remain

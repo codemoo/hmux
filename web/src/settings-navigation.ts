@@ -5,6 +5,7 @@ import { createTextFactory } from "./dom.ts";
 export function installSettingsNavigation(
   parent: HTMLElement,
   groups: { id: string; label: string; sections: HTMLElement[] }[],
+  initialId?: string,
 ) {
   const text = createTextFactory(parent.ownerDocument);
   const nav = text("div", "", "settings-nav");
@@ -52,5 +53,10 @@ export function installSettingsNavigation(
     content.append(panel);
   });
   parent.append(nav, content);
-  select(0);
+  select(
+    Math.max(
+      0,
+      groups.findIndex((group) => group.id === initialId),
+    ),
+  );
 }

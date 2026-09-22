@@ -125,6 +125,18 @@ export function parseProviderResult(value: unknown): ProviderResult {
   return result;
 }
 
+// Connected providers that already have a launch profile.
+export function startableProviders(providers: ProviderStatus[]) {
+  return providers.filter(
+    (p) => p.installed && p.auth !== "none" && p.profile_id,
+  );
+}
+
+// True until at least one provider is connected by account or API key.
+export function needsProviderSetup(providers: ProviderStatus[]) {
+  return !providers.some((p) => p.auth !== "none");
+}
+
 export function providerSummary(p: ProviderStatus) {
   if (!p.installed && p.auth === "none") return "설치되지 않음";
   const parts = [];
