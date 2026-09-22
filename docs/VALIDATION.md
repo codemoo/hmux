@@ -32,6 +32,14 @@ links, formatting and remaining retired-product imports were checked. Build/test
 caches were redirected to temporary writable directories where sandbox policy
 prevented using the user's cache directories.
 
+Production release `20260922T050103Z` deployed the web assets, Linux gateway and
+Home connector/helper built from `7bf8934`. Existing Home binaries received private
+timestamped backups. One new connector is established; original tmux session IDs
+and creation times survived the handoff. HTTPS asset hashes, no-store/PWA CSP,
+anonymous API rejection, gateway health and private VAPID storage were verified.
+GitHub source publication completed; this rollout did not alter user configuration
+or authentication/profile stores.
+
 ## 2026-09-22 — Mobile accessory key labels and focus
 
 The mobile key row no longer includes the redraw button; the top toolbar retains
