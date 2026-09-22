@@ -81,6 +81,11 @@ change rules. CI checks the Go host/gateway, isolated tmux lifecycles and the we
 Source and deployment procedures are tracked in [RELEASING.md](docs/RELEASING.md).
 Third-party notices are preserved in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
+## Contributors
+
+- [Kim Ji Yu (@Banal972)](https://github.com/Banal972) — Linux Home metrics,
+  provider setup and web session lifecycle improvements.
+
 The first published commits import the existing project by component. They do
 not recreate its earlier development history. See the [documentation map](docs/README.md)
 for detailed behavior and [validation evidence](docs/VALIDATION.md) for limitations.

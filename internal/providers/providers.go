@@ -6,6 +6,7 @@ package providers
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	_ "embed"
 	"encoding/json"
 	"errors"
@@ -201,7 +202,7 @@ func status(ctx context.Context, env Env, p Provider) Status {
 	case "gemini":
 		if key := dotenvValue(env.geminiEnvPath(), p.KeyName); key != "" {
 			s.Auth, s.KeyHint = AuthAPIKey, Hint(key)
-		} else if info, err := os.Stat(filepath.Join(env.Home, ".gemini", "oauth_creds.json")); err == nil && info.Mode().IsRegular() {
+		} else if _, ok := geminiOAuthFingerprint(env, time.Now()); ok {
 			s.Auth = AuthAccount
 		}
 	}
@@ -297,6 +298,52 @@ func (e Env) claudeSettingsPath() string {
 }
 
 func (e Env) geminiEnvPath() string { return filepath.Join(e.Home, ".gemini", ".env") }
+
+func (e Env) geminiOAuthPath() string {
+	return filepath.Join(e.Home, ".gemini", "oauth_creds.json")
+}
+
+// geminiOAuthFingerprint accepts only a credential document that can still be
+// used: a refresh token, or an access token whose millisecond expiry is in the
+// future. Existence alone is not authentication; Gemini can leave an empty,
+// corrupt or expired file behind after a failed or revoked login.
+func geminiOAuthFingerprint(env Env, now time.Time) (string, bool) {
+	raw, err := readSmall(env.geminiOAuthPath())
+	if err != nil || len(bytes.TrimSpace(raw)) == 0 {
+		return "", false
+	}
+	var credential struct {
+		AccessToken  string `json:"access_token"`
+		RefreshToken string `json:"refresh_token"`
+		ExpiryDate   int64  `json:"expiry_date"`
+	}
+	if json.Unmarshal(raw, &credential) != nil {
+		return "", false
+	}
+	usable := validOAuthToken(credential.RefreshToken)
+	if !usable && validOAuthToken(credential.AccessToken) {
+		usable = credential.ExpiryDate > now.Add(30*time.Second).UnixMilli()
+	}
+	if !usable {
+		return "", false
+	}
+	// A refresh token identifies the durable login. Access tokens and expiry
+	// fields rotate during ordinary refreshes, and JSON formatting can change;
+	// neither must look like a new interactive login. An access-only credential
+	// still reports account auth, but all such files share one conservative
+	// identity so token rotation cannot complete a reconnect job.
+	if validOAuthToken(credential.RefreshToken) {
+		return fmt.Sprintf("refresh:%x", sha256.Sum256([]byte(credential.RefreshToken))), true
+	}
+	return "access-only", true
+}
+
+func validOAuthToken(value string) bool {
+	value = strings.TrimSpace(value)
+	return len(value) >= 8 && len(value) <= 16*1024 && strings.IndexFunc(value, func(r rune) bool {
+		return r < 0x21 || r == 0x7f
+	}) < 0
+}
 
 func claudeSettingsKey(env Env) string {
 	raw, err := readSmall(env.claudeSettingsPath())
@@ -440,7 +487,7 @@ func replaceFile(path string, data, previous []byte) error {
 		return fmt.Errorf("%s is not a directory", dir)
 	}
 	if previous != nil {
-		backup := fmt.Sprintf("%s.hmux-backup-%s", path, time.Now().UTC().Format("20060102T150405Z"))
+		backup := fmt.Sprintf("%s.hmux-backup-%s", path, time.Now().UTC().Format("20060102T150405.000000000Z"))
 		if err := os.WriteFile(backup, previous, 0o600); err != nil {
 			return fmt.Errorf("backup %s: %w", filepath.Base(path), err)
 		}

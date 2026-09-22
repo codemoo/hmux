@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/codemoo/hmux/internal/safeexec"
 )
@@ -61,6 +62,10 @@ func (e Env) jobStatePath(id string) string {
 	return filepath.Join(e.Home, ".local", "state", "hmux-setup", jobSession(id))
 }
 
+func (e Env) jobMarkerPath(id, marker string) string {
+	return e.jobStatePath(id) + "." + marker
+}
+
 // jobPane targets the job session's current pane; '=' forces an exact session
 // match and the trailing ':' makes it valid where tmux expects a pane target.
 func jobPane(id string) string { return "=" + jobSession(id) + ":" }
@@ -86,6 +91,7 @@ func StartJob(ctx context.Context, env Env, action, id string) error {
 	if _, ok := Lookup(id); !ok {
 		return errors.New("unknown provider")
 	}
+	_ = CancelJob(ctx, env, id)
 	if id == "gemini" && action == "connect" {
 		// Choose Google login unless another non-key method is configured.
 		if err := setGeminiAuth(env, "oauth-personal", func(current string) bool {
@@ -94,10 +100,18 @@ func StartJob(ctx context.Context, env Env, action, id string) error {
 			return err
 		}
 	}
-	_ = CancelJob(ctx, env, id)
 	state := env.jobStatePath(id)
 	if err := os.MkdirAll(filepath.Dir(state), 0o700); err != nil {
 		return err
+	}
+	if id == "gemini" && action == "connect" {
+		baseline := "none"
+		if fingerprint, ok := geminiOAuthFingerprint(env, time.Now()); ok {
+			baseline = fingerprint
+		}
+		if err := os.WriteFile(env.jobMarkerPath(id, "oauth-baseline"), []byte(baseline), 0o600); err != nil {
+			return err
+		}
 	}
 	if err := os.WriteFile(state, nil, 0o600); err != nil {
 		return err
@@ -114,6 +128,8 @@ func CancelJob(ctx context.Context, env Env, id string) error {
 		return errors.New("unknown provider")
 	}
 	_ = os.Remove(env.jobStatePath(id))
+	_ = os.Remove(env.jobMarkerPath(id, "oauth-baseline"))
+	_ = os.Remove(env.jobMarkerPath(id, "input-sent"))
 	_, err := env.tmux(ctx, "kill-session", "-t", "="+jobSession(id))
 	return err
 }
@@ -128,6 +144,11 @@ func JobInput(ctx context.Context, env Env, id, text string) error {
 	text = strings.TrimSpace(text)
 	if len(text) > 2048 || !inputPattern.MatchString(text) {
 		return errors.New("코드 형식이 올바르지 않습니다")
+	}
+	// Once input is sent, raw pane output is no longer safe to return: many
+	// login CLIs echo the authorization code before switching terminal modes.
+	if err := os.WriteFile(env.jobMarkerPath(id, "input-sent"), nil, 0o600); err != nil {
+		return err
 	}
 	if _, err := env.tmux(ctx, "send-keys", "-t", jobPane(id), "-l", text); err != nil {
 		return errors.New("진행 중인 로그인이 없습니다")
@@ -146,12 +167,16 @@ func GetJob(ctx context.Context, env Env, id string) (JobStatus, error) {
 	}
 	phase, _ := os.ReadFile(env.jobStatePath(id))
 	status := parseJob(strings.TrimSpace(string(phase)), string(raw))
-	// Gemini stays in its interactive UI after login; its credential file is
-	// the completion signal.
-	if id == "gemini" && status.State == JobLogin {
-		if info, err := os.Stat(filepath.Join(env.Home, ".gemini", "oauth_creds.json")); err == nil && info.Mode().IsRegular() {
-			status = JobStatus{State: JobConnected, Log: status.Log}
-		}
+	// Gemini stays in its interactive UI after login. A newly usable credential
+	// is the completion signal; a stale file that predates this job is not.
+	if id == "gemini" && status.State == JobLogin && geminiOAuthChanged(env, time.Now()) {
+		status = JobStatus{State: JobConnected, Log: status.Log}
+	}
+	if _, err := os.Stat(env.jobMarkerPath(id, "input-sent")); err == nil {
+		status.URL = ""
+		status.Code = ""
+		status.NeedsInput = false
+		status.Log = nil
 	}
 	if status.State == JobConnected || status.State == JobDone || status.State == JobFailed {
 		_ = CancelJob(ctx, env, id)
@@ -163,6 +188,15 @@ func GetJob(ctx context.Context, env Env, id string) (JobStatus, error) {
 		}
 	}
 	return status, nil
+}
+
+func geminiOAuthChanged(env Env, now time.Time) bool {
+	baseline, err := os.ReadFile(env.jobMarkerPath("gemini", "oauth-baseline"))
+	if err != nil {
+		return false
+	}
+	fingerprint, usable := geminiOAuthFingerprint(env, now)
+	return usable && fingerprint != strings.TrimSpace(string(baseline))
 }
 
 var (

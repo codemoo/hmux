@@ -497,10 +497,14 @@ timeout.
   when no other non-key method is configured). HMux does not implement or proxy
   OAuth. Settings polls the job once per second and shows its state, an "open
   login page" button, a Codex device code, and an input that relays a pasted
-  authorization code with `tmux send-keys -l`. Login URLs are offered only for
+  authorization code with `tmux send-keys -l`. After input, raw pane lines are
+  withheld so an echoed authorization code cannot return in the browser log.
+  Login URLs are offered only for
   https URLs on known login hosts printed after the login phase starts; pasted
   codes must be 1–2048 printable ASCII bytes. The job ends on the script's exit
-  marker (Gemini: when `~/.gemini/oauth_creds.json` appears) and is then closed.
+  marker. Gemini completes only when a usable OAuth credential differs from the
+  one recorded when that login job began; an empty, corrupt, expired or
+  pre-existing stale file is never treated as success. Completed jobs are closed.
   Reopening Settings reattaches to a job still running on Home; 취소 kills it.
   Progress is read from a private state file (`~/.local/state/hmux-setup`), not
   the pane, because CLIs such as Gemini clear the screen. After a successful
@@ -524,10 +528,13 @@ timeout.
   key logs out only an API-key login, never a ChatGPT account. Saving a Gemini key
   also selects `gemini-api-key` auth. Gemini reads `~/.gemini/.env` only in
   folders the user has trusted in Gemini's first-run prompt.
-- **Launch profiles**: when a status check finds an installed CLI that no profile
-  launches, it appends one (`~/work` when present, else `~`) to the Home inventory
-  after a timestamped backup; existing profiles are never rewritten. Connected
-  providers show **시작**, which creates and opens a session with that profile.
+- **Launch profiles**: after an explicit install, login or API-key save succeeds,
+  an installed CLI with no launch profile is appended to the Home inventory after
+  a timestamped backup. It inherits the configured workspace base (`~/.hmux` for
+  a new install, or the administrator's chosen path); status checks are read-only
+  and concurrent additions are serialized. Existing profiles are never rewritten.
+  Connected providers show **시작**, which creates and opens a session with that
+  profile.
 
 The empty workspace shows a provider card. Until one provider is connected it
 reads "AI 연결이 필요합니다" and opens Settings directly on AI 연결 ("나중에" hides

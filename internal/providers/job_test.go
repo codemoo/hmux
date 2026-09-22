@@ -51,6 +51,32 @@ func TestParseJobCompletionMarkers(t *testing.T) {
 	}
 }
 
+func TestGeminiOAuthMustChangeDuringLogin(t *testing.T) {
+	env := testEnv(t)
+	path := env.geminiOAuthPath()
+	writeFile(t, path, `{"refresh_token":"old-refresh-token"}`)
+	baseline, ok := geminiOAuthFingerprint(env, time.Now())
+	if !ok {
+		t.Fatal("valid baseline rejected")
+	}
+	writeFile(t, env.jobMarkerPath("gemini", "oauth-baseline"), baseline)
+	if geminiOAuthChanged(env, time.Now()) {
+		t.Fatal("unchanged credential completed login")
+	}
+	writeFile(t, path, "{\n  \"expiry_date\": 9999999999999,\n  \"access_token\": \"rotated-access-token\",\n  \"refresh_token\": \"old-refresh-token\"\n}\n")
+	if geminiOAuthChanged(env, time.Now()) {
+		t.Fatal("access-token refresh completed interactive login")
+	}
+	writeFile(t, path, `{"refresh_token":"new-refresh-token"}`)
+	if !geminiOAuthChanged(env, time.Now()) {
+		t.Fatal("new credential did not complete login")
+	}
+	writeFile(t, path, `{}`)
+	if geminiOAuthChanged(env, time.Now()) {
+		t.Fatal("invalid replacement completed login")
+	}
+}
+
 func TestGeminiAuthSelection(t *testing.T) {
 	env := testEnv(t)
 	path := filepath.Join(env.Home, ".gemini", "settings.json")
@@ -136,7 +162,7 @@ echo "$code" > "`+record+`"
 	if status.State != JobLogin || status.URL != "https://auth.openai.com/codex/device" || status.Code != "WXYZ-98765" || !status.NeedsInput {
 		t.Fatalf("login status = %+v", status)
 	}
-	if err := JobInput(ctx, env, "codex", "pasted-code#123"); err != nil {
+	if err := JobInput(ctx, env, "codex", "ABCD-EFGH"); err != nil {
 		t.Fatal(err)
 	}
 	for deadline := time.Now().Add(10 * time.Second); time.Now().Before(deadline); time.Sleep(200 * time.Millisecond) {
@@ -148,7 +174,15 @@ echo "$code" > "`+record+`"
 	if status.State != JobDone {
 		t.Fatalf("final status = %+v", status)
 	}
-	if raw, _ := os.ReadFile(record); strings.TrimSpace(string(raw)) != "pasted-code#123" {
+	if status.URL != "" || status.Code != "" || status.NeedsInput {
+		t.Fatalf("pane-derived login fields survived input: %+v", status)
+	}
+	for _, line := range status.Log {
+		if strings.Contains(line, "ABCD-EFGH") {
+			t.Fatalf("authorization input returned in job log: %#v", status.Log)
+		}
+	}
+	if raw, _ := os.ReadFile(record); strings.TrimSpace(string(raw)) != "ABCD-EFGH" {
 		t.Fatalf("pasted = %q", raw)
 	}
 	// A finished job is closed after its result is read.

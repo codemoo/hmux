@@ -158,6 +158,43 @@ func SaveInventory(path string, inventory model.Inventory) error {
 	return AtomicWrite(path, out.Bytes(), 0o600)
 }
 
+// AppendInventoryProfile adds one profile while retaining retired compatibility
+// tables as inert data. Callers serialize the read-modify-write operation.
+func AppendInventoryProfile(path string, profile model.Profile, now time.Time) error {
+	inventory, err := LoadInventory(path)
+	if err != nil {
+		return err
+	}
+	inventory.Profiles = append(inventory.Profiles, profile)
+	if err := inventory.Validate(); err != nil {
+		return err
+	}
+	var raw map[string]any
+	if _, err := toml.DecodeFile(path, &raw); err != nil {
+		return err
+	}
+	profiles, ok := raw["profiles"].([]map[string]any)
+	if !ok {
+		return errors.New("invalid inventory profile tables")
+	}
+	profiles = append(profiles, map[string]any{
+		"id":                profile.ID,
+		"label":             profile.Label,
+		"default_directory": profile.DefaultDirectory,
+		"command":           profile.Command,
+		"tags":              profile.Tags,
+	})
+	raw["profiles"] = profiles
+	var output bytes.Buffer
+	if err := toml.NewEncoder(&output).Encode(raw); err != nil {
+		return err
+	}
+	if _, err := Backup(path, now); err != nil {
+		return err
+	}
+	return AtomicWrite(path, output.Bytes(), 0o600)
+}
+
 func AtomicWrite(path string, data []byte, mode os.FileMode) error {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o700); err != nil {

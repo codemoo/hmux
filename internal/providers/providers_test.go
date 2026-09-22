@@ -95,16 +95,29 @@ esac
 	}
 }
 
-func TestStatusesTreatLoggedOutCodexAndGeminiOAuth(t *testing.T) {
+func TestStatusesRejectInvalidGeminiOAuth(t *testing.T) {
 	env := testEnv(t)
 	fakeCLI(t, env, "codex", `[ "$1" = login ] && { echo "Not logged in" >&2; exit 1; }; echo "codex-cli 1.0.0"`)
-	writeFile(t, filepath.Join(env.Home, ".gemini", "oauth_creds.json"), `{}`)
+	path := filepath.Join(env.Home, ".gemini", "oauth_creds.json")
+	writeFile(t, path, `{}`)
 	got := byID(Statuses(context.Background(), env))
 	if got["codex"].Auth != AuthNone {
 		t.Fatalf("logged-out codex = %+v", got["codex"])
 	}
-	if s := got["gemini"]; s.Installed || s.Auth != AuthAccount {
-		t.Fatalf("gemini oauth = %+v", s)
+	if s := got["gemini"]; s.Installed || s.Auth != AuthNone {
+		t.Fatalf("empty gemini oauth = %+v", s)
+	}
+	writeFile(t, path, `{not-json`)
+	if s := byID(Statuses(context.Background(), env))["gemini"]; s.Auth != AuthNone {
+		t.Fatalf("corrupt gemini oauth = %+v", s)
+	}
+	writeFile(t, path, `{"access_token":"access-token-123","expiry_date":1}`)
+	if s := byID(Statuses(context.Background(), env))["gemini"]; s.Auth != AuthNone {
+		t.Fatalf("expired gemini oauth = %+v", s)
+	}
+	writeFile(t, path, `{"refresh_token":"refresh-token-123"}`)
+	if s := byID(Statuses(context.Background(), env))["gemini"]; s.Auth != AuthAccount {
+		t.Fatalf("usable gemini oauth = %+v", s)
 	}
 }
 
