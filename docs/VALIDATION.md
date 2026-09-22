@@ -4,6 +4,32 @@ This page records web/Home checks and deployment evidence for the public source 
 Retired product history is available in Git. Local results do not establish the
 state of another user's independent deployment.
 
+## 2026-09-22 — Session workspaces and provider exit (not deployed)
+
+Home installation now configures the workspace base: new installs default to
+`~/.hmux`, while reinstalls preserve existing per-profile bases unless an explicit
+workspace path is supplied. Explicit changes make timestamped inventory backups
+and preserve legacy fields. New sessions atomically allocate safe child folders
+and unique folder/profile-prefixed tmux names without reusing existing work.
+New and restored Codex/Claude panes return to an interactive shell when the CLI
+exits; existing running panes are unchanged.
+
+`make check` passed, including Go unit/race/vet, the vendored collector checks,
+ShellCheck, TypeScript/formatting and 158 frontend tests. `make build` passed.
+Isolated tmux tests covered repeated names, concurrent folder allocation, child
+symlinks, exact creation identity, literal command arguments, Unicode CWDs,
+normal/error exit and both exiting and handled Ctrl+C. Recovery verified provider
+exit leaves usable panes and the subsequent checkpoint clears resume bindings.
+Four installer tests and a real installer CLI smoke test with disposable HOME
+verified default/custom bases, backups and unchanged settings on reinstall.
+Independent review's configuration-directory permission finding was fixed (0700).
+
+All `make integration` checks passed. The web PTY integration was rerun with
+permission for `/bin/ps`; it verified resize/redraw, grouped-view cleanup and
+original-session survival. Initial approval-service failures did not modify
+production. Deployment evidence will be recorded after activation. No additional
+browser/device-input validation is claimed.
+
 ## 2026-09-22 — Web-only product and host services
 
 Removed desktop app sources/bridge, terminal selector/frame archive, SSH client

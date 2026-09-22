@@ -43,7 +43,7 @@ shfmt-check:
 integration:
 	python3 tests/home_install_test.py
 	tests/codex_workflow_hooks.sh
-	HMUX_RUN_TMUX_CREATE_TEST=1 GOCACHE=$(GOCACHE) GOPATH=$(GOPATH) go test ./internal/agent -run TestCreateSessionWithIsolatedTmux -count=1
+	HMUX_RUN_TMUX_CREATE_TEST=1 GOCACHE=$(GOCACHE) GOPATH=$(GOPATH) go test ./internal/agent -run 'TestCreateSessionWithIsolatedTmux|TestProvidersExitToShellWithIsolatedTmux' -count=1
 	HMUX_RUN_WEB_TMUX_TEST=1 GOCACHE=$(GOCACHE) GOPATH=$(GOPATH) go test ./internal/home -run TestWebTerminalViewWithIsolatedTmux -count=1
 
 check: fmt-check test race vet shellcheck web-check

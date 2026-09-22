@@ -14,6 +14,7 @@ import (
 	"github.com/codemoo/hmux/internal/catalog"
 	"github.com/codemoo/hmux/internal/config"
 	"github.com/codemoo/hmux/internal/model"
+	"github.com/codemoo/hmux/internal/sessionlaunch"
 	"github.com/codemoo/hmux/internal/sessionstate"
 )
 
@@ -288,19 +289,19 @@ func appendGatedPaneCommand(args []string, pane savedPane, executables map[strin
 	// Obtain only fixed environment/argv from the shared command builder.
 	command := appendPaneCommand(nil, pane, executables)
 	if pane.Resume == nil {
-		shell := "/bin/sh"
-		if _, err := os.Stat("/bin/zsh"); err == nil {
-			shell = "/bin/zsh"
-		}
-		command = []string{shell, "-l"}
+		command = []string{sessionlaunch.Shell(), "-il"}
 	}
 	split := 0
 	for split+1 < len(command) && command[split] == "-e" {
 		args = append(args, command[split:split+2]...)
 		split += 2
 	}
+	launch := command[split:]
+	if pane.Resume != nil {
+		launch = sessionlaunch.Provider(launch)
+	}
 	args = append(args, "/bin/sh", "-c", providerGateScript, "hmux-recovery", gate)
-	return append(args, command[split:]...)
+	return append(args, launch...)
 }
 
 func (s Store) validateGate(path string) error {

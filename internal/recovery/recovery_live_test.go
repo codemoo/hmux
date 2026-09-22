@@ -58,12 +58,13 @@ func TestRecoveryWithIsolatedTmuxAndFakeProviders(t *testing.T) {
 	}
 	logs := filepath.Join(dir, "launches")
 	for _, provider := range []string{"codex", "claude"} {
-		script := "#!/bin/sh\nprintf '%s|%s|%s\\n' '" + provider + "' \"$1\" \"$2\" >> '" + logs + "'\nexec /bin/sleep 300\n"
+		script := "#!/bin/sh\nprintf '%s|%s|%s\\n' '" + provider + "' \"$1\" \"$2\" >> '" + logs + "'\nwhile [ ! -f '" + logs + ".exit' ]; do /bin/sleep 0.05; done\nexit 7\n"
 		if err := os.WriteFile(filepath.Join(dir, provider), []byte(script), 0700); err != nil {
 			t.Fatal(err)
 		}
 	}
 	t.Setenv("PATH", dir+":/usr/bin:/bin:/usr/sbin:/sbin")
+	t.Setenv("SHELL", "/bin/sh")
 	configDir := filepath.Join(dir, "provider config")
 	if err := os.Mkdir(configDir, 0700); err != nil {
 		t.Fatal(err)
@@ -168,6 +169,46 @@ func TestRecoveryWithIsolatedTmuxAndFakeProviders(t *testing.T) {
 	after, _ := os.ReadFile(logs)
 	if string(after) != string(log) {
 		t.Fatal("same-boot sync relaunched providers")
+	}
+	// All resumed providers can exit without destroying their panes or topology.
+	if err := os.WriteFile(logs+".exit", []byte("exit"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	panes := strings.Fields(command("list-panes", "-s", "-t", current.Sessions[0].ID, "-F", "#{pane_id}"))
+	for _, pane := range panes {
+		for end := time.Now().Add(3 * time.Second); time.Now().Before(end); {
+			if command("display-message", "-p", "-t", pane, "#{pane_current_command}") == "sh" {
+				break
+			}
+			time.Sleep(20 * time.Millisecond)
+		}
+		command("send-keys", "-t", pane, "printf ready > recovered-shell-"+strings.TrimPrefix(pane, "%"), "Enter")
+		marker := filepath.Join(dir, "recovered-shell-"+strings.TrimPrefix(pane, "%"))
+		for end := time.Now().Add(3 * time.Second); time.Now().Before(end); {
+			if _, err := os.Stat(marker); err == nil {
+				break
+			}
+			time.Sleep(20 * time.Millisecond)
+		}
+		if data, err := os.ReadFile(marker); err != nil || string(data) != "ready" {
+			t.Fatalf("resumed provider did not return to shell: %v", err)
+		}
+	}
+	if err := store.Save(ctx); err != nil {
+		t.Fatal(err)
+	}
+	cleared, err := store.readState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, session := range cleared.Checkpoint.Sessions {
+		for _, window := range session.Windows {
+			for _, pane := range window.Panes {
+				if pane.Resume != nil {
+					t.Fatal("shell checkpoint retained exited provider")
+				}
+			}
+		}
 	}
 	// A deliberately deleted final session is not resurrected on the next boot.
 	command("kill-server")

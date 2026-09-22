@@ -1,10 +1,13 @@
 package agent
 
 import (
+	"github.com/codemoo/hmux/internal/sessionstate"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/codemoo/hmux/internal/model"
 )
@@ -34,34 +37,75 @@ func TestValidateCreateDoesNotRequireOrInvokeTmux(t *testing.T) {
 	}
 }
 
-func TestSessionNameUnicodeValidation(t *testing.T) {
-	for _, name := range []string{"한글 세션-01", "Codex_Main"} {
-		if !validSessionName(name) {
-			t.Errorf("valid session name %q was rejected", name)
+func TestWorkspaceSlugAndConcurrentAllocation(t *testing.T) {
+	for input, want := range map[string]string{
+		"한글 세션-01": "한글-세션-01", "../My Project/a:1": "My-Project-a-1",
+		"../../": "session", "🚀": "session", "  --hello__  ": "hello", "hello;$(touch nope)": "hello-touch-nope",
+	} {
+		if got := workspaceSlug(input, 36); got != want {
+			t.Errorf("%q: got %q, want %q", input, got, want)
 		}
 	}
-	for _, name := range []string{"bad:name", "bad.name", "bad\nname", "emoji🚀"} {
-		if validSessionName(name) {
-			t.Errorf("unsafe session name %q was accepted", name)
+	root := t.TempDir()
+	// Existing files, folders and links are never reused, followed or overwritten.
+	outside := t.TempDir()
+	if err := os.Symlink(outside, filepath.Join(root, "project")); err != nil {
+		t.Fatal(err)
+	}
+	var wg sync.WaitGroup
+	results := make(chan string, 12)
+	for range 12 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			dir, name, err := allocateWorkspace(root, "project", strings.Repeat("p", 63))
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			if filepath.Dir(dir) != root || dir == filepath.Join(root, "project") || utf8.RuneCountInString(name) > 80 {
+				t.Errorf("invalid allocation %q %q", dir, name)
+			}
+			if !strings.HasPrefix(name, filepath.Base(dir)+"-") {
+				t.Error("tmux name missing directory prefix")
+			}
+			results <- dir
+		}()
+	}
+	wg.Wait()
+	close(results)
+	seen := map[string]bool{}
+	for dir := range results {
+		if seen[dir] {
+			t.Error("duplicate directory")
 		}
+		seen[dir] = true
+	}
+	if len(seen) != 12 {
+		t.Fatalf("allocated %d directories", len(seen))
+	}
+	entries, _ := os.ReadDir(outside)
+	if len(entries) != 0 {
+		t.Fatal("followed existing child link")
 	}
 }
 
-func TestAutomaticSessionNamesAreDistinctAndBounded(t *testing.T) {
-	profileID := strings.Repeat("a", 63)
-	inventory := model.Inventory{Profiles: []model.Profile{{
-		ID: profileID, DefaultDirectory: t.TempDir(), Command: []string{"sh"},
-	}}}
-	first, err := ValidateCreate(inventory, profileID, "")
-	if err != nil {
-		t.Fatal(err)
+func TestCreateValidationIsSideEffectFree(t *testing.T) {
+	base := filepath.Join(t.TempDir(), "not-created")
+	inventory := model.Inventory{Profiles: []model.Profile{{ID: "shell", DefaultDirectory: base, Command: []string{"sh"}}}}
+	for _, input := range []string{"", "한글 project/one", strings.Repeat("가", 80)} {
+		name, err := ValidateCreate(inventory, "shell", input)
+		if err != nil || name == "" || len(name) > 144 {
+			t.Fatalf("name=%q err=%v", name, err)
+		}
 	}
-	second, err := ValidateCreate(inventory, profileID, "")
-	if err != nil {
-		t.Fatal(err)
+	if _, err := os.Stat(base); !os.IsNotExist(err) {
+		t.Fatal("validation created a directory")
 	}
-	if first == second || !validSessionName(first) || !validSessionName(second) {
-		t.Fatalf("automatic names must be distinct and valid: %q, %q", first, second)
+	for _, input := range []string{"bad\nname", strings.Repeat("a", 81), string([]byte{255})} {
+		if _, err := ValidateCreate(inventory, "shell", input); err == nil {
+			t.Errorf("accepted %q", input)
+		}
 	}
 }
 
@@ -148,88 +192,47 @@ esac
 	}
 }
 
-func TestCreateSessionReturnsAuthoritativeIdentityForNewAndReusedSessions(t *testing.T) {
-	for _, reused := range []bool{false, true} {
-		t.Run(map[bool]string{false: "new", true: "reused"}[reused], func(t *testing.T) {
-			dir := t.TempDir()
-			logPath := filepath.Join(dir, "tmux.log")
-			tmuxPath := filepath.Join(dir, "tmux")
-			tmuxScript := `#!/bin/sh
-set -eu
+func TestCreateSessionReturnsAuthoritativeIdentity(t *testing.T) {
+	dir := t.TempDir()
+	logPath := filepath.Join(dir, "tmux.log")
+	script := `#!/bin/sh
 printf '%s\n' "$*" >>"$HMUX_TEST_TMUX_LOG"
-sep='|:hmux-sep-v1:|'
-case "$1" in
-has-session)
-	[ "${HMUX_TEST_REUSED:-0}" = 1 ]
-	;;
-new-session) printf '$42 1700000000\n' ;;
-display-message)
-	[ "$4" = "=$HMUX_TEST_SESSION_NAME:" ]
-	printf '$42 1700000000\n'
-	;;
-list-sessions)
-	printf '$42%s%s%s1700000000%s1700000001%s0%s1%s%s\n' "$sep" "$HMUX_TEST_SESSION_NAME" "$sep" "$sep" "$sep" "$sep" "$sep" "$sep"
-	;;
-list-windows)
-	printf '$42%smain%s1%s%s%shmux-e2e-command%s120%s40%s1\n' "$sep" "$sep" "$sep" "$HMUX_TEST_DIRECTORY" "$sep" "$sep" "$sep" "$sep"
-	;;
-*) exit 99 ;;
-esac
+[ "$1" = new-session ] || exit 99
+printf '$42 1700000000\n'
 `
-			if err := os.WriteFile(tmuxPath, []byte(tmuxScript), 0o700); err != nil {
-				t.Fatal(err)
-			}
-			commandPath := filepath.Join(dir, "hmux-e2e-command")
-			if err := os.WriteFile(commandPath, []byte("#!/bin/sh\nexit 0\n"), 0o700); err != nil {
-				t.Fatal(err)
-			}
-			t.Setenv("PATH", dir)
-			t.Setenv("HMUX_TEST_TMUX_LOG", logPath)
-			t.Setenv("HMUX_TEST_DIRECTORY", dir)
-			t.Setenv("HMUX_TEST_SESSION_NAME", "hmux-e2e-authoritative")
-			if reused {
-				t.Setenv("HMUX_TEST_REUSED", "1")
-			}
-			inventory := model.Inventory{Profiles: []model.Profile{{
-				ID: "shell", Label: "Shell", DefaultDirectory: dir,
-				Command: []string{"hmux-e2e-command"}, Tags: []string{"local"},
-			}}}
-			stateDir := filepath.Join(dir, "state")
-			result, err := CreateSession(
-				t.Context(), inventory, "shell", "hmux-e2e-authoritative", stateDir,
-			)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if result.ID != "$42" || result.CreatedAt != 1700000000 || result.Reused != reused {
-				t.Fatalf("result=%+v", result)
-			}
-			creationLog, err := os.ReadFile(logPath)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if strings.Contains(string(creationLog), "list-sessions") || (!reused && strings.Contains(string(creationLog), "display-message")) {
-				t.Fatalf("create reconstructed identity after creation: %s", creationLog)
-			}
-			value, err := CatalogAt(t.Context(), stateDir)
-			if err != nil {
-				t.Fatal(err)
-			}
-			expectedProfile := "shell"
-			if reused {
-				expectedProfile = ""
-			}
-			if len(value.Sessions) != 1 || value.Sessions[0].Profile != expectedProfile {
-				t.Fatalf("profile metadata was not authoritative: %+v", value.Sessions)
-			}
-			logData, err := os.ReadFile(logPath)
-			if err != nil {
-				t.Fatal(err)
-			}
-			created := strings.Contains(string(logData), "new-session")
-			if created == reused {
-				t.Fatalf("reused=%t tmux log=%s", reused, logData)
-			}
-		})
+	if err := os.WriteFile(filepath.Join(dir, "tmux"), []byte(script), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "hmux-e2e-command"), []byte("#!/bin/sh\nexit 0\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir)
+	t.Setenv("HMUX_TEST_TMUX_LOG", logPath)
+	inventory := model.Inventory{Profiles: []model.Profile{{ID: "shell", DefaultDirectory: dir, Command: []string{"hmux-e2e-command"}}}}
+	stateDir := filepath.Join(dir, "state")
+	result, err := CreateSession(t.Context(), inventory, "shell", "hmux-e2e-authoritative", stateDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.ID != "$42" || result.CreatedAt != 1700000000 || result.Reused {
+		t.Fatalf("result=%+v", result)
+	}
+	data, _ := os.ReadFile(logPath)
+	if strings.Count(string(data), "new-session") != 1 || strings.Contains(string(data), "display-message") {
+		t.Fatalf("non-authoritative lookup: %s", data)
+	}
+	fields := strings.Fields(string(data))
+	name := ""
+	for index, field := range fields {
+		if field == "-s" && index+1 < len(fields) {
+			name = fields[index+1]
+		}
+	}
+	value := model.Catalog{Sessions: []model.Session{{ID: result.ID, Name: name, CreatedAt: result.CreatedAt}}}
+	if err := (sessionstate.Store{StateDir: stateDir}).Apply(&value); err != nil {
+		t.Fatal(err)
+	}
+	if value.Sessions[0].Profile != "shell" {
+		t.Fatalf("missing metadata: %+v", value)
 	}
 }
