@@ -682,6 +682,94 @@ kbd {
   font-size: 12px;
 }
 
+.provider-row {
+  display: grid;
+  gap: 10px;
+  padding: 14px 0;
+}
+.provider-row + .provider-row {
+  border-top: 1px solid var(--border);
+}
+.provider-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.provider-heading strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+.provider-heading .muted {
+  font-size: 12px;
+}
+.provider-actions,
+.provider-key {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.provider-key input {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+#dialog-body .provider-row button {
+  width: auto;
+  min-height: 34px;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+.provider-job {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--panel);
+}
+#dialog-body .provider-job .provider-job-message {
+  margin: 0;
+  color: var(--ink);
+}
+.provider-job [hidden] {
+  display: none;
+}
+.provider-job-code,
+.provider-job-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.provider-job-code strong {
+  font-family: var(--mono, monospace);
+  font-size: 20px;
+  letter-spacing: 2px;
+}
+.provider-job-input input {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+.provider-job-log summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+}
+.provider-job-log pre {
+  max-height: 160px;
+  overflow: auto;
+  margin-top: 6px;
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--muted);
+}
+.provider-status:empty {
+  display: none;
+}
+
 /* Settings use one bounded content scroller and a persistent category strip. */
 #dialog.settings-dialog {
   width: 680px;

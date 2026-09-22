@@ -59,6 +59,7 @@ import { renderConversation, type Conversation } from "./conversation-view";
 import { createTerminalAppearance } from "./theme";
 import { installThemePicker } from "./theme-picker";
 import { installSettingsNavigation } from "./settings-navigation";
+import { installProviderSettings } from "./provider-settings";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
@@ -1237,6 +1238,14 @@ function editDialog(s: Session) {
     text("p", "숨기거나 탭을 닫아도 Home의 작업은 종료되지 않습니다.", "muted"),
   );
 }
+async function startProfile(profile: string) {
+  try {
+    const result = await action("create", undefined, { name: "", profile });
+    await openCreatedSession(result);
+  } catch (e) {
+    notice((e as Error).message);
+  }
+}
 // Home publishes its catalog every few seconds, so a session created a moment
 // ago may not be listed yet. Poll briefly and open it as soon as it appears.
 async function openCreatedSession(result: Identity) {
@@ -1289,7 +1298,8 @@ async function createDialog() {
     }
     save.disabled = !profiles.length;
     if (!profiles.length)
-      error.textContent = "Home에 등록된 프로파일이 없습니다.";
+      error.textContent =
+        "Home에 등록된 프로파일이 없습니다. 설정 → AI 연결에서 추가하세요.";
   } catch (e) {
     error.textContent = (e as Error).message;
   }
@@ -1388,8 +1398,10 @@ function settingsDialog() {
   const security = text("section", "", "settings-section account-security");
   const diagnosticPanel = text("section", "", "settings-section");
   const usagePanel = text("section", "", "settings-section");
+  const providerPanel = text("section", "", "settings-section");
   installSettingsNavigation(body, [
     { id: "terminal", label: "터미널", sections: [appearance] },
+    { id: "providers", label: "AI 연결", sections: [providerPanel] },
     { id: "usage", label: "사용량", sections: [usagePanel] },
     { id: "notifications", label: "알림", sections: [notifications] },
     { id: "account", label: "계정", sections: [security, loginSessions] },
@@ -1427,7 +1439,13 @@ function settingsDialog() {
     api,
     diagnostics,
   );
+  const disposeProviders = installProviderSettings(
+    providerPanel,
+    api,
+    (profile) => void startProfile(profile),
+  );
   dialogCleanup = () => {
+    disposeProviders();
     disposeUsagePreferences();
     disposeDiagnostics();
     disposePush();

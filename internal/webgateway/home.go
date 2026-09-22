@@ -563,6 +563,8 @@ func homeAction(ctx context.Context, cfg config.HomeConfig, m Message) (any, err
 			profiles = append(profiles, map[string]string{"id": p.ID, "label": p.Label})
 		}
 		return profiles, nil
+	case "providers", "provider-key", "provider-job-start", "provider-job", "provider-job-input", "provider-job-cancel":
+		return providerAction(ctx, cfg, m.Operation, m.Payload)
 	case "create":
 		var q struct {
 			Profile string `json:"profile"`
