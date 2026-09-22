@@ -80,7 +80,7 @@ func (s Store) capture(ctx context.Context) (snapshot, error) {
 		}
 		session := sessions[fields[0]]
 		if session == nil {
-			continue // native app view or a session that changed during collection
+			continue // browser terminal view or a session that changed during collection
 		}
 		if !validTmuxID(fields[1], '@') || !validTmuxID(fields[6], '%') || seenPanes[fields[6]] {
 			return snapshot{}, errors.New("invalid or duplicate tmux recovery pane identity")

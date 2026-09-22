@@ -22,43 +22,11 @@ const (
 
 var stableIDPattern = regexp.MustCompile(`^[a-z][a-z0-9-]{0,62}$`)
 var sessionIDPattern = regexp.MustCompile(`^\$[0-9]{1,12}$`)
-var sshAliasPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$`)
-var hostAddressPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:%-]{0,252}$`)
-var userPattern = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$`)
-var identityPathPattern = regexp.MustCompile(`^~/.ssh/[A-Za-z0-9][A-Za-z0-9._/-]{0,239}$`)
 
 type Inventory struct {
-	SchemaVersion int           `toml:"schema_version" json:"schema_version"`
-	Revision      string        `toml:"revision" json:"revision"`
-	Clients       []Client      `toml:"clients" json:"clients"`
-	IdentityRefs  []IdentityRef `toml:"identity_refs" json:"identity_refs"`
-	Hosts         []Host        `toml:"hosts" json:"hosts"`
-	Profiles      []Profile     `toml:"profiles" json:"profiles"`
-}
-
-type Client struct {
-	ID        string   `toml:"id" json:"id"`
-	Role      string   `toml:"role" json:"role"`
-	Hostnames []string `toml:"hostnames" json:"hostnames"`
-}
-
-type IdentityRef struct {
-	ID   string `toml:"id" json:"id"`
-	Path string `toml:"path" json:"path"`
-}
-
-type Host struct {
-	ID                  string   `toml:"id" json:"id"`
-	SSHAlias            string   `toml:"ssh_alias" json:"ssh_alias"`
-	Address             string   `toml:"address" json:"address"`
-	User                string   `toml:"user" json:"user"`
-	Port                int      `toml:"port" json:"port"`
-	ProxyJump           string   `toml:"proxy_jump" json:"proxy_jump,omitempty"`
-	IdentityRef         string   `toml:"identity_ref" json:"identity_ref"`
-	Tags                []string `toml:"tags" json:"tags"`
-	ServerAliveInterval int      `toml:"server_alive_interval" json:"server_alive_interval,omitempty"`
-	ServerAliveCountMax int      `toml:"server_alive_count_max" json:"server_alive_count_max,omitempty"`
-	ConnectTimeout      int      `toml:"connect_timeout" json:"connect_timeout,omitempty"`
+	SchemaVersion int       `toml:"schema_version" json:"schema_version"`
+	Revision      string    `toml:"revision" json:"revision"`
+	Profiles      []Profile `toml:"profiles" json:"profiles"`
 }
 
 type Profile struct {
@@ -73,14 +41,11 @@ type Catalog struct {
 	ProtocolVersion int          `json:"protocol_version"`
 	GeneratedAt     time.Time    `json:"generated_at"`
 	Sessions        []Session    `json:"sessions"`
-	OpenTabs        []string     `json:"open_tabs,omitempty"`
-	CurrentTabID    string       `json:"current_tab_id,omitempty"`
 	HostMetrics     *HostMetrics `json:"host_metrics,omitempty"`
 }
 
 // HostMetrics is a bounded snapshot sampled on the Home Mac. It is attached
-// only to explicitly negotiated catalog streams so legacy strict decoders do
-// not see a field they do not understand.
+// to web catalog streams. Unsupported observations are omitted.
 type HostMetrics struct {
 	ObservedAt       time.Time `json:"observed_at"`
 	CPUPercent       *float64  `json:"cpu_percent,omitempty"`
@@ -93,7 +58,7 @@ type HostMetrics struct {
 
 // UnmarshalJSON makes this optional observation fail-open without changing
 // Catalog decoding. This is deliberately scoped here because Catalog is
-// embedded in larger app envelopes whose fields must remain decodable.
+// embedded in larger protocol envelopes whose fields must remain decodable.
 func (m *HostMetrics) UnmarshalJSON(data []byte) error {
 	type hostMetricsWire HostMetrics
 	var wire hostMetricsWire
@@ -229,7 +194,6 @@ type Session struct {
 	State          string           `json:"state,omitempty"`
 	Process        string           `json:"process,omitempty"`
 	WorkingSince   int64            `json:"working_since,omitempty"`
-	HostAlias      string           `json:"host_alias,omitempty"`
 	Width          int              `json:"width,omitempty"`
 	Height         int              `json:"height,omitempty"`
 	Workflow       *WorkflowSummary `json:"workflow,omitempty"`
@@ -237,30 +201,9 @@ type Session struct {
 	PanePID        int              `json:"-"`
 }
 
-type Manifest struct {
-	SchemaVersion     int       `json:"schema_version"`
-	Version           string    `json:"version"`
-	Platform          string    `json:"platform"`
-	Artifact          string    `json:"artifact"`
-	SHA256            string    `json:"sha256"`
-	Size              int64     `json:"size"`
-	PublishedAt       time.Time `json:"published_at"`
-	MinProtocol       int       `json:"min_protocol"`
-	SignatureType     string    `json:"signature_type,omitempty"`
-	Signature         string    `json:"signature,omitempty"`
-	ManifestSignature string    `json:"manifest_signature,omitempty"`
-	KeyID             string    `json:"key_id,omitempty"`
-}
-
 func (i Inventory) Validate() error {
 	if i.SchemaVersion != SchemaVersion {
 		return fmt.Errorf("schema_version must be %d, got %d", SchemaVersion, i.SchemaVersion)
-	}
-	if len(i.Clients) == 0 {
-		return errors.New("at least one client is required")
-	}
-	if len(i.Hosts) == 0 {
-		return errors.New("at least one host is required")
 	}
 	if len(i.Profiles) == 0 {
 		return errors.New("at least one profile is required")
@@ -278,102 +221,6 @@ func (i Inventory) Validate() error {
 		}
 		seen[id] = kind
 		return nil
-	}
-	homeClients := 0
-	for _, c := range i.Clients {
-		if err := checkID("client", c.ID); err != nil {
-			return err
-		}
-		if c.Role != "home" && c.Role != "remote" {
-			return fmt.Errorf("client %q role must be home or remote", c.ID)
-		}
-		if c.Role == "home" {
-			homeClients++
-		}
-		for _, hostname := range c.Hostnames {
-			if !hostAddressPattern.MatchString(hostname) {
-				return fmt.Errorf("client %q has invalid hostname", c.ID)
-			}
-		}
-	}
-	if homeClients != 1 {
-		return fmt.Errorf("inventory must contain exactly one home client, got %d", homeClients)
-	}
-	identityRefs := map[string]bool{}
-	for _, r := range i.IdentityRefs {
-		if err := checkID("identity_ref", r.ID); err != nil {
-			return err
-		}
-		if !identityPathPattern.MatchString(r.Path) ||
-			strings.Contains(strings.TrimPrefix(r.Path, "~/.ssh/"), "..") {
-			return fmt.Errorf("identity_ref %q path must be a safe ~/.ssh/ path", r.ID)
-		}
-		identityRefs[r.ID] = true
-	}
-	hostIDs := map[string]bool{}
-	aliases := map[string]bool{}
-	for _, h := range i.Hosts {
-		if err := checkID("host", h.ID); err != nil {
-			return err
-		}
-		if !sshAliasPattern.MatchString(h.SSHAlias) {
-			return fmt.Errorf("host %q has invalid ssh_alias", h.ID)
-		}
-		if aliases[h.SSHAlias] {
-			return fmt.Errorf("duplicate ssh_alias %q", h.SSHAlias)
-		}
-		aliases[h.SSHAlias] = true
-		if !hostAddressPattern.MatchString(h.Address) {
-			return fmt.Errorf("host %q has invalid address", h.ID)
-		}
-		if !userPattern.MatchString(h.User) {
-			return fmt.Errorf("host %q has invalid user", h.ID)
-		}
-		if h.Port < 1 || h.Port > 65535 {
-			return fmt.Errorf("host %q has invalid port", h.ID)
-		}
-		if h.ServerAliveInterval < 0 || h.ServerAliveInterval > 86400 {
-			return fmt.Errorf("host %q has invalid server_alive_interval", h.ID)
-		}
-		if h.ServerAliveCountMax < 0 || h.ServerAliveCountMax > 100 {
-			return fmt.Errorf("host %q has invalid server_alive_count_max", h.ID)
-		}
-		if h.ConnectTimeout < 0 || h.ConnectTimeout > 120 {
-			return fmt.Errorf("host %q has invalid connect_timeout", h.ID)
-		}
-		if !identityRefs[h.IdentityRef] {
-			return fmt.Errorf("host %q references unknown identity_ref %q", h.ID, h.IdentityRef)
-		}
-		if len(h.Tags) > 64 {
-			return fmt.Errorf("host %q has too many tags", h.ID)
-		}
-		for _, tag := range h.Tags {
-			if !safeMetadata(tag, 64) {
-				return fmt.Errorf("host %q has invalid tag", h.ID)
-			}
-		}
-		hostIDs[h.ID] = true
-	}
-	for _, h := range i.Hosts {
-		if h.ProxyJump != "" && !hostIDs[h.ProxyJump] {
-			return fmt.Errorf("host %q references unknown proxy_jump %q", h.ID, h.ProxyJump)
-		}
-		if h.ProxyJump == h.ID {
-			return fmt.Errorf("host %q cannot proxy through itself", h.ID)
-		}
-	}
-	jumps := make(map[string]string, len(i.Hosts))
-	for _, h := range i.Hosts {
-		jumps[h.ID] = h.ProxyJump
-	}
-	for _, h := range i.Hosts {
-		seenJumps := map[string]bool{}
-		for current := h.ID; current != ""; current = jumps[current] {
-			if seenJumps[current] {
-				return fmt.Errorf("host %q is part of a proxy_jump cycle", h.ID)
-			}
-			seenJumps[current] = true
-		}
 	}
 	for _, p := range i.Profiles {
 		if err := checkID("profile", p.ID); err != nil {

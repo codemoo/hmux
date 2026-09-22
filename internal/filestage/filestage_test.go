@@ -24,24 +24,15 @@ var testSession = SessionIdentity{ID: "$7", CreatedAt: 1_700_000_000}
 const testRequestID = "00112233445566778899aabbccddeeff"
 
 func TestRoundTripPreservesBytesAndUsesOpaquePrivateNames(t *testing.T) {
-	local := t.TempDir()
-	firstPath := filepath.Join(local, "private original name.PNG")
-	secondPath := filepath.Join(local, "notes.weird-extension-too-long")
 	firstData := []byte("\x89PNG\r\n\x1a\nopaque-image-data")
 	secondData := []byte("plain opaque bytes")
-	writeTestFile(t, firstPath, firstData)
-	writeTestFile(t, secondPath, secondData)
-
-	prepared, err := Prepare([]string{firstPath, secondPath})
-	if err != nil {
-		t.Fatal(err)
+	header := Header{ProtocolVersion: 1, RequestID: testRequestID, Session: testSession, FileCount: 2, TotalBytes: int64(len(firstData) + len(secondData)), Files: []FileHeader{{Index: 0, Size: int64(len(firstData)), Extension: "png"}, {Index: 1, Size: int64(len(secondData))}}}
+	hashes := []string{}
+	for _, data := range [][]byte{firstData, secondData} {
+		sum := sha256.Sum256(data)
+		hashes = append(hashes, hex.EncodeToString(sum[:]))
 	}
-	defer prepared.Close()
-
-	var request bytes.Buffer
-	if err := prepared.WriteTo(context.Background(), &request, testRequestID, testSession); err != nil {
-		t.Fatal(err)
-	}
+	request := bytes.NewBuffer(encodeRequest(t, header, append(append([]byte{}, firstData...), secondData...)))
 	root := testRoot(t)
 	var responseData bytes.Buffer
 	verifyCalls := 0
@@ -53,7 +44,7 @@ func TestRoundTripPreservesBytesAndUsesOpaquePrivateNames(t *testing.T) {
 		return nil
 	}
 	now := time.Unix(1_700_000_100, 0)
-	if err := Receive(context.Background(), root, &request, &responseData, verify, now); err != nil {
+	if err := Receive(context.Background(), root, request, &responseData, verify, now); err != nil {
 		t.Fatal(err)
 	}
 	if verifyCalls != 2 {
@@ -63,7 +54,7 @@ func TestRoundTripPreservesBytesAndUsesOpaquePrivateNames(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := prepared.ValidateResponse(response, testRequestID, testSession); err != nil {
+	if err := ValidateResponseForHeader(response, header, hashes); err != nil {
 		t.Fatal(err)
 	}
 	if got, want := filepath.Base(response.Files[0].Path), "file-0001.png"; got != want {
@@ -85,15 +76,7 @@ func TestRoundTripPreservesBytesAndUsesOpaquePrivateNames(t *testing.T) {
 	stageDirectory := filepath.Dir(response.Files[0].Path)
 	assertMode(t, root, 0o700)
 	assertMode(t, stageDirectory, 0o700)
-	manifest, err := os.ReadFile(filepath.Join(stageDirectory, "manifest.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, secret := range []string{firstPath, secondPath, filepath.Base(firstPath), filepath.Base(secondPath)} {
-		if bytes.Contains(responseData.Bytes(), []byte(secret)) || bytes.Contains(manifest, []byte(secret)) {
-			t.Fatalf("local source information leaked: %q", secret)
-		}
-	}
+	assertMode(t, filepath.Join(stageDirectory, "manifest.json"), 0o600)
 }
 
 func TestProtocolRejectsMalformedHeadersAndBodies(t *testing.T) {
@@ -202,52 +185,6 @@ func TestHeaderRejectsFileAndSizeLimits(t *testing.T) {
 				t.Fatal("invalid header was accepted")
 			}
 		})
-	}
-}
-
-func TestPrepareRejectsUnsafeSourcesAndDetectsMutation(t *testing.T) {
-	directory := t.TempDir()
-	regular := filepath.Join(directory, "regular.txt")
-	writeTestFile(t, regular, []byte("before"))
-	symlink := filepath.Join(directory, "link.txt")
-	if err := os.Symlink(regular, symlink); err != nil {
-		t.Fatal(err)
-	}
-	fifo := filepath.Join(directory, "pipe")
-	if err := syscall.Mkfifo(fifo, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	for _, path := range []string{directory, symlink, fifo, filepath.Join(directory, "missing")} {
-		if prepared, err := Prepare([]string{path}); err == nil {
-			prepared.Close()
-			t.Fatalf("unsafe source %q was accepted", path)
-		}
-	}
-
-	oversized := filepath.Join(directory, "oversized.bin")
-	file, err := os.OpenFile(oversized, os.O_CREATE|os.O_WRONLY, 0o600)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := file.Truncate(MaximumFileBytes + 1); err != nil {
-		t.Fatal(err)
-	}
-	_ = file.Close()
-	if prepared, err := Prepare([]string{oversized}); err == nil {
-		prepared.Close()
-		t.Fatal("oversized source was accepted")
-	}
-
-	prepared, err := Prepare([]string{regular})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer prepared.Close()
-	if err := os.WriteFile(regular, []byte("after-and-larger"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := prepared.WriteTo(context.Background(), io.Discard, testRequestID, testSession); err == nil {
-		t.Fatal("source mutation was not detected")
 	}
 }
 
@@ -564,16 +501,7 @@ func TestResponseDecoderAndValidatorRejectMaliciousPayloads(t *testing.T) {
 		t.Fatal("oversized response was accepted")
 	}
 
-	path := filepath.Join(t.TempDir(), "payload.txt")
-	writeTestFile(t, path, []byte("x"))
-	prepared, err := Prepare([]string{path})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer prepared.Close()
-	if err := prepared.WriteTo(context.Background(), io.Discard, testRequestID, testSession); err != nil {
-		t.Fatal(err)
-	}
+	header := Header{ProtocolVersion: 1, RequestID: testRequestID, Session: testSession, FileCount: 1, TotalBytes: 1, Files: []FileHeader{{Index: 0, Size: 1, Extension: "txt"}}}
 	hash := sha256.Sum256([]byte("x"))
 	stageID := "ffeeddccbbaa99887766554433221100"
 	expires := int64(1_700_086_400)
@@ -582,7 +510,7 @@ func TestResponseDecoderAndValidatorRejectMaliciousPayloads(t *testing.T) {
 		ExpiresAtUnix: expires,
 		Files:         []StagedFile{{Index: 0, Path: filepath.Join("/Users/test/Library/Caches/hmux/staged-files-v1", fmt.Sprintf("%d-%s", expires, stageID), "file-0001.txt"), Size: 1, SHA256: hex.EncodeToString(hash[:])}},
 	}
-	if err := prepared.ValidateResponse(base, testRequestID, testSession); err != nil {
+	if err := ValidateResponseForHeader(base, header, []string{hex.EncodeToString(hash[:])}); err != nil {
 		t.Fatalf("valid response rejected: %v", err)
 	}
 	mutations := []func(*Response){
@@ -599,7 +527,7 @@ func TestResponseDecoderAndValidatorRejectMaliciousPayloads(t *testing.T) {
 		value := base
 		value.Files = append([]StagedFile(nil), base.Files...)
 		mutate(&value)
-		if err := prepared.ValidateResponse(value, testRequestID, testSession); err == nil {
+		if err := ValidateResponseForHeader(value, header, []string{hex.EncodeToString(hash[:])}); err == nil {
 			t.Fatalf("malicious mutation %d was accepted", index)
 		}
 	}

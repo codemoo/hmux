@@ -6,8 +6,8 @@ import (
 	"errors"
 	"io"
 
-	"github.com/codemoo/hmux/internal/client"
 	"github.com/codemoo/hmux/internal/config"
+	"github.com/codemoo/hmux/internal/home"
 	"github.com/codemoo/hmux/internal/sharedworkspace"
 )
 
@@ -24,14 +24,14 @@ func runAgentWorkspace(ctx context.Context, args []string, in io.Reader, out io.
 	if d.Decode(&struct{}{}) != io.EOF {
 		return errors.New("trailing workspace request")
 	}
-	cfg, err := config.LoadClient("")
+	cfg, err := config.LoadHome("")
 	if err != nil {
 		return err
 	}
 	if cfg.Role != "home" {
 		return errors.New("workspace is Home-only")
 	}
-	value, err := client.SharedWorkspace(ctx, cfg, change)
+	value, err := home.SharedWorkspace(ctx, cfg, change)
 	if err != nil {
 		return err
 	}

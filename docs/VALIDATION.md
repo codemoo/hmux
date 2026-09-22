@@ -1,9 +1,36 @@
 # Validation
 
-This page records checks for the public source tree. Older implementation and
-private-deployment checkpoints are preserved in
-[the historical validation log](archive/VALIDATION_PRE_PUBLICATION.md).
-They are not claims about a user's independent deployment.
+This page records web/Home checks and deployment evidence for the public source tree.
+Retired product history is available in Git. Local results do not establish the
+state of another user's independent deployment.
+
+## 2026-09-22 — Web-only product and host services
+
+Removed desktop app sources/bridge, terminal selector/frame archive, SSH client
+provisioning, controller/update stack, installers and their dedicated tests/CI.
+The web connector now calls local `internal/home` services. Grouped-view markers,
+exact session identities, catalog observation, usage sources, upload reception,
+workflow hooks and recovery remain. Known old Home configuration is decoded
+without activating old transports; profile-only inventories are supported.
+
+Go unit/race/vet, the vendored collector's unit/race/vet, ShellCheck, TypeScript,
+158 web tests and the production web/Linux gateway/macOS Home builds passed.
+Config tests cover legacy loading, new-file precedence, unchanged private files,
+profile-only inventory and invalid-field/path/role rejection. Four isolated
+installer tests cover backups, preservation and source/target safety refusals.
+
+The hook and session-create integrations passed. The grouped web PTY test passed
+with permission for `/bin/ps` (its initial sandboxed run could not inspect the
+foreground process); it verified resize/redraw, view cleanup and original session
+survival. Isolated reboot recovery with fake Codex/Claude providers and the fake
+Home WebSocket origin/logout test also passed. All tmux test resources used private
+sockets and `hmux-e2e-*` names. No new physical browser-input acceptance is claimed.
+
+Independent code/documentation review found no remaining web runtime defect;
+its installation-safety and stale-reference findings were resolved. Documentation
+links, formatting and remaining retired-product imports were checked. Build/test
+caches were redirected to temporary writable directories where sandbox policy
+prevented using the user's cache directories.
 
 ## 2026-09-22 — Mobile accessory key labels and focus
 
@@ -128,7 +155,7 @@ support render-aware flow control.
 
 Verification: full Go tests with isolated fake-Home socket tests, Go vet, gateway
 race tests and focused final race checks; web type/style checks, 148 tests and
-production build; native smoke tests and the isolated tmux view lifecycle test.
+production build and the isolated tmux view lifecycle test.
 The socket fixture sends 4,096 one-byte frames followed by 16 MiB per stream,
 checks exact SHA-256/order, independent healthy-view/control progress, legacy
 clients, malformed ACK rejection, passive login activity and stalled-renderer
@@ -204,8 +231,6 @@ Checks completed:
   saved settings after reload, Plus/Pro labels, absent five-hour rows and weekly
   resets. Desktop and 390×844 screenshots were inspected. These are automated
   browser checks, not physical Safari/iOS/Android acceptance.
-- `make native-smoke` passed after rerunning with access to its isolated local
-  test server. No existing tmux session was used by tests.
 - A bounded real collector run verified both source maps, codex-lb account plans,
   optional five-hour windows and account reset timestamps. At that observation,
   cswap reported token-expired/keychain-unavailable accounts and Claude CLI was
@@ -439,48 +464,3 @@ Checks completed locally:
 Browser checks used no live host or tmux sessions. Responsive Chromium checks do
 not establish physical iPhone/Android or Safari IME behavior. This cleanup preserves
 existing input code and does not redeploy the running service.
-
-## 2026-09-16 — initial public-source preparation
-
-The repository now presents HMux as one persistent host for Codex, Claude and
-shell sessions, accessed primarily through the web/PWA client. The old standalone
-terminal packages/configuration/tests are under `archive/terminal/`; the optional
-native app remains under `macos/`. Shared host services and native bridge entrypoints
-remain buildable. The module path is `github.com/codemoo/hmux`.
-
-Publication excludes private settings, caches, binaries, traces and local screenshots.
-The first commits import the current implementation by component without inventing
-past development commits. Direct runtime dependency and bundled-font notices are
-included; the native static-library SBOM/signing gates remain open.
-
-Checks completed locally:
-
-- Full Go tests, race tests and vet; in-tree collector tests.
-- Go formatting, ShellCheck and shell formatting.
-- Web type/style checks, 92 tests, production build and deployment archive build.
-  The archive contains the gateway, frontend and direct runtime license notices.
-- Native smoke checks: models, catalog/workspace changes, surfaces/input/search,
-  conversation, catalog stream, usage, metrics, files, helper lifetime and restart.
-  The loopback catalog test required execution outside the restricted sandbox.
-- Synthetic provisioning/bootstrap and archived frame/config/keybinding/shell/font
-  checks passed. No existing user tmux sessions were used.
-- Candidate-file and independent publication reviews found no live credentials or
-  private deployment identifiers. Generated caches, bytecode and binaries are ignored.
-  Markdown entrypoint links and staged whitespace checks pass.
-
-Existing stale/permission-restricted local dependency caches failed the first runs;
-clean task-specific Go/npm caches resolved them without changing dependency versions.
-No full native app build, notarization or complete legacy live integration suite was
-performed for this source reorganization. Historical device acceptance remains
-separate from these checks. GitHub CI results are visible on the repository Actions tab.
-
-Source publication does not redeploy the running web service or restart existing
-terminal sessions.
-
-### Public CI follow-up
-
-The first macOS CI run used system LibreSSL, which lacks the Ed25519 verification
-option. CI now installs OpenSSL 3 explicitly. Core Go tests/vet/race and web checks
-passed on GitHub. The optional native surface-deck contract failed on macOS 14 even
-after replacing a fixed 20ms sleep with a bounded condition wait. Native CI targets
-the locally validated macOS 15 baseline; this is not a claim that macOS 14 is fixed.

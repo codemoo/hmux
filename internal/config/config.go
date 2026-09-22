@@ -14,137 +14,78 @@ import (
 	"github.com/codemoo/hmux/internal/model"
 )
 
-type ClientConfig struct {
+// HomeConfig contains only the local paths used by the web connector.
+type HomeConfig struct {
 	SchemaVersion int    `toml:"schema_version"`
-	ClientID      string `toml:"client_id"`
 	Role          string `toml:"role"`
-	DMZAlias      string `toml:"dmz_alias"`
-	HomeAlias     string `toml:"home_alias"`
-	AgentPath     string `toml:"agent_path"`
-	ControlPath   string `toml:"control_path"`
 	InventoryPath string `toml:"inventory_path"`
-	CacheDir      string `toml:"cache_dir"`
 	StateDir      string `toml:"state_dir"`
-	PublicKeyPath string `toml:"public_key_path"`
-	Timeout       int    `toml:"timeout_seconds"`
-	UpdateCheck   bool   `toml:"update_check"`
 }
 
-func DefaultClientConfig() ClientConfig {
+func DefaultHomeConfig() HomeConfig {
 	home, _ := os.UserHomeDir()
-	return ClientConfig{
-		SchemaVersion: model.SchemaVersion,
-		ClientID:      "home-mac",
-		Role:          "home",
-		DMZAlias:      "hmux-dmz",
-		HomeAlias:     "hmux-home",
-		AgentPath:     "~/.local/bin/hmux-agent",
-		ControlPath:   "~/.local/bin/hmux-control",
-		InventoryPath: filepath.Join(home, ".config", "hmux", "inventory.toml"),
-		CacheDir:      filepath.Join(home, ".cache", "hmux"),
-		StateDir:      filepath.Join(home, ".local", "state", "hmux"),
-		PublicKeyPath: filepath.Join(home, ".config", "hmux", "release-public-key.pem"),
-		Timeout:       10,
-		UpdateCheck:   false,
-	}
+	return HomeConfig{SchemaVersion: model.SchemaVersion, Role: "home", InventoryPath: filepath.Join(home, ".config", "hmux", "inventory.toml"), StateDir: filepath.Join(home, ".local", "state", "hmux")}
 }
 
-func LoadClient(path string) (ClientConfig, error) {
-	cfg := DefaultClientConfig()
+// LoadHome prefers home.toml, with read-only compatibility for existing client.toml.
+// Retired client keys are accepted but never used to connect or run commands.
+func LoadHome(path string) (HomeConfig, error) {
+	cfg := DefaultHomeConfig()
 	if path == "" {
 		home, err := os.UserHomeDir()
 		if err != nil {
 			return cfg, err
 		}
-		path = filepath.Join(home, ".config", "hmux", "client.toml")
+		path = filepath.Join(home, ".config", "hmux", "home.toml")
+		if _, err = os.Lstat(path); errors.Is(err, os.ErrNotExist) {
+			path = filepath.Join(home, ".config", "hmux", "client.toml")
+		}
 	}
 	if _, err := os.Lstat(path); errors.Is(err, os.ErrNotExist) {
 		return cfg, nil
 	}
 	if err := validateConfigFile(path, 1024*1024); err != nil {
-		return cfg, fmt.Errorf("client config: %w", err)
+		return cfg, fmt.Errorf("Home config: %w", err)
 	}
-	metadata, err := toml.DecodeFile(path, &cfg)
+	var wire struct {
+		HomeConfig
+		ClientID      string `toml:"client_id"`
+		DMZAlias      string `toml:"dmz_alias"`
+		HomeAlias     string `toml:"home_alias"`
+		AgentPath     string `toml:"agent_path"`
+		ControlPath   string `toml:"control_path"`
+		CacheDir      string `toml:"cache_dir"`
+		PublicKeyPath string `toml:"public_key_path"`
+		Timeout       int    `toml:"timeout_seconds"`
+		UpdateCheck   bool   `toml:"update_check"`
+	}
+	wire.HomeConfig = cfg
+	metadata, err := toml.DecodeFile(path, &wire)
 	if err != nil {
-		return cfg, fmt.Errorf("decode client config: %w", err)
+		return cfg, fmt.Errorf("decode Home config: %w", err)
 	}
-	if undecoded := metadata.Undecoded(); len(undecoded) > 0 {
-		return cfg, fmt.Errorf("decode client config: unknown field %q", undecoded[0].String())
+	if unknown := metadata.Undecoded(); len(unknown) > 0 {
+		return cfg, fmt.Errorf("decode Home config: unknown field %q", unknown[0].String())
 	}
+	cfg = wire.HomeConfig
 	if cfg.SchemaVersion != model.SchemaVersion {
-		return cfg, fmt.Errorf("client schema_version must be %d", model.SchemaVersion)
+		return cfg, fmt.Errorf("Home schema_version must be %d", model.SchemaVersion)
 	}
-	if cfg.Role != "home" && cfg.Role != "remote" {
-		return cfg, fmt.Errorf("client role must be home or remote")
+	if cfg.Role != "home" {
+		return cfg, errors.New("HMux supports web/PWA clients only; run the connector on the Home host with role = home")
 	}
-	if err := model.ValidateStableID(cfg.ClientID); err != nil {
-		return cfg, fmt.Errorf("client_id: %w", err)
-	}
-	if cfg.Timeout < 1 || cfg.Timeout > 120 {
-		return cfg, fmt.Errorf("timeout_seconds must be between 1 and 120")
-	}
-	for _, path := range []*string{&cfg.InventoryPath, &cfg.CacheDir, &cfg.StateDir, &cfg.PublicKeyPath} {
+	for _, path := range []*string{&cfg.InventoryPath, &cfg.StateDir} {
 		expanded, err := expandUserPath(*path)
 		if err != nil {
 			return cfg, err
 		}
-		*path = expanded
 		cleaned := filepath.Clean(expanded)
 		if !filepath.IsAbs(cleaned) || cleaned == string(os.PathSeparator) {
-			return cfg, errors.New("client paths must be absolute user paths, not the filesystem root")
+			return cfg, errors.New("Home paths must be absolute user paths, not the filesystem root")
 		}
 		*path = cleaned
 	}
-	for name, value := range map[string]string{
-		"dmz_alias": cfg.DMZAlias, "home_alias": cfg.HomeAlias,
-	} {
-		if !validSSHAlias(value) {
-			return cfg, fmt.Errorf("%s is invalid", name)
-		}
-	}
-	for name, value := range map[string]string{
-		"agent_path": cfg.AgentPath, "control_path": cfg.ControlPath,
-	} {
-		if !validRemotePath(value) {
-			return cfg, fmt.Errorf("%s is invalid", name)
-		}
-	}
 	return cfg, nil
-}
-
-func validSSHAlias(value string) bool {
-	if value == "" || len(value) > 128 || value[0] == '-' {
-		return false
-	}
-	for _, r := range value {
-		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') ||
-			(r >= '0' && r <= '9') || strings.ContainsRune("._-", r)) {
-			return false
-		}
-	}
-	return true
-}
-
-func validRemotePath(value string) bool {
-	if value == "" || len(value) > 512 || strings.Contains(value, "..") ||
-		(!strings.HasPrefix(value, "~/") && !strings.HasPrefix(value, "/")) {
-		return false
-	}
-	for _, r := range value {
-		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') ||
-			(r >= '0' && r <= '9') || strings.ContainsRune("~/_-.", r)) {
-			return false
-		}
-	}
-	return true
-}
-
-func SaveClient(path string, cfg ClientConfig) error {
-	var out bytes.Buffer
-	if err := toml.NewEncoder(&out).Encode(cfg); err != nil {
-		return fmt.Errorf("encode client config: %w", err)
-	}
-	return AtomicWrite(path, out.Bytes(), 0o600)
 }
 
 func expandUserPath(path string) (string, error) {
@@ -166,7 +107,14 @@ func LoadInventory(path string) (model.Inventory, error) {
 	if err := validateConfigFile(path, 16*1024*1024); err != nil {
 		return inventory, fmt.Errorf("inventory: %w", err)
 	}
-	metadata, err := toml.DecodeFile(path, &inventory)
+	var wire struct {
+		model.Inventory
+		Clients      []legacyClient      `toml:"clients"`
+		IdentityRefs []legacyIdentityRef `toml:"identity_refs"`
+		Hosts        []legacyHost        `toml:"hosts"`
+	}
+	metadata, err := toml.DecodeFile(path, &wire)
+	inventory = wire.Inventory
 	if err != nil {
 		return inventory, fmt.Errorf("decode inventory: %w", err)
 	}

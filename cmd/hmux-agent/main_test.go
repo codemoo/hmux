@@ -35,27 +35,6 @@ func TestWorkflowHookIsFailOpenAndPersistsOnlyHashedMetadata(t *testing.T) {
 	}
 }
 
-func TestParseAttachAcceptsOnlyValidatedLauncherID(t *testing.T) {
-	id, launcher, createdAt, shared, detach, appView, err := parseAttach([]string{
-		"--shared", "--launcher", "0123456789abcdef0123456789abcdef", "$7",
-	})
-	if err != nil || id != "$7" || launcher == "" || createdAt != 0 || !shared || detach || appView {
-		t.Fatalf("id=%q launcher=%q createdAt=%d shared=%t detach=%t err=%v", id, launcher, createdAt, shared, detach, err)
-	}
-	if _, _, _, _, _, _, err := parseAttach([]string{"--launcher", "../bad", "$7"}); err == nil {
-		t.Fatal("unsafe launcher ID accepted")
-	}
-	if _, _, _, _, _, _, err := parseAttach([]string{"--launcher"}); err == nil {
-		t.Fatal("missing launcher ID accepted")
-	}
-	id, launcher, createdAt, shared, detach, appView, err = parseAttach([]string{
-		"--shared", "--app-view", "--created-at", "1700000000", "$7",
-	})
-	if err != nil || id != "$7" || launcher != "" || createdAt != 1700000000 || !shared || detach || !appView {
-		t.Fatalf("expected attach parse failed: id=%q createdAt=%d err=%v", id, createdAt, err)
-	}
-}
-
 func TestReadBoundedSingleLineRejectsExtraLinesAndOversizedInput(t *testing.T) {
 	got, err := readBoundedSingleLine(strings.NewReader("friendly alias\n"), 32)
 	if err != nil || got != "friendly alias" {
@@ -85,5 +64,14 @@ func TestParseCreateNameStdinIsExclusive(t *testing.T) {
 	}
 	if _, _, _, _, _, _, err := parseCreate([]string{"--json", "--dry-run", "codex"}); err == nil {
 		t.Fatal("--json and --dry-run were accepted together")
+	}
+}
+
+func TestRemovedUICommandsFailBeforeAccessingTmux(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	for _, command := range []string{"attach", "select", "selector-lines", "selector-footer", "frame-host", "frame-ui", "frame-inner", "frame-status", "frame-click", "frame-spacer", "launcher-cleanup", "preview", "alias", "update", "catalog-stream", "usage-stream", "file-stage"} {
+		if err := run([]string{command}); err == nil || !strings.Contains(err.Error(), "usage: hmux-agent") {
+			t.Fatalf("removed command %q: %v", command, err)
+		}
 	}
 }

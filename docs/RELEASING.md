@@ -4,8 +4,8 @@
 
 This repository publishes source for independent, trusted self-hosted deployments.
 It does not provision a shared public server or include access to the maintainer's
-machines. Native builds use pinned Ghostty sources and currently use ad-hoc signing.
-A source publication is not a notarized macOS application release.
+machines. The only distributed UI is the web/PWA app; macOS binaries are Home
+host services. There is no separate desktop bundle or client updater.
 
 ## Source publication
 
@@ -27,23 +27,6 @@ and session stores outside the release directory. Stage and verify a new release
 retain the previous release, then switch the service. Check authentication, CSP,
 static assets and Home connectivity after activation. Publishing source does not
 update running installations automatically.
-
-## Native binary releases
-
-Before publishing downloadable macOS application bundles:
-
-- Complete the dependency license inventory/SBOM for the statically linked native
-  libraries; retain [native notices](../macos/HMux/ThirdPartyNotices.md).
-- Build and verify the complete app from the pinned dependency manifest.
-- Configure Developer ID signing and notarization with maintainer-owned credentials
-  stored outside the repository, then verify the distributed bundle.
-- Validate archive paths, checksums and supported CPU/OS; exercise rollback.
-- Bump `VERSION` deliberately and create an immutable matching release. Never replace
-  an already published artifact with different bytes under the same version.
-
-Until those gates are complete, use the documented local source-build route rather
-than describing ad-hoc packages as a signed public release. Release keys and Apple
-certificates are not supplied by this repository.
 
 ## Source license
 

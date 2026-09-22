@@ -1,115 +1,30 @@
 # Troubleshooting
 
-## Returning to work
+## Connection or terminal is unavailable
 
-- A disconnected tab keeps its previous screen. Use **Reconnect** (`⇧⌘R`) to
-  replace that connection; a missing/replaced Home session cannot be reconnected.
-- Reopen an accidentally closed tab with `⇧⌘T`. This only works while the same
-  session still exists, within the current app run.
-- App launch restores the last tab layout only after a successful catalog for
-  the same configured Home source. Changed SSH/client settings, expired sessions
-  or rejected local state can prevent restoration. After a Home reboot, the
-  updated Home agent first restores its checkpoint; tabs can follow only verified
-  recovery lineage. Same-boot deletions and same-name unrelated sessions are not
-  substitutes. See [Home recovery](RECOVERY.md).
-- If connection settings change while the app is open, reopen HMux before
-  opening or changing sessions. Existing terminal views remain available.
-- If **Create and Open** succeeds on Home but opening fails, **Retry Opening**
-  targets that same session. Cancel leaves it in the Home session list.
+Check HTTPS/gateway health and that `hmux-web connect` is running on Home. Home
+initiates outbound WSS and must use the matching private connector token. Check
+bounded diagnostics under Settings before refreshing; never share tokens or
+terminal contents in a public report. Transient failures should retry within the
+current login; expired/revoked logins must authenticate again.
 
-Use the embedded helper explicitly so a personal shell function cannot
-intercept maintenance commands:
+On Home, use `hmux-agent doctor` and `hmux-agent catalog` for local diagnostics.
+A missing tab retains its `{id, created_at}`; do not reconnect by a matching name.
+Close/reopen only the browser view if necessary. Never kill original tmux sessions
+or reset private state to troubleshoot a transport problem.
 
-```bash
-HMUX_HELPER="$HOME/Applications/HMux.app/Contents/Helpers/hmux"
-"$HMUX_HELPER" --no-update-check version
-"$HMUX_HELPER" --no-update-check doctor --json
-```
+## Settings fail after upgrading
 
-## App is Connecting, Reconnecting or Offline
-
-Connected requires a valid first snapshot. A failed connection retains the last
-catalog with a Reconnecting indicator briefly, then shows Offline. Click the
-Offline footer to read the full error and retry; an empty workspace also offers
-Try Again. On Home check `hmux-agent doctor` and
-`hmux-agent capabilities`; on a remote Mac check effective SSH configuration:
-
-```bash
-ssh -G hmux-home
-ssh -o BatchMode=yes hmux-dmz -- true
-ssh -o BatchMode=yes hmux-home -- true
-```
-
-Verify ProxyJump, client-local identities, host-key trust and forwarding off.
-Do not bypass host-key verification. Old agents can trigger compatibility
-polling; install a compatible agent before diagnosing WSS as a UI problem.
-
-## Flicker while switching tabs or panels
-
-Current native tabs keep their terminal wrappers mounted between selections.
-Only reconnect replaces a renderer; panel and banner transitions do not animate
-terminal geometry. If flicker remains, record whether it happens on tab selection,
-sidebar/details changes, or opening a search/management sheet, plus the app version
-and display scaling. The isolated surface-deck test verifies view retention; it
-cannot prove real Metal/compositor behavior on every display.
-
-## List is empty or a session is hidden
-
-An empty connected catalog is valid. If Active or Attention is selected, use
-Show All Sessions to clear the filter. Search with ⇧⌘F even when the sidebar is
-hidden; Return opens the first result and Escape returns to the terminal. Hidden sessions remain running; open the
-hidden-session manager to restore their visibility. Creation requires a valid
-profile in the private inventory and an existing Home working directory.
-
-If a catalog is rejected, investigate malformed metadata or mismatched
-protocols. Do not weaken bounds or rename an unrelated live session to satisfy
-a test.
-
-## Terminal tab is disconnected
-
-Catalog connectivity and the terminal SSH/PTY connection have separate
-lifetimes. A live catalog does not prove an old terminal surface is still
-connected. Use Reconnect (⇧⌘R) on the affected tab after restoring SSH. This preserves
-Home work; it is not a session restart. If the session identity changed, select
-the new session explicitly.
-
-Native grouped tabs share windows and do not hand off all other clients.
-Window size follows tmux's policy for shared windows. Direct CLI/mobile
-handoff applies to its target session; do not assume it covers grouped siblings.
-
-## Workflow badge is absent or stale
-
-Hooks are prospective and do not reconstruct old turns from pane content.
-Check matching Home agent capabilities, hook JSON and the required Codex trust
-review in [Codex workflows](CODEX_WORKFLOWS.md).
-
-`stale` means no lifecycle update for two hours, not permission to kill or
-restart work. Attention also includes input/approval waits, failures and
-interruptions. Inspect the workflow and actual agent UI. HMux never answers
-agent approval prompts.
-
-## Session attachment or metadata looks inconsistent
-
-The catalog counts clients attached to every member of a tmux session group,
-including HMux's hidden terminal views. A client attached to a native view must
-therefore count as attached on the visible original session. Work/activity is
-separate from attachment; the A–Z list does not move rows between state sections.
-
-Aliases and Hide/Restore are Home-owned changes. The app projects a requested
-change immediately and confirms it with a fresh catalog. Older stream or deferred
-snapshots must not undo that confirmation. A failed write rolls back the local
-projection and reports an error. Hidden sessions remain running and can be
-restored through Hidden Sessions; hiding an open session leaves its tab intact.
-The alias editor closes when Home acknowledges a successful write. Background
-catalog confirmation may continue afterward; it must not keep the editor on
-`Saving…`. A failed write keeps the editor open with a retryable error.
+New installations use `home.toml`; existing `client.toml` loads only when it is
+absent. Unknown fields, unsafe paths or non-Home roles fail explicitly. Preserve
+state/inventory paths and consult [MIGRATION.md](MIGRATION.md). Do not delete account
+or session files: doing so changes login continuity and may lose revocation state.
 
 ## Usage is unavailable
 
 Collection runs on Home as the existing signed-in CLI user. Check that user's
 CLI login and read-only credential accessibility. A CLI account switch is
-authoritative on the next collection pass. Do not copy credentials to remote
-Macs, edit provider auth files through HMux or introduce a separate usage daemon.
+authoritative on the next collection pass. Do not copy credentials to browser devices, edit provider auth files through HMux or introduce a separate usage daemon.
 
 Codex LB shows the configured codex-lb account pool's weekly (`1w`) remaining
 quota. Its detailed account rows use only the aliases assigned in codex-lb;
@@ -140,18 +55,6 @@ Weekly reset countdowns require `resetAtSecondary` in account exports or
 filling it with zero; the web UI then hides that absent window. Existing export
 schedules remain operator-managed; HMux does not install a background job.
 
-The legacy/native Claude collector reads existing cswap metadata (`~/.claude-swap-backup/sequence.json`),
-its schema-v2 usage cache (`cache/usage.json`), and the active email/organization
-from the Claude config file, using cswap’s legacy `.config.json` precedence and
-absolute `CLAUDE_CONFIG_DIR` override (otherwise `~/.claude.json`). HMux never runs
-cswap account switching or token refresh.
-The footer follows the unique active identity; account details show emails and an
-ACTIVE badge. Cached measurements older than five minutes or with a fetch error
-are marked stale, and expire after thirty minutes or their quota reset. If the
-cache is empty, open cswap normally to let it collect usage. HMux does not create
-a refresh daemon. An existing `claude-swap-accounts.json` export remains a fallback;
-`TOKEN_USAGE_CLAUDE_SWAP_ACCOUNTS` explicitly selects an export instead.
-
 Without cswap data, Claude reads the Home user's existing `~/.claude/.credentials.json`
 OAuth login file. Sign in through Claude Code on Home if no login exists; HMux
 does not log in or refresh tokens itself. A Keychain-only login is not currently
@@ -167,86 +70,39 @@ recent quota may remain visible with a stale marker. A missing window is shown
 as unavailable, not as 100% left; a cswap list uses only its unique active account. If that account has no quota,
 HMux shows it as unavailable rather than showing another account’s quota.
 
-## File drop is waiting
+## Upload is interrupted
 
-Ready to paste is expected if selection, surface or active application changed
-during transfer. Return to the originating tab and explicitly insert the paths.
-Only regular files within the documented size/count limits are accepted.
-Reconnect/close cancels the old surface's transfer; drop again if necessary.
+Return to the original tab and retry. Tab/account changes, cancellation and lost
+connections invalidate the transfer; an upload never silently moves to another
+session. File and total-byte limits are enforced before committing. Files expire
+three hours after completion. An uploaded path is pasted with quoting, without Enter.
 
-## Native installation or update fails
+## Host metrics are unavailable
 
-The shell installer requires the exact VERSION archive plus SHA-256 sidecar at
-the documented trusted Home source path. Building locally does not publish it.
-Normal app updates instead require a valid role-bound signed DMZ manifest.
+Metrics describe Home, not the browser or gateway. Unsupported CPU/GPU observations
+are omitted; a missing value is not zero load. Check connector health and host/browser
+clock agreement. Platform collectors remain host-specific.
 
-Verify size, hash, platform, public-key identity and safe bundle ownership.
-Do not change the pinned key to suppress a signature error. Use a
-current-user-owned install directory such as `~/Applications`.
-See [Rollback](ROLLBACK.md) before changing a failed installation.
+## Codex conversations are unavailable
 
-## CLI frame, font or keys differ from the app
+Home needs one exact provider binding for the active pane. Ambiguous, missing or
+changing rollout files are unavailable rather than guessed. The reader returns only
+a bounded tail of complete records, excluding tools and internal context. Markdown
+rendering does not execute raw HTML. See [WEB.md](WEB.md#conversation-reader).
 
-The native app uses its bundled Ghostty configuration and SwiftUI shortcuts.
-Standalone Ghostty frames and fzf use separate keys and managed fragments.
-Follow [CLI compatibility](CLI_COMPATIBILITY.md); do not install keys or UI
-options into the user's real tmux server.
+## Reboot recovery
 
-## Provisioning or Termius is incomplete
+The Home connector must have saved a checkpoint before reboot and must be restarted
+afterwards. Before planned maintenance use `hmux-agent recovery save`. For errors,
+run `hmux-agent recovery sync` locally and check directories/provider installations.
+Do not delete checkpoints as a first repair step. Provider authentication/project
+trust prompts still apply. See [RECOVERY.md](RECOVERY.md).
 
-New device keys require public-fingerprint authorization and a second
-provisioning run. See [external provisioning](../scripts/EXTERNAL_PROVISIONING_README.md).
-Private keys never enter the shared bundle.
+## Workflow metadata
 
-CSV generation and opening Termius do not import hosts or prove Vault sync.
-Use the supported UI and report only the attained
-[validation level](TERMIUS_INTEGRATION.md#validation-levels).
-
-## Home CPU/GPU/RAM shows —
-
-Click the Home metrics control beside Claude/Codex for its current reason.
-These values come from the Mac running tmux, regardless of which tab is open.
-A remote Home agent must advertise `host-metrics-v1`; older agents and catalog
-polling keep sessions usable but omit metrics. For Home-role apps, the bundled
-helper supplies the new collector. A missing GPU value means macOS did not
-provide utilization; it does not mean zero load. Stale/offline samples are hidden
-after the freshness checks. Clock mismatch requires checking the two Macs’ clocks.
-
-## Codex conversation reader
-
-Use the reading button beside the all-tabs chevron, or ⇧⌘D, to switch between
-the terminal and conversation. Answers are shown by default; the display menu
-can include questions and code blocks. Search operates on the displayed text.
-Copy copies that text, and Latest moves to the last visible message without
-forcing scroll while you read. Returning to the terminal keeps its existing
-connection and screen.
-
-The tmux session’s active window/pane must lead to a running Codex process with
-one unambiguous open main conversation record. Open subagent records are excluded
-using their session metadata. Custom Codex roots are recognized from validated
-open rollout paths. Tabs continue to reference tmux sessions; provider association
-is shared with the catalog rather than maintained separately for each tab. The reader does not search other
-projects for a plausible conversation or scrape the terminal. Multiple or
-missing matches display an explanation. Remote agents need `conversation-v1`.
-Only the bounded newest part of large records is shown; incomplete final
-records appear after Codex finishes writing them. Internal reasoning and
-tool execution records are excluded.
-
-## Home reboot recovery
-
-Update both the native app and the Home agent for checkpoint recovery. The app
-must have connected before the reboot to create a checkpoint. Save a fresh one
-with `~/.local/bin/hmux-agent recovery save` on Home before a planned reboot.
-
-If Home recovery cannot complete, run `~/.local/bin/hmux-agent recovery sync` on
-Home to get the local error. Check that saved directories, provider binaries and
-provider configuration still exist. A session name already present is skipped;
-it is not treated as a recovered tab. Do not delete the private recovery state
-as a first troubleshooting step, since it holds the previous checkpoint.
-
-A resumed provider may still ask for authentication or project trust. HMux does
-not bypass either prompt or replay commands/tools that were running before the
-reboot. See [recovery behavior and limitations](RECOVERY.md).
+Install/review the optional Home hooks in [CODEX_WORKFLOWS.md](CODEX_WORKFLOWS.md).
+`hmux-agent workflow --json` reads bounded metadata without terminal scraping.
+Unavailable hook data must not block Codex or terminal access.
 
 ## Web/PWA installation and terminal colors
 

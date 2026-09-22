@@ -1,0 +1,5 @@
+# Copy to ~/.config/hmux/home.toml on the host running tmux.
+schema_version = 1
+role = "home"
+inventory_path = "~/.config/hmux/inventory.toml"
+state_dir = "~/.local/state/hmux"

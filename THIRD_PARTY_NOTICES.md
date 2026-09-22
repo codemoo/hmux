@@ -2,8 +2,7 @@
 
 HMux retains each component's license; a top-level source license does not
 replace those terms. The tables below cover direct runtime dependencies and
-bundled assets. Package lockfiles and native dependency pins are authoritative
-for versions. This is not a complete native static-library SBOM.
+bundled assets. Go modules and the web package lockfile are authoritative for versions.
 
 | Component | Version/source | License location |
 | --- | --- | --- |
@@ -25,9 +24,6 @@ for versions. This is not a complete native static-library SBOM.
 | Pretendard Variable | v1.3.9, unmodified | `web/public/fonts/Pretendard-LICENSE.txt`, `NOTICE.txt` |
 | Terminal palettes: Tokyo Night Storm, Catppuccin Mocha, Dracula, Nord | pinned upstream terminal ports | `web/public/licenses/terminal-themes-NOTICE.md` and linked license texts |
 | Monatendard / underlying fonts | bundled files | `web/public/fonts/NOTICE.txt`, `THIRD_PARTY_NOTICES.md` and license texts |
-| Ghostty / native libraries and sprites | pinned native manifest | `macos/HMux/ThirdPartyNotices.md`, `Dependencies.lock.json` |
 
 Web builds copy public font and JavaScript notices into the served assets.
 `deploy/web/build.sh` includes Go runtime notices in its deployment archive.
-Before distributing native binaries, complete the remaining license/SBOM and
-signing gates in [docs/RELEASING.md](docs/RELEASING.md).

@@ -1,5 +1,5 @@
 Monatendard Nerd Font Mono Regular and Bold
-Source: installed official MonatendardNFM TTF files, matching HMux Ghostty configuration.
+Source: official MonatendardNFM TTF files, bundled for the HMux web terminal.
 Upstream: https://github.com/younjungpark/Monatendard
 Converted losslessly to WOFF2, without changing glyphs.
 See Monatendard-LICENSE.txt, NERD_FONTS_LICENSE.txt and THIRD_PARTY_NOTICES.md.

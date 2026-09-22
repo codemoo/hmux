@@ -5,8 +5,7 @@
 HMux keeps long-running terminal sessions on a host you control and makes them
 available through a lightweight web interface on desktop, phone and tablet.
 Close a browser, switch devices or reconnect later: the work stays on the host.
-The primary client is the web/PWA app. A separate macOS app is retained as an
-optional client; the former standalone terminal UI is archived.
+The web/PWA app is the only user interface.
 
 ## How it works
 
@@ -61,29 +60,25 @@ make web-build
 
 This creates the web assets and the currently supported Linux gateway/macOS host
 binaries under `dist/`. Building does not deploy or alter existing sessions.
-Native macOS source builds have additional Xcode/Ghostty prerequisites; see
-[macos/README.md](macos/README.md). Notarized public app downloads are not yet provided.
+Install the Home connector and optional administration helper using
+[Operations](docs/OPERATIONS.md). macOS here refers to the host running tmux.
 
 ## Repository map
 
 | Location | Responsibility |
 | --- | --- |
-| `web/` | Primary desktop/mobile web and PWA client |
+| `web/` | Desktop/mobile web and PWA interface |
 | `cmd/hmux-web/`, `internal/webgateway/`, `deploy/web/` | Gateway, host connector and deployment templates |
-| `internal/`, `cmd/hmux-agent/`, `cmd/hmux-control/` | Shared host, SSH, tmux, identity, recovery and administration |
-| `macos/`, `cmd/hmux/` | Optional native app and its Go bridge/compatibility entrypoint |
-| `archive/terminal/` | Retired fzf/framed terminal UI, configuration and regression tests |
+| `internal/home/`, `internal/agent/`, `cmd/hmux-agent/` | Local tmux services, administration and workflow hooks |
+| `internal/catalog/`, `internal/recovery/` | Session identity, provider binding and reboot recovery |
 | `third_party/` | Licensed in-tree usage collector |
 | `docs/` | Architecture, setup, security and validation references |
-
-The archived UI still has a small number of compatibility imports from shared
-client/agent entrypoints. It is kept buildable; it is not the primary product.
 
 ## Development and releases
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) for checks and [AGENTS.md](AGENTS.md) for
-change rules. CI checks Go, native contracts and the web client. Public-source and
-binary-release readiness are tracked separately in [RELEASING.md](docs/RELEASING.md).
+change rules. CI checks the Go host/gateway, isolated tmux lifecycles and the web client.
+Source and deployment procedures are tracked in [RELEASING.md](docs/RELEASING.md).
 Third-party notices are preserved in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 The first published commits import the existing project by component. They do

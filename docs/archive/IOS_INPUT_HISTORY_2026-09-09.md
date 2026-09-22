@@ -1,7 +1,7 @@
 # Historical iOS input and clipboard validation
 
 Superseded checkpoint log, not current instructions or acceptance status.
-See [current verification](../VALIDATION.md#current-web-verification-2026-09-09)
+See [current verification](../VALIDATION.md)
 and [current iOS behavior](../IOS_INPUT.md). Pending/unaccepted statements below
 describe each release at that time, not the final user decision.
 

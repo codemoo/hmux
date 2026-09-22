@@ -15,22 +15,21 @@ application, daemon installation, fixed port, or launch agent.
   (reproduce from this directory with
   `find cmd internal -type f -name '*.go' -print | LC_ALL=C sort | xargs shasum -a 256 | shasum -a 256`)
 - Local HMux delta: the public `stream` package links the existing collectors
-  into `hmux` and `hmux-agent`, emits bounded sequenced NDJSON snapshots, and
+  into the `hmux-web` Home connector, emits bounded sequenced NDJSON snapshots, and
   treats Claude/Codex CLI credentials as a revision-tracked, read-only source.
   `cmd/daemon` remains available for upstream contract coverage but is not
   bundled or launched by HMux. `internal/codexlb` accepts an explicit aggregate
   key. The source-aware stream keeps CLI, claude-swap and codex-lb quota values
   separate. Its claude-swap reader runs only `cswap list --json` on a bounded
   cadence with bounded output and discarded diagnostics. The unused upstream
-  `internal/source` SSH bridge remains excluded: HMux uses its own
-  host-key-checked, allowlisted transport.
+  `internal/source` SSH bridge remains upstream test/support code only; HMux does
+  not import or launch it. Home invokes `stream.RunWithSources` in process.
 
-On a remote client, the existing HMux SSH identity authorizes the exact command
-`hmux-agent usage-stream --stdio`. No usage bearer is created. SSH stdin is the
-lifetime lease, and bounded TERM/KILL cleanup removes a stalled child. Provider
-credentials, codex-lb keys and Home hostnames are not sent. Claude cswap emails
-are bounded labels explicitly requested by the owner; Codex uses aliases only.
-The transmitted snapshot is a strict HMux-only allowlist and excludes provider
-raw response fields.
+One source-aware collector serves the connected browsers through HMux's existing
+bounded, authenticated Home WSS channel. Context cancellation and pipe closure
+end collection when the connector disconnects. No separate usage bearer or SSH
+process is created. Provider credentials, codex-lb keys and Home hostnames are not
+sent. Claude cswap emails are bounded labels explicitly requested by the owner;
+Codex uses aliases only. Snapshots allowlist usage fields and exclude raw responses.
 
 See `LICENSE` and `NOTICE` in this directory.

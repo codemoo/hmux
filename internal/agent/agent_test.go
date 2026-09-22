@@ -20,12 +20,6 @@ func TestShellCommandQuotesEveryArgument(t *testing.T) {
 func TestValidateCreateDoesNotRequireOrInvokeTmux(t *testing.T) {
 	inventory := model.Inventory{
 		SchemaVersion: model.SchemaVersion,
-		Clients:       []model.Client{{ID: "home-mac", Role: "home"}},
-		IdentityRefs:  []model.IdentityRef{{ID: "key", Path: "~/.ssh/test_key"}},
-		Hosts: []model.Host{{
-			ID: "home", SSHAlias: "hmux-home", Address: "home.invalid",
-			User: "user", Port: 22, IdentityRef: "key",
-		}},
 		Profiles: []model.Profile{{
 			ID: "shell", Label: "Shell", DefaultDirectory: t.TempDir(),
 			Command: []string{"sh", "-l"},
@@ -68,23 +62,6 @@ func TestAutomaticSessionNamesAreDistinctAndBounded(t *testing.T) {
 	}
 	if first == second || !validSessionName(first) || !validSessionName(second) {
 		t.Fatalf("automatic names must be distinct and valid: %q, %q", first, second)
-	}
-}
-
-func TestPreviewIncludesRuntimeModelAndStateWithoutPaneContent(t *testing.T) {
-	preview := FormatPreview(model.Session{
-		ID: "$7", Name: "main\x1b[31m\u202eevil", Runtime: "codex", Model: "gpt-5.6-sol",
-		State: "working", Process: "codex", CurrentPath: "/work/project",
-	})
-	for _, value := range []string{
-		"Runtime: codex", "Model: gpt-5.6-sol", "State: working", "Process: codex",
-	} {
-		if !strings.Contains(preview, value) {
-			t.Fatalf("preview missing %q: %s", value, preview)
-		}
-	}
-	if strings.Contains(preview, "\x1b") || strings.Contains(preview, "\u202e") {
-		t.Fatal("preview retained terminal-control text")
 	}
 }
 

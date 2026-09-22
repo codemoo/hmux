@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -24,7 +23,7 @@ import (
 )
 
 func Catalog(ctx context.Context) (model.Catalog, error) {
-	return CatalogAt(ctx, config.DefaultClientConfig().StateDir)
+	return CatalogAt(ctx, config.DefaultHomeConfig().StateDir)
 }
 
 func CatalogAt(ctx context.Context, stateDir string) (model.Catalog, error) {
@@ -42,45 +41,7 @@ func CatalogAt(ctx context.Context, stateDir string) (model.Catalog, error) {
 	// Workflow state is an optional observability overlay. A corrupt or
 	// unavailable store must not take down the session catalog or attach path.
 	_ = (workflow.Store{StateDir: stateDir}).Apply(&value)
-	for index := range value.Sessions {
-		value.Sessions[index].HostAlias = "hmux-home"
-	}
 	return value, nil
-}
-
-func Preview(ctx context.Context, id string) (string, error) {
-	if err := model.ValidateSessionID(id); err != nil {
-		return "", err
-	}
-	value, err := Catalog(ctx)
-	if err != nil {
-		return "", err
-	}
-	for _, session := range value.Sessions {
-		if session.ID == id {
-			return FormatPreview(session), nil
-		}
-	}
-	return "", fmt.Errorf("session %s does not exist", id)
-}
-
-func FormatPreview(s model.Session) string {
-	preview := fmt.Sprintf(
-		"Session: %s\nID: %s\nRuntime: %s\nModel: %s\nState: %s\nProcess: %s\nProfile: %s\nTags: %s\nPath: %s\nCommand: %s\nWindows: %s\nAttached: %d\nSize: %dx%d\nActivity: %s\n",
-		model.SafeText(s.Name, 512), model.SafeText(s.ID, 32),
-		emptyDash(model.SafeText(s.Runtime, 128)), emptyDash(model.SafeText(s.Model, 128)),
-		emptyDash(model.SafeText(s.State, 64)), emptyDash(model.SafeText(s.Process, 128)),
-		emptyDash(model.SafeText(s.Profile, 128)),
-		emptyDash(model.SafeText(strings.Join(s.Tags, ", "), 4096)),
-		emptyDash(model.SafeText(s.CurrentPath, 4096)),
-		emptyDash(model.SafeText(s.CurrentCommand, 256)),
-		emptyDash(model.SafeText(strings.Join(s.WindowNames, ", "), 4096)),
-		s.Attached, s.Width, s.Height, time.Unix(s.ActivityAt, 0).Format(time.RFC3339),
-	)
-	if badge := workflow.SummaryBadge(s.Workflow); badge != "" {
-		preview += "Workflow: " + badge + "\n"
-	}
-	return preview
 }
 
 type CreateResult struct {
@@ -314,11 +275,4 @@ func expandHome(path string) (string, error) {
 		return "", fmt.Errorf("profile path must be absolute or start with ~/")
 	}
 	return path, nil
-}
-
-func emptyDash(value string) string {
-	if value == "" {
-		return "-"
-	}
-	return value
 }

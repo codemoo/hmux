@@ -12,7 +12,7 @@ import (
 
 // Rebase shared tabs at each recovery checkpoint, including when no UI is open.
 // Otherwise a tab saved as A would miss A->B->C if only C's direct parent B is
-// still advertised when the next browser/native client connects.
+// still advertised when the next browser client connects.
 func (s Store) rebaseSharedWorkspace(ctx context.Context, previous, added []restoredIdentity, live snapshot) error {
 	path := filepath.Join(s.StateDir, "shared-workspace", "workspace.json")
 	if _, err := os.Lstat(path); errors.Is(err, os.ErrNotExist) {

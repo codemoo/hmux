@@ -15,7 +15,7 @@ func runAgentRecovery(ctx context.Context, args []string, out io.Writer) error {
 	if len(args) != 1 || (args[0] != "save" && args[0] != "restore" && args[0] != "sync") {
 		return errors.New("usage: hmux-agent recovery save|restore|sync")
 	}
-	cfg, err := config.LoadClient("")
+	cfg, err := config.LoadHome("")
 	if err != nil {
 		return err
 	}

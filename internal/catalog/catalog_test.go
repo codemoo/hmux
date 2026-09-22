@@ -182,28 +182,7 @@ func FuzzReadNeverPanics(f *testing.F) {
 	})
 }
 
-func TestAttachArgs(t *testing.T) {
-	args, err := AttachArgs("$9", false, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(args, []string{"attach-session", "-d", "-t", "$9"}) {
-		t.Fatalf("args=%v", args)
-	}
-	args, _ = AttachArgs("$9", true, false)
-	if !reflect.DeepEqual(args, []string{"attach-session", "-t", "$9"}) {
-		t.Fatalf("shared args=%v", args)
-	}
-	args, _ = AttachArgs("$9", false, true)
-	if !reflect.DeepEqual(args, []string{"switch-client", "-t", "$9"}) {
-		t.Fatalf("nested args=%v", args)
-	}
-	if _, err := AttachArgs("$9;rm", false, false); err == nil {
-		t.Fatal("unsafe id accepted")
-	}
-}
-
-func TestReadHidesOnlyMarkedNativeAppViews(t *testing.T) {
+func TestReadHidesOnlyMarkedNativeTerminalViews(t *testing.T) {
 	runner := RunnerFunc(func(_ context.Context, args ...string) ([]byte, error) {
 		if args[0] == "list-sessions" {
 			return []byte(strings.Join([]string{
@@ -224,7 +203,7 @@ func TestReadHidesOnlyMarkedNativeAppViews(t *testing.T) {
 	}
 }
 
-func TestReadUsesGroupedAttachmentCountForNativeViews(t *testing.T) {
+func TestReadUsesGroupedAttachmentCountForTerminalViews(t *testing.T) {
 	runner := RunnerFunc(func(_ context.Context, args ...string) ([]byte, error) {
 		if args[0] == "list-sessions" {
 			return []byte(strings.Join([]string{
@@ -260,8 +239,8 @@ func TestReadRejectsInvalidGroupedAttachmentCount(t *testing.T) {
 	}
 }
 
-func TestAppViewArgumentsAreScopedAndValidated(t *testing.T) {
-	got, err := AppViewCreateArgs("$8", "hmux-app-view-42-acde")
+func TestTerminalViewArgumentsAreScopedAndValidated(t *testing.T) {
+	got, err := TerminalViewCreateArgs("$8", "hmux-app-view-42-acde")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -273,53 +252,19 @@ func TestAppViewArgumentsAreScopedAndValidated(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("create args=%v", got)
 	}
-	if _, err := AppViewCreateArgs("$8;bad", "hmux-app-view-42-acde"); err == nil {
+	if _, err := TerminalViewCreateArgs("$8;bad", "hmux-app-view-42-acde"); err == nil {
 		t.Fatal("unsafe target accepted")
 	}
-	if _, err := AppViewCreateArgs("$8", "other"); err == nil {
-		t.Fatal("unsafe app view accepted")
+	if _, err := TerminalViewCreateArgs("$8", "other"); err == nil {
+		t.Fatal("unsafe terminal view accepted")
 	}
-	attach, _ := AppViewAttachArgs("hmux-app-view-42-acde", false)
+	attach, _ := TerminalViewAttachArgs("hmux-app-view-42-acde", false)
 	if !reflect.DeepEqual(attach, []string{"attach-session", "-d", "-t", "hmux-app-view-42-acde"}) {
 		t.Fatalf("attach args=%v", attach)
 	}
-	kill, _ := AppViewKillArgs("hmux-app-view-42-acde")
+	kill, _ := TerminalViewKillArgs("hmux-app-view-42-acde")
 	if !reflect.DeepEqual(kill, []string{"kill-session", "-t", "hmux-app-view-42-acde"}) {
 		t.Fatalf("kill args=%v", kill)
-	}
-}
-
-func TestCurrentSessionIDUsesAValidatedArgumentArray(t *testing.T) {
-	runner := RunnerFunc(func(_ context.Context, args ...string) ([]byte, error) {
-		want := []string{"display-message", "-p", "#{session_id}"}
-		if !reflect.DeepEqual(args, want) {
-			return nil, fmt.Errorf("args=%v", args)
-		}
-		return []byte("$7\n"), nil
-	})
-	id, err := CurrentSessionID(context.Background(), runner)
-	if err != nil || id != "$7" {
-		t.Fatalf("id=%q err=%v", id, err)
-	}
-}
-
-func TestTargetedClientActionsUseValidatedArgumentArrays(t *testing.T) {
-	var calls [][]string
-	runner := RunnerFunc(func(_ context.Context, args ...string) ([]byte, error) {
-		calls = append(calls, append([]string(nil), args...))
-		return nil, nil
-	})
-	if err := SwitchClient(context.Background(), runner, "/dev/ttys101", "$8"); err != nil {
-		t.Fatal(err)
-	}
-	want := [][]string{
-		{"switch-client", "-c", "/dev/ttys101", "-t", "$8"},
-	}
-	if !reflect.DeepEqual(calls, want) {
-		t.Fatalf("calls=%v", calls)
-	}
-	if err := SwitchClient(context.Background(), runner, "bad;client", "$8"); err == nil {
-		t.Fatal("unsafe client accepted")
 	}
 }
 
@@ -367,32 +312,6 @@ func TestExpectedTerminationChecksIdentityInOneTmuxCommand(t *testing.T) {
 	})
 	if err := TerminateSessionExpected(context.Background(), changed, "$8", 1700000000); !errors.Is(err, ErrSessionChanged) {
 		t.Fatalf("expected identity error, got %v", err)
-	}
-}
-
-func TestExpectedAttachChecksIdentityInOneTmuxCommand(t *testing.T) {
-	got, err := AttachExpectedArgs("$8", 1700000000, true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := []string{
-		"if-shell", "-F", "-t", "$8", "#{==:#{session_created},1700000000}",
-		"attach-session -t $8", "display-message -p hmux-session-changed",
-	}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("args=%v", got)
-	}
-
-	got, err = AttachExpectedArgs("$8", 1700000000, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	want = []string{
-		"if-shell", "-F", "-t", "$8", "#{==:#{session_created},1700000000}",
-		"attach-session -d -t $8", "display-message -p hmux-session-changed",
-	}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("handoff args=%v", got)
 	}
 }
 

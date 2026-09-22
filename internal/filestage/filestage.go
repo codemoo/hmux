@@ -83,146 +83,12 @@ type Response struct {
 	Files           []StagedFile    `json:"files"`
 }
 
-type preparedFile struct {
-	file      *os.File
-	path      string
-	info      os.FileInfo
-	size      int64
-	extension string
-	hash      [sha256.Size]byte
-}
-
-type PreparedTransfer struct {
-	files []preparedFile
-	total int64
-}
-
 func DefaultRoot() (string, error) {
 	cache, err := os.UserCacheDir()
 	if err != nil || !filepath.IsAbs(cache) {
 		return "", errors.New("HMux staging cache is unavailable")
 	}
 	return filepath.Join(cache, "hmux", "staged-files-v1"), nil
-}
-
-func Prepare(paths []string) (*PreparedTransfer, error) {
-	if len(paths) < 1 || len(paths) > MaximumFiles {
-		return nil, fmt.Errorf("file drop must contain between 1 and %d files", MaximumFiles)
-	}
-	prepared := &PreparedTransfer{}
-	closeOnError := true
-	defer func() {
-		if closeOnError {
-			_ = prepared.Close()
-		}
-	}()
-	for index, rawPath := range paths {
-		if !utf8.ValidString(rawPath) || len(rawPath) < 1 || len(rawPath) > 4096 ||
-			strings.IndexByte(rawPath, 0) >= 0 || !filepath.IsAbs(rawPath) || filepath.Clean(rawPath) != rawPath {
-			return nil, fmt.Errorf("file %d has an invalid local path", index+1)
-		}
-		before, err := os.Lstat(rawPath)
-		if err != nil || before.Mode()&os.ModeSymlink != 0 || !before.Mode().IsRegular() {
-			return nil, fmt.Errorf("file %d must be a regular non-symlink file", index+1)
-		}
-		if before.Size() < 1 || before.Size() > MaximumFileBytes {
-			return nil, fmt.Errorf("file %d exceeds the 32 MiB size limit or is empty", index+1)
-		}
-		fd, err := unix.Open(rawPath, unix.O_RDONLY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
-		if err != nil {
-			return nil, fmt.Errorf("file %d could not be opened safely", index+1)
-		}
-		file := os.NewFile(uintptr(fd), "hmux-staged-source")
-		afterOpen, statErr := file.Stat()
-		if statErr != nil || !afterOpen.Mode().IsRegular() || !os.SameFile(before, afterOpen) || afterOpen.Size() != before.Size() {
-			_ = file.Close()
-			return nil, fmt.Errorf("file %d changed while it was being opened", index+1)
-		}
-		prepared.total += afterOpen.Size()
-		if prepared.total > MaximumRequestBytes {
-			_ = file.Close()
-			return nil, errors.New("file drop exceeds the 128 MiB request limit")
-		}
-		prepared.files = append(prepared.files, preparedFile{
-			file: file, path: rawPath, info: afterOpen, size: afterOpen.Size(), extension: safeExtension(rawPath),
-		})
-	}
-	closeOnError = false
-	return prepared, nil
-}
-
-func (p *PreparedTransfer) Close() error {
-	if p == nil {
-		return nil
-	}
-	var result error
-	for index := range p.files {
-		if p.files[index].file != nil {
-			if err := p.files[index].file.Close(); err != nil && result == nil {
-				result = err
-			}
-			p.files[index].file = nil
-		}
-	}
-	return result
-}
-
-func (p *PreparedTransfer) Header(requestID string, session SessionIdentity) (Header, error) {
-	if p == nil || len(p.files) < 1 || !ValidRequestID(requestID) || !validSession(session) {
-		return Header{}, errors.New("invalid file-stage request")
-	}
-	files := make([]FileHeader, 0, len(p.files))
-	for index, file := range p.files {
-		files = append(files, FileHeader{Index: index, Size: file.size, Extension: file.extension})
-	}
-	return Header{
-		ProtocolVersion: ProtocolVersion, RequestID: requestID, Session: session,
-		FileCount: len(files), TotalBytes: p.total, Files: files,
-	}, nil
-}
-
-func (p *PreparedTransfer) WriteTo(ctx context.Context, writer io.Writer, requestID string, session SessionIdentity) error {
-	header, err := p.Header(requestID, session)
-	if err != nil {
-		return err
-	}
-	if err := WriteHeader(ctx, writer, header); err != nil {
-		return err
-	}
-	for index := range p.files {
-		file := &p.files[index]
-		if _, err := file.file.Seek(0, io.SeekStart); err != nil {
-			return fmt.Errorf("file %d could not be read", index+1)
-		}
-		hasher := sha256.New()
-		written, err := copyExact(ctx, io.MultiWriter(writer, hasher), file.file, file.size)
-		if err != nil || written != file.size {
-			return fmt.Errorf("file %d transfer was interrupted", index+1)
-		}
-		copy(file.hash[:], hasher.Sum(nil))
-		afterFD, statErr := file.file.Stat()
-		afterPath, pathErr := os.Lstat(file.path)
-		if statErr != nil || pathErr != nil || !os.SameFile(file.info, afterFD) || !os.SameFile(file.info, afterPath) ||
-			afterFD.Size() != file.size || !afterFD.ModTime().Equal(file.info.ModTime()) {
-			return fmt.Errorf("file %d changed during transfer", index+1)
-		}
-	}
-	return nil
-}
-
-func (p *PreparedTransfer) ValidateResponse(response Response, requestID string, session SessionIdentity) error {
-	if p == nil {
-		return errors.New("invalid file-stage response identity")
-	}
-	header, err := p.Header(requestID, session)
-	if err != nil {
-		return err
-	}
-	hashes := make([]string, len(p.files))
-	for index := range p.files {
-		hashes[index] = hex.EncodeToString(p.files[index].hash[:])
-	}
-	return ValidateResponseForHeader(response, header, hashes)
 }
 
 func NewRequestID() (string, error) {
@@ -241,7 +107,7 @@ func ValidRequestID(value string) bool { return hexIDPattern.MatchString(value) 
 func ValidateHeader(header Header) error { return validateHeader(header) }
 
 // WriteHeader writes the bounded file-stage prefix without buffering any file
-// contents. It is shared by native transfers and the web upload bridge.
+// contents. It is used by the web upload bridge.
 func WriteHeader(ctx context.Context, writer io.Writer, header Header) error {
 	if writer == nil || validateHeader(header) != nil {
 		return errors.New("file-stage header is invalid")
@@ -537,14 +403,6 @@ func validSession(session SessionIdentity) bool {
 		}
 	}
 	return true
-}
-
-func safeExtension(path string) string {
-	extension := strings.ToLower(strings.TrimPrefix(filepath.Ext(path), "."))
-	if extensionPattern.MatchString(extension) {
-		return extension
-	}
-	return ""
 }
 
 func fileName(metadata FileHeader, index int) string {

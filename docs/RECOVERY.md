@@ -13,7 +13,7 @@ without any checkpoint only records the current state.
 
 ## What returns
 
-The checkpoint contains original sessions (not temporary grouped app views),
+The checkpoint contains original sessions (not temporary grouped browser views),
 windows, pane layout, active window/pane, working directories and Home display
 metadata. An exactly bound Codex or Claude conversation resumes in its pane.
 Other panes reopen as shells in their saved directories. Running shell commands,
@@ -68,14 +68,14 @@ do not kill or restart a provider that has already resumed. If construction fail
 before the mapping is saved, only newly created recovery resources may be cleaned
 up; existing sessions remain untouched.
 
-## Desktop continuity and private state
+## Browser continuity and private state
 
 Tabs keep their tmux identity. Only Home's verified old-to-new identity mapping
 lets a saved tab follow a recovered session. A matching name or recycled tmux ID
-is insufficient. If a modal blocks reconnection or surface creation fails, the
-app retries while retaining the missing tab.
+is insufficient. If a dialog blocks reconnection or terminal creation fails, the
+web client retries while retaining the missing tab.
 
-Each completed recovery also rebases the shared native/web tab store before
+Each completed recovery also rebases the shared web tab store before
 pruning older mappings, so tabs follow multiple reboots without an intermediate
 client connection. This uses verified identity links, never name matching.
 

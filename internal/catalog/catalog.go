@@ -9,12 +9,10 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/codemoo/hmux/internal/model"
 	"github.com/codemoo/hmux/internal/safeexec"
-	"github.com/codemoo/hmux/internal/tabstate"
 )
 
 // tmux strips C0 control separators from format output. This printable,
@@ -22,7 +20,9 @@ import (
 // If it appears in another field the row is rejected instead of misparsed.
 const separator = "|:hmux-sep-v1:|"
 
-const appViewOption = "@hmux_app_view"
+// Retain the wire marker and name prefix so live views from earlier web
+// connectors remain hidden during rolling upgrades.
+const terminalViewOption = "@hmux_app_view"
 
 var ErrSessionChanged = errors.New("session identity changed")
 
@@ -117,7 +117,7 @@ func read(ctx context.Context, runner Runner, inspectProcessState bool) (model.C
 		if err := model.ValidateSessionID(fields[0]); err != nil {
 			return model.Catalog{}, err
 		}
-		// Native-app terminal views are short-lived grouped sessions. They
+		// Browser terminal views are short-lived grouped sessions. They
 		// share only the target's windows and keep independent session options,
 		// so hiding one here never hides or mutates the user's real session.
 		if fields[6] == "1" {
@@ -138,7 +138,7 @@ func read(ctx context.Context, runner Runner, inspectProcessState bool) (model.C
 		if err != nil || attached < 0 || attached > 10000 {
 			return model.Catalog{}, errors.New("invalid session_attached")
 		}
-		// A native terminal attaches to a hidden grouped sibling rather than
+		// A browser terminal attaches to a hidden grouped sibling rather than
 		// directly to the catalog session. tmux's per-session count therefore
 		// stays zero; the group count is the attachment state of the shared
 		// windows represented by the visible session.
@@ -223,41 +223,27 @@ func noTmuxSessions(err error) bool {
 			strings.Contains(message, "no such file or directory"))
 }
 
-func AttachArgs(id string, shared bool, nested bool) ([]string, error) {
-	if err := model.ValidateSessionID(id); err != nil {
-		return nil, err
-	}
-	if nested {
-		return []string{"switch-client", "-t", id}, nil
-	}
-	args := []string{"attach-session"}
-	if !shared {
-		args = append(args, "-d")
-	}
-	return append(args, "-t", id), nil
-}
-
-// AppViewCreateArgs creates a temporary grouped session that shares the
+// TerminalViewCreateArgs creates a temporary grouped session that shares the
 // target's windows while retaining independent session options. The marker
 // keeps the implementation-only view out of the HMux catalog and status off
 // affects only that temporary view, never the pre-existing target session.
-func AppViewCreateArgs(id, viewName string) ([]string, error) {
+func TerminalViewCreateArgs(id, viewName string) ([]string, error) {
 	if err := model.ValidateSessionID(id); err != nil {
 		return nil, err
 	}
-	if !validAppViewName(viewName) {
-		return nil, errors.New("invalid app view name")
+	if !validTerminalViewName(viewName) {
+		return nil, errors.New("invalid terminal view name")
 	}
 	return []string{
 		"new-session", "-d", "-s", viewName, "-t", id,
-		";", "set-option", "-t", viewName, appViewOption, "1",
+		";", "set-option", "-t", viewName, terminalViewOption, "1",
 		";", "set-option", "-t", viewName, "status", "off",
 	}, nil
 }
 
-func AppViewAttachArgs(viewName string, shared bool) ([]string, error) {
-	if !validAppViewName(viewName) {
-		return nil, errors.New("invalid app view name")
+func TerminalViewAttachArgs(viewName string, shared bool) ([]string, error) {
+	if !validTerminalViewName(viewName) {
+		return nil, errors.New("invalid terminal view name")
 	}
 	args := []string{"attach-session"}
 	if !shared {
@@ -266,14 +252,14 @@ func AppViewAttachArgs(viewName string, shared bool) ([]string, error) {
 	return append(args, "-t", viewName), nil
 }
 
-func AppViewKillArgs(viewName string) ([]string, error) {
-	if !validAppViewName(viewName) {
-		return nil, errors.New("invalid app view name")
+func TerminalViewKillArgs(viewName string) ([]string, error) {
+	if !validTerminalViewName(viewName) {
+		return nil, errors.New("invalid terminal view name")
 	}
 	return []string{"kill-session", "-t", viewName}, nil
 }
 
-func validAppViewName(value string) bool {
+func validTerminalViewName(value string) bool {
 	if !strings.HasPrefix(value, "hmux-app-view-") || len(value) > 63 {
 		return false
 	}
@@ -284,73 +270,6 @@ func validAppViewName(value string) bool {
 		}
 	}
 	return true
-}
-
-func ExecAttach(id string, shared bool) error {
-	args, err := AttachArgs(id, shared, os.Getenv("TMUX") != "")
-	if err != nil {
-		return err
-	}
-	path, err := TmuxPath()
-	if err != nil {
-		return err
-	}
-	return syscall.Exec(path, append([]string{path}, args...), os.Environ())
-}
-
-// ExecAttachExpected performs the identity check and attach in one tmux
-// command queue. This closes the ID-reuse window between catalog validation
-// and attach when the tmux server is restarted.
-func ExecAttachExpected(id string, createdAt int64, shared bool) error {
-	args, err := AttachExpectedArgs(id, createdAt, shared)
-	if err != nil {
-		return err
-	}
-	path, err := TmuxPath()
-	if err != nil {
-		return err
-	}
-	return syscall.Exec(path, append([]string{path}, args...), os.Environ())
-}
-
-func AttachExpectedArgs(id string, createdAt int64, shared bool) ([]string, error) {
-	attachArgs, err := AttachArgs(id, shared, false)
-	if err != nil {
-		return nil, err
-	}
-	if createdAt < 1 {
-		return nil, errors.New("invalid session creation time")
-	}
-	condition := fmt.Sprintf("#{==:#{session_created},%d}", createdAt)
-	return []string{
-		"if-shell", "-F", "-t", id, condition,
-		strings.Join(attachArgs, " "), "display-message -p hmux-session-changed",
-	}, nil
-}
-
-func CurrentSessionID(ctx context.Context, runner Runner) (string, error) {
-	output, err := runner.Output(ctx, "display-message", "-p", "#{session_id}")
-	if err != nil {
-		return "", fmt.Errorf("tmux current session: %w", err)
-	}
-	id := strings.TrimSpace(string(output))
-	if err := model.ValidateSessionID(id); err != nil {
-		return "", fmt.Errorf("tmux current session: %w", err)
-	}
-	return id, nil
-}
-
-func SwitchClient(ctx context.Context, runner Runner, clientName, sessionID string) error {
-	if err := tabstate.ValidateClientName(clientName); err != nil {
-		return err
-	}
-	if err := model.ValidateSessionID(sessionID); err != nil {
-		return err
-	}
-	if _, err := runner.Output(ctx, "switch-client", "-c", clientName, "-t", sessionID); err != nil {
-		return fmt.Errorf("tmux switch client: %w", err)
-	}
-	return nil
 }
 
 func ReadLegacyMetadata(ctx context.Context, runner Runner) ([]model.Session, error) {

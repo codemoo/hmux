@@ -1,12 +1,7 @@
 /dist/
 *.test
 coverage.out
-/macos/HMux/.build/
-/macos/HMux/DerivedData/
-/macos/HMux/build/
 *.profraw
-/HMux-*.zip
-/HMux-*.zip.sha256
 .DS_Store
 .AppleDouble/
 
@@ -28,6 +23,7 @@ coverage.out
 *.pem
 *.p12
 *.pfx
+/config/home.toml
 /config/client.toml
 /config/inventory.toml
 /web/credentials*.json

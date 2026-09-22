@@ -12,13 +12,7 @@ func validInventory() Inventory {
 	return Inventory{
 		SchemaVersion: 1,
 		Revision:      "test",
-		Clients:       []Client{{ID: "home-mac", Role: "home"}},
-		IdentityRefs:  []IdentityRef{{ID: "mac-key", Path: "~/.ssh/EXAMPLE_TEST_KEY"}},
-		Hosts: []Host{
-			{ID: "dmz", SSHAlias: "hmux-dmz", Address: "dmz.invalid", User: "user", Port: 22, IdentityRef: "mac-key"},
-			{ID: "home", SSHAlias: "hmux-home", Address: "home.invalid", User: "user", Port: 22, ProxyJump: "dmz", IdentityRef: "mac-key"},
-		},
-		Profiles: []Profile{{ID: "codex", Label: "Codex", DefaultDirectory: "~/work", Command: []string{"codex"}}},
+		Profiles:      []Profile{{ID: "codex", Label: "Codex", DefaultDirectory: "~/work", Command: []string{"codex"}}},
 	}
 }
 
@@ -30,18 +24,13 @@ func TestInventoryValidate(t *testing.T) {
 		name   string
 		mutate func(*Inventory)
 	}{
-		{"duplicate stable id", func(i *Inventory) { i.Hosts[0].ID = "home-mac" }},
-		{"unknown jump", func(i *Inventory) { i.Hosts[1].ProxyJump = "missing" }},
-		{"unknown identity", func(i *Inventory) { i.Hosts[0].IdentityRef = "missing" }},
-		{"unsafe key path", func(i *Inventory) { i.IdentityRefs[0].Path = "/tmp/key" }},
-		{"key path traversal", func(i *Inventory) { i.IdentityRefs[0].Path = "~/.ssh/../outside" }},
-		{"key path newline", func(i *Inventory) { i.IdentityRefs[0].Path = "~/.ssh/key\nForwardAgent yes" }},
-		{"bad alias", func(i *Inventory) { i.Hosts[0].SSHAlias = "bad alias" }},
-		{"alias directive characters", func(i *Inventory) { i.Hosts[0].SSHAlias = "bad#alias" }},
-		{"jump cycle", func(i *Inventory) { i.Hosts[0].ProxyJump = "home" }},
-		{"negative keepalive", func(i *Inventory) { i.Hosts[0].ServerAliveInterval = -1 }},
-		{"excessive keepalive count", func(i *Inventory) { i.Hosts[0].ServerAliveCountMax = 101 }},
-		{"excessive connect timeout", func(i *Inventory) { i.Hosts[0].ConnectTimeout = 121 }},
+		{"duplicate profile", func(i *Inventory) { i.Profiles = append(i.Profiles, i.Profiles[0]) }},
+		{"missing profiles", func(i *Inventory) { i.Profiles = nil }},
+		{"invalid profile id", func(i *Inventory) { i.Profiles[0].ID = "bad;id" }},
+		{"empty command", func(i *Inventory) { i.Profiles[0].Command = nil }},
+		{"control in command", func(i *Inventory) { i.Profiles[0].Command = []string{"sh\n"} }},
+		{"control in label", func(i *Inventory) { i.Profiles[0].Label = "bad\n" }},
+		{"invalid schema", func(i *Inventory) { i.SchemaVersion = 0 }},
 		{"profile directory newline", func(i *Inventory) { i.Profiles[0].DefaultDirectory = "~/work\nHost bad" }},
 	}
 	for _, tt := range tests {

@@ -2,8 +2,7 @@
 
 This is the current web/PWA reference. Historical experiments are archived and
 are not implementation instructions. HMux Web uses TypeScript, Vite and xterm.js
-with a Go gateway and one outbound Home connector. This is the primary HMux client;
-the optional macOS app is documented separately under `macos/`.
+with a Go gateway and one outbound Home connector. Web/PWA is the only HMux UI.
 
 ## Runtime and security
 
@@ -95,7 +94,7 @@ an ordinary rollback because it may restore an older authentication policy.
 Authenticator recovery uses trusted administration, private timestamped backups,
 new credential paths and enrollment; it has no weaker web bypass.
 
-Primary native/web tabs share Home's store. Additional accounts use the same Go
+The primary web account uses Home's tab store. Additional accounts use the same Go
 merge implementation at `web-profiles/<username-sha256>/shared-workspace/` beside
 the credential file. Only authenticated identity selects a profile; browser profile
 injection is rejected. Back up profile state during server migration.
@@ -274,9 +273,9 @@ review and verification; log collection does not execute code or apply changes.
   accounts; hiding usage does not change provider logins, execute an account
   switch or stop another user's collection. Private settings live in
   `<credentials-path>.usage-preferences/` as atomic mode-0600 per-account files.
-- Web Home collection opts into provider-matched `sources` snapshots. The legacy
-  usage stream remains unchanged; remote source support requires the advertised
-  `usage-sources-v1` capability and fixed `usage-stream --stdio --sources` command.
+- The Home connector invokes the embedded source-aware collector directly in
+  process. Provider-matched `sources` snapshots travel over its existing WSS
+  connection; no SSH usage stream or external helper is involved.
   The cswap adapter uses the installed `cswap list --json` command with bounded
   execution/output and no shell. cswap owns its existing shared quota/cache and
   credential handling; HMux never calls switch/login/service-install commands.
@@ -292,7 +291,7 @@ review and verification; log collection does not execute code or apply changes.
   CPU/GPU/RAM are percentages; disk is used/total capacity in decimal GB or TB.
   Disk describes Home's startup APFS container, not a sum of visible folder sizes.
   Older connectors omit disk; display unknown rather than inventing values.
-- Vector Bedl frames reuse the native silhouette/order, use usage-label ink and
+- Vector Bedl frames use the maintained silhouette/order, use usage-label ink and
   render at 85% artwork scale. Fresh burn state controls speed; offline/stale data
   or reduced motion shows a still frame. No raster filters or CSS masks.
 - Dialogs have 4px corners, a fixed title row, scrolling body and aligned actions.
@@ -330,7 +329,7 @@ affect foregrounds and backgrounds; explicit truecolor output is unchanged.
 uses `forced-color-adjust: none` to preserve ANSI semantics; app controls remain
 eligible for accessibility color adaptation. Vendor overrides may behave differently.
 
-Monatendard Nerd Font Mono Regular/Bold match `archive/terminal/config/ghostty.ghostty`, with bundled
+Monatendard Nerd Font Mono Regular/Bold are bundled for the web terminal, with
 licenses and all 11,172 modern Hangul syllables. Load both faces before measuring;
 Android explicitly registers FontFaces with WOFF2 then TTF fallback. Resume/network
 recovery retries loading and redraws terminals. Mobile font defaults to 10px,
@@ -460,7 +459,7 @@ npm ci --prefix web
 npm run check --prefix web
 npm test --prefix web
 npm run build --prefix web
-go test ./internal/webgateway ./internal/client ./cmd/hmux-web
+go test ./internal/webgateway ./internal/home ./cmd/hmux-web
 go build -o dist/hmux-web ./cmd/hmux-web
 ```
 
@@ -478,7 +477,7 @@ hmux-web init --credentials /PRIVATE/credentials.json --token-file /PRIVATE/conn
 It asks for a password without echoing it, displays a TOTP seed/URI for enrollment,
 checks an actual code and refuses to overwrite existing files. Copy only the
 connector token to private Home storage using the established trusted SSH channel.
-Never commit either file or include them in an app/archive backup for public release.
+Never commit either file or include them in a public release archive.
 
 ## Linux/Nginx deployment
 
@@ -563,7 +562,9 @@ hmux-web connect --url wss://YOUR_HOST/connect --token-file /PRIVATE/connector.t
 ```
 
 Run as the owner of Home tmux, with the existing HMux Home-role configuration.
-`--config` may explicitly select that private configuration. The connector validates
+`home.toml` is preferred, with read-only fallback to existing `client.toml`.
+See [Home installation](OPERATIONS.md) and [migration](MIGRATION.md).
+`--config` may explicitly select private configuration. The connector validates
 normal public TLS certificates and initiates the connection; no inbound Home port,
 SSH host-key bypass or agent forwarding is needed. Disconnect/reconnect does not
 resume provider processes itself; common Home recovery owns that behavior.
@@ -592,7 +593,7 @@ Run the build/check commands above. Optional live checks use isolated resources:
 
 ```sh
 HMUX_RUN_WEB_SOCKET_TEST=1 go test ./internal/webgateway -run TestWebSocketOriginAndLogout
-HMUX_RUN_WEB_TMUX_TEST=1 go test ./internal/client -run TestWebAppViewWithIsolatedTmux
+HMUX_RUN_WEB_TMUX_TEST=1 go test ./internal/home -run TestWebTerminalViewWithIsolatedTmux
 ```
 
 The socket test uses fake Home/loopback. The tmux test uses a dedicated socket and
@@ -695,7 +696,7 @@ connector sweeps expired files on startup and every minute, including during its
 network reconnect loop. If Home is asleep or the connector is stopped, cleanup
 runs when it resumes/restarts; no separate daemon is installed. Paths left in a
 terminal/conversation no longer refer to an available attachment after cleanup.
-Native app staging retains its existing lifetime. Partial uploads are cleaned up
+Partial uploads are cleaned up
 on cancellation; spool ownership, symlink checks, 512 MiB quota and 100-stage cap
 continue to apply. Only the temporary uploaded copy is removed; the original file
 on the attaching device is untouched.

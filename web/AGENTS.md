@@ -2,7 +2,7 @@
 
 The repository product/security specification and root AGENTS.md apply here.
 `docs/WEB.md` is the current web behavior/operations reference. Historical validation
-logs and the native Android engine review are not current implementation instructions.
+logs are not current implementation instructions. Web/PWA is the only UI.
 
 - Preserve same-origin `manifest-src` and `worker-src` in the gateway CSP;
   HTTP 200 assets alone do not verify PWA installability. Keep default-src restricted.
@@ -59,8 +59,8 @@ logs and the native Android engine review are not current implementation instruc
   `chrome.css` (workspace UI), `dialogs.css` (dialog components). Edit the owning
   rule instead of appending another conflicting override. Preserve keyboard-visible
   hiding and footer nowrap.
-- Use vector Bedl frames in `public/bedl`; the native raster source remains under
-  `macos/HMux/Overlay/Resources/BedlFrames`. Do not ship abandoned frame variants.
+- Use the maintained vector Bedl frames in `public/bedl`. Preserve their provenance
+  and bundled notices; do not ship abandoned frame variants.
 - Settings login-session responses belong to the originating dialog/account;
   abort on close/disposal and ignore late responses. Session listing/revocation
   is server-owned and user-scoped. Never treat public session IDs as credentials.

@@ -1,38 +1,36 @@
-# Migration
+# Migration to web/PWA only
 
-Migration is an explicit operating task. A source cleanup or local build does
-not authorize changing live sessions or remote services.
+User interaction is exclusively through the browser/PWA. Desktop app bundles,
+terminal selectors/frames, SSH client provisioning, app auto-updates and their
+installers/build jobs have been removed. Their source remains in Git history.
+Home still supports macOS, tmux, provider CLIs and `hmux-agent` administration/hooks.
 
-## From the CLI to the native app
+## Existing Home installations
 
-1. Preserve the private Home inventory, client configuration and pinned key.
-2. Build and validate matching Go/native artifacts.
-3. Install a compatible Home agent using the backed-up runtime installer.
-4. Validate SSH and catalog access, then install the native app explicitly.
-5. Open a disposable session on an isolated test socket for lifecycle checks.
-6. Use the app for daily work; keep the Go helper for diagnostics and recovery.
+1. Back up private configuration and state with timestamps. Keep backups outside
+   the repository and public release directories.
+2. Build and install the Home binaries using [OPERATIONS.md](OPERATIONS.md).
+3. Preserve the current `state_dir` and inventory profiles. Existing
+   `~/.config/hmux/client.toml` loads when `home.toml` is absent; known old SSH,
+   update and client keys are accepted but ignored. `role = "remote"` is rejected:
+   remote devices now use the web URL.
+4. Optionally create `~/.config/hmux/home.toml` from `config/home.example.toml`,
+   carrying forward the exact inventory/state paths. The new file takes precedence;
+   malformed new configuration fails rather than silently falling back.
+5. Inventory now needs only `schema_version`, `revision` and `profiles`. Known old
+   `clients`, `hosts` and `identity_refs` tables are decoded but unused. Unknown
+   fields still fail. Loader compatibility never rewrites personal files.
+6. Replace the running connector in a controlled handoff. Temporary browser
+   tmux views retain their old marker/name prefix for rolling-upgrade safety.
+   Original tmux sessions must remain untouched.
 
-Native tabs use grouped views and native shortcuts. The old two-server frame,
-fzf input modes and standalone Ghostty fragments belong only to the
-[compatibility client](CLI_COMPATIBILITY.md).
+## Gateway and clients
 
-## Old target-tmux UI
+Keep credentials, persistent login sessions, account profiles, push keys and
+usage settings outside releases and preserve them during upgrades. Follow
+[RELEASING.md](RELEASING.md) for atomic activation and [ROLLBACK.md](ROLLBACK.md).
+Open the web URL or install its PWA; refresh after new assets are published.
 
-If an old installation contains HMux status options, keys or metadata in the
-real target server, first inspect the precise diff and timestamped backup.
-The dedicated `scripts/clean-live-target-tmux.sh` migration verifies
-session/window/pane/client identities before and after changes and migrates
-only recognized metadata.
-
-This is not a normal upgrade prerequisite for a clean native installation.
-Do not run the migration as a test or source the retired `archive/terminal/config/tmux.conf`.
-
-## Another Mac or rebuilt DMZ
-
-Use [external provisioning](../scripts/EXTERNAL_PROVISIONING_README.md) for
-new client keys and trusted host enrollment. Restore DMZ private inventory and
-signed releases from backup, install matching control binaries, validate and
-reconcile before enabling the documented user timers.
-
-Rebuilding the DMZ never requires a Home private key. Termius migration uses
-supported UI and remains subject to its separate validation levels.
+Repository cleanup does not uninstall apps, edit shell startup files, alter SSH
+configuration or remove personal caches on user machines. Retire those manually
+only after confirming they are unused, with timestamped configuration backups.

@@ -20,7 +20,7 @@ review again returned 503; interactive browser verification remains outstanding.
 ## Monatendard and iOS/mobile follow-up (2026-09-09)
 
 The authoritative custom font setting is `config/ghostty.ghostty`: Monatendard
-Nerd Font Mono. The generic user Ghostty config was not the HMux font source.
+Nerd Font Mono. The web font assets are bundled independently.
 Replaced the web JetBrains assets with lossless Regular/Bold WOFF2 conversions
 of the installed Monatendard fonts and included upstream licenses/notices.
 FontTools verified all 11,172 modern Hangul syllables and exactly two ASCII cell
@@ -34,7 +34,7 @@ Build/type/format checks and 11 frontend tests passed. The composition sequence
 test covers intermediate syllables, final-input ordering, Enter flush and disposal.
 These are synthetic event tests; real iOS IME, keyboard geometry and pinch behavior
 have not yet been verified on a physical device. The web assets were deployed and
-public font/index responses were checked; no native app update was performed for
+public font/index responses were checked; no host binary update was performed for
 this web-only follow-up.
 
 
@@ -56,7 +56,7 @@ independent TOTP counters including restart replay rejection, separate persisten
 tab layouts, shared Home catalog access, rejected browser profile injection and
 logout isolation. Existing gateway/authentication tests and shared-workspace race
 tests also passed. Additional profiles reuse the common merge store on the gateway;
-the primary native/web Home workspace remains unchanged.
+the primary Home workspace remains unchanged.
 
 
 ## PWA and conversation opening (2026-09-09)

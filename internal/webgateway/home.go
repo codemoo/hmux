@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/codemoo/hmux/internal/catalog"
-	"github.com/codemoo/hmux/internal/client"
 	"github.com/codemoo/hmux/internal/config"
 	"github.com/codemoo/hmux/internal/filestage"
+	"github.com/codemoo/hmux/internal/home"
 	"github.com/codemoo/hmux/internal/hostmetrics"
 	"github.com/codemoo/hmux/internal/model"
 	"github.com/codemoo/hmux/internal/sharedworkspace"
@@ -24,7 +24,7 @@ import (
 )
 
 type homeTerminal struct {
-	view   *client.AppViewPTY
+	view   *home.TerminalViewPTY
 	input  chan Message
 	output *outputWindow
 }
@@ -36,7 +36,7 @@ type homeUpload struct {
 
 var (
 	homeFileStageRoot   = filestage.DefaultRoot
-	homeFileStageVerify = client.VerifyFileStageSession
+	homeFileStageVerify = home.VerifyFileStageSession
 	homeFileStageSweep  = filestage.SweepExpired
 )
 
@@ -44,7 +44,7 @@ const webFileStageTTL = 3 * time.Hour
 
 // ConnectHome keeps a single outbound TLS connection. Reconnects never restart
 // providers; a browser explicitly reopens a validated tmux view after recovery.
-func ConnectHome(ctx context.Context, endpoint, token string, cfg config.ClientConfig) error {
+func ConnectHome(ctx context.Context, endpoint, token string, cfg config.HomeConfig) error {
 	u, err := url.Parse(endpoint)
 	if err != nil || u.Scheme != "wss" || u.Host == "" || u.Path != "/connect" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || cfg.Role != "home" {
 		return errors.New("Home role and wss://host/connect required")
@@ -66,7 +66,7 @@ func ConnectHome(ctx context.Context, endpoint, token string, cfg config.ClientC
 		}
 	}
 }
-func connectOnce(parent context.Context, endpoint, token string, cfg config.ClientConfig) error {
+func connectOnce(parent context.Context, endpoint, token string, cfg config.HomeConfig) error {
 	ctx, cancel := context.WithCancel(parent)
 	defer cancel()
 	dialCtx, stop := context.WithTimeout(ctx, 15*time.Second)
@@ -113,8 +113,8 @@ func connectOnce(parent context.Context, endpoint, token string, cfg config.Clie
 	go func() {
 		defer workers.Done()
 		defer cancel()
-		_ = client.StreamCatalogsObserved(ctx, cfg, completion.enqueue, func(c model.Catalog) error {
-			// Enrich only the web stream so older strict native decoders continue
+		_ = home.StreamCatalogsObserved(ctx, cfg, completion.enqueue, func(c model.Catalog) error {
+			// Enrich only the web stream so older strict catalog decoders continue
 			// receiving the existing negotiated host-metrics shape.
 			if used, total, ok := hostmetrics.DiskUsage(); ok {
 				if c.HostMetrics == nil || model.ValidateHostMetrics(c.HostMetrics) != nil {
@@ -160,7 +160,7 @@ func connectOnce(parent context.Context, endpoint, token string, cfg config.Clie
 	go func() {
 		defer workers.Done()
 		defer writer.Close()
-		_ = client.StreamUsageWithSources(ctx, cfg, writer)
+		_ = usagestream.RunWithSources(ctx, writer)
 	}()
 	go func() {
 		defer workers.Done()
@@ -281,8 +281,8 @@ func connectOnce(parent context.Context, endpoint, token string, cfg config.Clie
 						if len(terminals) >= maxTerminals || terminals[m.ID] != nil {
 							err = errors.New("terminal limit reached")
 						} else {
-							var view *client.AppViewPTY
-							view, err = client.OpenAppViewPTY(requestCtx, cfg, m.Session, m.Cols, m.Rows)
+							var view *home.TerminalViewPTY
+							view, err = home.OpenTerminalViewPTY(requestCtx, cfg, m.Session, m.Cols, m.Rows)
 							if err == nil {
 								t := &homeTerminal{view: view, input: make(chan Message, 32)}
 								if hasTerminalFlow(m.Capabilities) {
@@ -523,7 +523,7 @@ func runHomeFileStageSweeper(ctx context.Context, root string, interval time.Dur
 		}
 	}
 }
-func homeAction(ctx context.Context, cfg config.ClientConfig, m Message) (any, error) {
+func homeAction(ctx context.Context, cfg config.HomeConfig, m Message) (any, error) {
 	switch m.Operation {
 	case "workspace":
 		var q struct {
@@ -532,7 +532,7 @@ func homeAction(ctx context.Context, cfg config.ClientConfig, m Message) (any, e
 		if strictPayload(m.Payload, &q) != nil {
 			return nil, errors.New("invalid workspace request")
 		}
-		return client.SharedWorkspace(ctx, cfg, q.Change)
+		return home.SharedWorkspace(ctx, cfg, q.Change)
 	case "profiles":
 		inventory, err := config.LoadInventory(cfg.InventoryPath)
 		if err != nil {
@@ -555,14 +555,14 @@ func homeAction(ctx context.Context, cfg config.ClientConfig, m Message) (any, e
 		if err != nil {
 			return nil, err
 		}
-		return client.CreateSession(ctx, cfg, inv, q.Profile, q.Name)
+		return home.CreateSession(ctx, cfg, inv, q.Profile, q.Name)
 	}
 	if model.ValidateSessionID(m.Session.ID) != nil || m.Session.CreatedAt < 1 {
 		return nil, errors.New("invalid session")
 	}
 	switch m.Operation {
 	case "conversation":
-		return client.Conversation(ctx, cfg, m.Session.ID, m.Session.CreatedAt)
+		return home.Conversation(ctx, cfg, m.Session.ID, m.Session.CreatedAt)
 	case "alias":
 		var q struct {
 			Alias string `json:"alias"`
@@ -570,7 +570,7 @@ func homeAction(ctx context.Context, cfg config.ClientConfig, m Message) (any, e
 		if strictPayload(m.Payload, &q) != nil {
 			return nil, errors.New("invalid alias")
 		}
-		return map[string]bool{"ok": true}, client.SetAliasExpected(ctx, cfg, m.Session.ID, m.Session.CreatedAt, q.Alias)
+		return map[string]bool{"ok": true}, home.SetAliasExpected(ctx, cfg, m.Session.ID, m.Session.CreatedAt, q.Alias)
 	case "hidden":
 		var q struct {
 			Hidden *bool `json:"hidden"`
@@ -578,7 +578,7 @@ func homeAction(ctx context.Context, cfg config.ClientConfig, m Message) (any, e
 		if strictPayload(m.Payload, &q) != nil || q.Hidden == nil {
 			return nil, errors.New("invalid hidden state")
 		}
-		return map[string]bool{"ok": true}, client.SetHiddenExpected(ctx, cfg, m.Session.ID, m.Session.CreatedAt, *q.Hidden)
+		return map[string]bool{"ok": true}, home.SetHiddenExpected(ctx, cfg, m.Session.ID, m.Session.CreatedAt, *q.Hidden)
 	}
 	return nil, errors.New("operation not permitted")
 }

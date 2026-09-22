@@ -1,44 +1,6 @@
 schema_version = 1
 revision = "example"
 
-[[clients]]
-id = "home-mac"
-role = "home"
-hostnames = ["HOME_MAC_HOSTNAME"]
-
-[[clients]]
-id = "office-mac"
-role = "remote"
-hostnames = ["OFFICE_MAC_HOSTNAME"]
-
-[[clients]]
-id = "macbook"
-role = "remote"
-hostnames = ["MACBOOK_HOSTNAME"]
-
-[[identity_refs]]
-id = "mac-local-key"
-path = "~/.ssh/REPLACE_WITH_LOCAL_KEY_FILENAME"
-
-[[hosts]]
-id = "dmz"
-ssh_alias = "hmux-dmz"
-address = "DMZ_ADDRESS"
-user = "DMZ_USER"
-port = 22
-identity_ref = "mac-local-key"
-tags = ["gateway", "dmz"]
-
-[[hosts]]
-id = "home"
-ssh_alias = "hmux-home"
-address = "HOME_MAC_REACHABLE_FROM_DMZ"
-user = "HOME_MAC_USER"
-port = 22
-proxy_jump = "dmz"
-identity_ref = "mac-local-key"
-tags = ["home", "tmux-host"]
-
 [[profiles]]
 id = "codex"
 label = "Codex"

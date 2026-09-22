@@ -35,7 +35,7 @@ func run(args []string) error {
 	listen := fs.String("listen", "127.0.0.1:8088", "loopback listener")
 	assets := fs.String("assets", "web/dist", "built web assets")
 	endpoint := fs.String("url", "", "wss://public-host/connect")
-	configPath := fs.String("config", "", "Home client config")
+	configPath := fs.String("config", "", "Home host config")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
 	}
@@ -124,7 +124,7 @@ func run(args []string) error {
 		if err != nil {
 			return err
 		}
-		cfg, err := config.LoadClient(*configPath)
+		cfg, err := config.LoadHome(*configPath)
 		if err != nil {
 			return err
 		}

@@ -10,16 +10,12 @@ tmux session
    └─ detached codex-orchestra task
 ```
 
-The native session list, workflow inspector and compatibility selector use
-bounded workflow state. The compatibility selector and tabs use a compact badge. `2▶ 1✓ 1!` means two
-running nodes, one completed node and one node needing attention. Attention
-combines approval/input waits, failures, interruptions and stale nodes. The
-detailed view is available locally and remotely:
+Home retains bounded workflow metadata for catalogs and diagnostics. The headless
+administration helper can inspect it without reading terminal content:
 
-```bash
-HMUX_HELPER="$HOME/Applications/HMux.app/Contents/Helpers/hmux"
-"$HMUX_HELPER" --no-update-check workflow
-"$HMUX_HELPER" --no-update-check workflow <session-name-or-stable-id> --json
+```sh
+hmux-agent workflow
+hmux-agent workflow '<session-name-or-stable-id>' --json
 ```
 
 ## Sources and lifecycle
@@ -56,16 +52,11 @@ hmux stores only timestamps, sanitized model/type/provider labels, lifecycle
 states and SHA-256-derived identifiers. Codex session, turn, agent and task IDs
 are not stored verbatim. Prompts, responses, cwd, transcript or rollout paths,
 pane content, complete process arguments, tool inputs/results, tokens and
-credentials are not modeled or persisted. Remote clients validate every
-workflow status, bound and hashed identifier before rendering catalog data.
-
-No DMZ daemon or public workflow API is required. If centralized history is
-introduced later, it should be a bounded service on a Unix socket or loopback
-and be reached through SSH; it must not become an Internet-facing endpoint.
+credentials are not modeled or persisted. Workflow data remains bounded metadata, separate from conversation text.
 
 ## Installation and trust review
 
-Build and install `hmux` and `hmux-agent` first. Then merge the managed
+Install the Home `hmux-agent` using [OPERATIONS.md](OPERATIONS.md) first. Then merge the managed
 handlers into the global Codex hook file:
 
 ```bash
