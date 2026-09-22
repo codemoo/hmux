@@ -597,7 +597,11 @@ boot-start solution. Do not claim unattended reboot availability without a separ
 authorized persistent startup mechanism.
 
 Closing a tab removes it from the account's shared workspace and therefore from
-every connected client of that account (normally within five seconds). Closing a browser
+every connected client of that account (normally within five seconds).
+A tab whose tmux session has ended (for example Ctrl+D in a provider CLI) is
+closed the same way once the session is missing from two consecutive catalogs
+while Home is online, instead of lingering as "세션 없음"; a transient gap or an
+offline Home never closes a tab. Closing a browser
 window or losing its socket releases only its PTYs; the shared tabs remain.
 The PTY cleanup touches only its generated grouped view.
 A view-local tmux client-detached hook also removes an attached web view after

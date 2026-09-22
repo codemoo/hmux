@@ -1534,7 +1534,10 @@ async function refresh() {
       nextPreferences.revision >= usagePreferences.revision
     )
       usagePreferences = nextPreferences;
-    if (next.catalog?.sessions) sessions = next.catalog.sessions;
+    if (next.catalog?.sessions) {
+      sessions = next.catalog.sessions;
+      if (next.online) closeEndedSessionTabs();
+    }
     $("#home-state").textContent = next.online
       ? "연결됨 · Home에서 실행 중"
       : "오프라인 · Home 연결 대기";
@@ -1548,6 +1551,26 @@ async function refresh() {
     if (next.online) void syncSharedWorkspace();
   } finally {
     if (refreshRequest === request) refreshRequest = undefined;
+  }
+}
+// A tab whose tmux session has ended (for example Ctrl+D in Claude) closes
+// itself instead of lingering as "세션 없음". Only an online catalog counts,
+// and the session must be missing from two consecutive catalogs so a transient
+// gap cannot close a live tab. Closing is an explicit shared-workspace removal.
+const endedSessionMisses = new Map<string, number>();
+function closeEndedSessionTabs() {
+  if (!sharedLoaded) return;
+  const live = new Set(sessions.map(key));
+  for (const k of [...endedSessionMisses.keys()])
+    if (!tabs.has(k) || live.has(k)) endedSessionMisses.delete(k);
+  for (const k of [...tabs.keys()]) {
+    if (live.has(k)) continue;
+    const misses = (endedSessionMisses.get(k) || 0) + 1;
+    endedSessionMisses.set(k, misses);
+    if (misses >= 2) {
+      endedSessionMisses.delete(k);
+      closeTab(k);
+    }
   }
 }
 // Home publishes changes right after an operation; check a few times quickly
