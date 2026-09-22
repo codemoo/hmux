@@ -1110,7 +1110,11 @@ function connect(t: Tab, manual = false) {
       }
     }
   };
-  ws.onclose = (event) => fail(disconnectKind(event.code), event.code);
+  ws.onclose = (event) => {
+    // The session may have ended on Home; show that without waiting for polling.
+    refreshSoon();
+    fail(disconnectKind(event.code), event.code);
+  };
   // close carries the actual capacity/policy code; error alone does not.
   ws.onerror = () => ws.close();
 }
@@ -1200,6 +1204,7 @@ function editDialog(s: Session) {
       renderSessions();
       renderTabs();
       await refresh();
+      refreshSoon();
     } catch (e) {
       error.textContent = (e as Error).message;
     } finally {
@@ -1221,6 +1226,7 @@ function editDialog(s: Session) {
       $<HTMLDialogElement>("#dialog").close();
       renderSessions();
       await refresh();
+      refreshSoon();
     } catch (e) {
       error.textContent = (e as Error).message;
       hide.disabled = false;
@@ -1543,6 +1549,18 @@ async function refresh() {
   } finally {
     if (refreshRequest === request) refreshRequest = undefined;
   }
+}
+// Home publishes changes right after an operation; check a few times quickly
+// instead of waiting for the regular five-second poll.
+let quickRefreshTimers: number[] = [];
+function refreshSoon() {
+  for (const timer of quickRefreshTimers) clearTimeout(timer);
+  const epoch = accountEpoch;
+  quickRefreshTimers = [300, 1000, 2000].map((delay) =>
+    window.setTimeout(() => {
+      if (loggedIn && epoch === accountEpoch) void refresh().catch(() => {});
+    }, delay),
+  );
 }
 async function poll() {
   if (!loggedIn) return;

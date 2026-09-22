@@ -99,6 +99,14 @@ func connectOnce(parent context.Context, endpoint, token string, cfg config.Home
 		mu.Unlock()
 		workers.Wait()
 	}()
+	// Operations that change tmux state ask for an immediate catalog poll.
+	catalogRefresh := make(chan struct{}, 1)
+	refreshCatalog := func() {
+		select {
+		case catalogRefresh <- struct{}{}:
+		default:
+		}
+	}
 	// One shared catalog collector and one usage collector for all web sessions.
 	var latestMu sync.Mutex
 	var latest json.RawMessage
@@ -113,7 +121,7 @@ func connectOnce(parent context.Context, endpoint, token string, cfg config.Home
 	go func() {
 		defer workers.Done()
 		defer cancel()
-		_ = home.StreamCatalogsObserved(ctx, cfg, completion.enqueue, func(c model.Catalog) error {
+		_ = home.StreamCatalogsObservedWithRefresh(ctx, cfg, catalogRefresh, completion.enqueue, func(c model.Catalog) error {
 			// Enrich only the web stream so older strict catalog decoders continue
 			// receiving the existing negotiated host-metrics shape.
 			if used, total, ok := hostmetrics.DiskUsage(); ok {
@@ -334,6 +342,7 @@ func connectOnce(parent context.Context, endpoint, token string, cfg config.Home
 										delete(requests, m.ID)
 										requestCancel()
 										mu.Unlock()
+										refreshCatalog()
 										_ = p.send(ctx, Message{Type: "exit", ID: m.ID, Error: exitReason})
 									}()
 									streamErr := streamTerminalOutput(requestCtx, view.Done, view, t.output, func(data []byte) error {
@@ -352,6 +361,9 @@ func connectOnce(parent context.Context, endpoint, token string, cfg config.Home
 					bounded, stop := context.WithTimeout(requestCtx, 15*time.Second)
 					data, err = homeAction(bounded, cfg, m)
 					stop()
+					if err == nil && changesCatalog(m.Operation) {
+						refreshCatalog()
+					}
 				}
 				reply := Message{Type: "response", ID: m.ID}
 				if err != nil {
@@ -523,6 +535,14 @@ func runHomeFileStageSweeper(ctx context.Context, root string, interval time.Dur
 		}
 	}
 }
+func changesCatalog(operation string) bool {
+	switch operation {
+	case "create", "alias", "hidden":
+		return true
+	}
+	return false
+}
+
 func homeAction(ctx context.Context, cfg config.HomeConfig, m Message) (any, error) {
 	switch m.Operation {
 	case "workspace":

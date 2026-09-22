@@ -13,6 +13,12 @@ import (
 
 // StreamCatalogsObserved observes every fetch before unchanged snapshots are suppressed.
 func StreamCatalogsObserved(ctx context.Context, cfg config.HomeConfig, observe func(context.Context, model.Catalog) error, publish func(model.Catalog) error) error {
+	return StreamCatalogsObservedWithRefresh(ctx, cfg, nil, observe, publish)
+}
+
+// StreamCatalogsObservedWithRefresh lets the caller request an immediate
+// catalog poll after it changes tmux state.
+func StreamCatalogsObservedWithRefresh(ctx context.Context, cfg config.HomeConfig, refresh <-chan struct{}, observe func(context.Context, model.Catalog) error, publish func(model.Catalog) error) error {
 	if publish == nil {
 		return errors.New("catalog stream publisher is required")
 	}
@@ -29,7 +35,7 @@ func StreamCatalogsObserved(ctx context.Context, cfg config.HomeConfig, observe 
 		return err
 	}
 	fetch = observeCatalogFetch(fetch, observe)
-	return catalogstream.Produce(ctx, catalogstream.DefaultInterval, fetch, func(frame catalogstream.SourceFrame) error {
+	return catalogstream.ProduceWithRefresh(ctx, catalogstream.DefaultInterval, refresh, fetch, func(frame catalogstream.SourceFrame) error {
 		if frame.Type == "heartbeat" {
 			return nil
 		}

@@ -3,6 +3,7 @@ package catalogstream
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -65,5 +66,41 @@ func TestProduceSequencesSemanticChanges(t *testing.T) {
 	}
 	if len(sequences) != 3 || sequences[0] != 1 || sequences[1] != 2 || sequences[2] != 3 {
 		t.Fatalf("sequences=%v", sequences)
+	}
+}
+
+func TestProduceWithRefreshPollsWithoutWaitingForInterval(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	refresh := make(chan struct{}, 1)
+	var fetches atomic.Int32
+	published := make(chan SourceFrame, 4)
+	done := make(chan error, 1)
+	go func() {
+		// An hour-long interval proves the second poll came from refresh.
+		done <- ProduceWithRefresh(ctx, time.Hour, refresh, func(context.Context) (model.Catalog, error) {
+			count := fetches.Add(1)
+			return model.Catalog{
+				ProtocolVersion: model.ProtocolVersion,
+				Sessions:        []model.Session{{ID: "$1", CreatedAt: 1, Name: fmt.Sprintf("s%d", count)}},
+			}, nil
+		}, func(frame SourceFrame) error {
+			published <- frame
+			return nil
+		})
+	}()
+	first := <-published
+	refresh <- struct{}{}
+	select {
+	case second := <-published:
+		if first.Sequence != 1 || second.Sequence != 2 || second.Type != "snapshot" || second.Catalog.Sessions[0].Name != "s2" {
+			t.Fatalf("frames = %#v %#v", first, second)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("refresh did not trigger an immediate poll")
+	}
+	cancel()
+	if err := <-done; !errors.Is(err, context.Canceled) {
+		t.Fatalf("producer error = %v", err)
 	}
 }

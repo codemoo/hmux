@@ -33,6 +33,13 @@ type Publish func(SourceFrame) error
 // detection. Heartbeats describe successful unchanged polls; Home owns the
 // independent WebSocket heartbeat and connection lifetime.
 func Produce(ctx context.Context, interval time.Duration, fetch Fetch, publish Publish) error {
+	return ProduceWithRefresh(ctx, interval, nil, fetch, publish)
+}
+
+// ProduceWithRefresh is Produce plus an optional refresh signal: a receive on
+// refresh polls immediately instead of waiting for the next interval, so a
+// session created or ended on Home is published without interval latency.
+func ProduceWithRefresh(ctx context.Context, interval time.Duration, refresh <-chan struct{}, fetch Fetch, publish Publish) error {
 	if interval <= 0 || fetch == nil || publish == nil {
 		return errors.New("invalid catalog stream producer")
 	}
@@ -95,6 +102,11 @@ func Produce(ctx context.Context, interval time.Duration, fetch Fetch, publish P
 			if err := poll(); err != nil {
 				return err
 			}
+		case <-refresh:
+			if err := poll(); err != nil {
+				return err
+			}
+			ticker.Reset(interval)
 		}
 	}
 }

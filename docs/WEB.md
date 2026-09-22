@@ -465,9 +465,12 @@ source is always used as chosen.
 
 ## Session list latency
 
-Home polls tmux every five seconds. A newly created session is opened as soon as
-it appears in the catalog (checked for up to 12 seconds) instead of relying on a
-single refresh right after creation.
+Home polls tmux every five seconds, but operations that change tmux state
+(`create`, `alias`, `hidden`) and the end of a terminal view request an
+immediate catalog poll (`catalogstream.ProduceWithRefresh`). The browser
+refreshes shortly after such operations and after a terminal socket closes, and
+a newly created session is opened as soon as it appears in the catalog (checked
+for up to 12 seconds) instead of relying on a single refresh.
 
 ## Build and local provisioning
 
