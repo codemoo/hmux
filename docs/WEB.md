@@ -289,7 +289,10 @@ review and verification; log collection does not execute code or apply changes.
 - Footer stays on one line. Under 540px, computer resource details are hidden;
   full provider labels remain. Resource details are also in the usage dialog.
   CPU/GPU/RAM are percentages; disk is used/total capacity in decimal GB or TB.
-  Disk describes Home's startup APFS container, not a sum of visible folder sizes.
+  Disk describes Home's startup APFS container (macOS) or root filesystem (Linux),
+  not a sum of visible folder sizes. On a Linux Home, CPU is the busy share of two
+  `/proc/stat` readings 250 ms apart, RAM is `MemTotal - MemAvailable`, and GPU is
+  omitted.
   Older connectors omit disk; display unknown rather than inventing values.
 - Vector Bedl frames use the maintained silhouette/order, use usage-label ink and
   render at 85% artwork scale. Fresh burn state controls speed; offline/stale data
