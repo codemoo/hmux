@@ -36,3 +36,12 @@ jobs:
       - run: npm run check --prefix web
       - run: npm test --prefix web
       - run: npm run build --prefix web
+  home-service-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go test -race ./internal/homeservice
+      - run: go build ./cmd/hmux-web

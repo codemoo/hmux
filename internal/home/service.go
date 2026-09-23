@@ -39,7 +39,7 @@ func SharedWorkspace(ctx context.Context, cfg config.HomeConfig, change *sharedw
 			return sharedworkspace.Snapshot{}, err
 		}
 	}
-	return (sharedworkspace.Store{StateDir: cfg.StateDir}).Sync(ctx, change, func(ctx context.Context) (model.Catalog, error) { return Catalog(ctx, cfg) })
+	return (sharedworkspace.Store{StateDir: cfg.StateDir}).Sync(ctx, change, func(ctx context.Context) (model.Catalog, error) { return agent.BasicCatalogAt(ctx, cfg.StateDir) })
 }
 
 // VerifyFileStageSession checks the exact tmux lifetime before and after upload.

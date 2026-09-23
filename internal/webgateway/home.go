@@ -1,25 +1,20 @@
 package webgateway
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
 	"net/url"
-	"strings"
 	"sync"
 	"time"
 
-	"github.com/codemoo/hmux/internal/catalog"
 	"github.com/codemoo/hmux/internal/config"
 	"github.com/codemoo/hmux/internal/filestage"
 	"github.com/codemoo/hmux/internal/home"
-	"github.com/codemoo/hmux/internal/hostmetrics"
+	"github.com/codemoo/hmux/internal/homeservice"
 	"github.com/codemoo/hmux/internal/model"
-	"github.com/codemoo/hmux/internal/sharedworkspace"
-	usagestream "github.com/codemoo/token-terrier/server-go/stream"
+	"github.com/codemoo/hmux/internal/timing"
 	"github.com/coder/websocket"
 )
 
@@ -34,21 +29,36 @@ type homeUpload struct {
 	input  chan Message
 }
 
-var (
-	homeFileStageRoot   = filestage.DefaultRoot
-	homeFileStageVerify = home.VerifyFileStageSession
-	homeFileStageSweep  = filestage.SweepExpired
-)
-
-const webFileStageTTL = 3 * time.Hour
-
 // ConnectHome keeps a single outbound TLS connection. Reconnects never restart
 // providers; a browser explicitly reopens a validated tmux view after recovery.
 func ConnectHome(ctx context.Context, endpoint, token string, cfg config.HomeConfig) error {
+	return ConnectHomeLogged(ctx, endpoint, token, cfg, nil)
+}
+
+// ConnectHomeLogged emits fixed lifecycle categories only. Remote errors may
+// contain private endpoints or headers and must never be forwarded to logs.
+func ConnectHomeLogged(ctx context.Context, endpoint, token string, cfg config.HomeConfig, report func(string)) error {
 	u, err := url.Parse(endpoint)
 	if err != nil || u.Scheme != "wss" || u.Host == "" || u.Path != "/connect" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || cfg.Role != "home" {
 		return errors.New("Home role and wss://host/connect required")
 	}
+	lock, err := homeservice.LockConnector(cfg.StateDir)
+	if err != nil {
+		return err
+	}
+	defer lock.Close()
+	var notifyMu sync.Mutex
+	lastState := ""
+	notify := func(state string) {
+		notifyMu.Lock()
+		defer notifyMu.Unlock()
+		if report != nil && state != lastState {
+			report(state)
+		}
+		lastState = state
+	}
+	notify("Home connector started")
+	defer notify("Home connector stopped")
 	root, err := homeFileStageRoot()
 	if err != nil {
 		return err
@@ -58,7 +68,10 @@ func ConnectHome(ctx context.Context, endpoint, token string, cfg config.HomeCon
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		_ = connectOnce(ctx, endpoint, token, cfg)
+		err := connectOnce(ctx, endpoint, token, cfg, notify)
+		if ctx.Err() == nil {
+			notify("Gateway connection unavailable; retrying; " + homeConnectionSummary(err))
+		}
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -66,21 +79,45 @@ func ConnectHome(ctx context.Context, endpoint, token string, cfg config.HomeCon
 		}
 	}
 }
-func connectOnce(parent context.Context, endpoint, token string, cfg config.HomeConfig) error {
+func connectOnce(parent context.Context, endpoint, token string, cfg config.HomeConfig, report ...func(string)) (result error) {
+	var failures homeFailureRecorder
+	defer func() { result = failures.result(result) }()
 	ctx, cancel := context.WithCancel(parent)
 	defer cancel()
 	dialCtx, stop := context.WithTimeout(ctx, 15*time.Second)
-	conn, _, err := websocket.Dial(dialCtx, endpoint, &websocket.DialOptions{HTTPHeader: http.Header{"Authorization": {"Bearer " + token}}})
+	conn, response, err := websocket.Dial(dialCtx, endpoint, &websocket.DialOptions{HTTPHeader: http.Header{"Authorization": {"Bearer " + token}}})
 	stop()
 	if err != nil {
-		return err
+		status := 0
+		if response != nil {
+			status = response.StatusCode
+		}
+		return &homeConnectionFailure{stage: "dial", cause: err, httpStatus: status}
 	}
 	defer conn.CloseNow()
 	conn.SetReadLimit(maxMessage)
-	p := &peer{conn: conn}
-	go heartbeat(ctx, p)
+	var connectionReport func(string)
+	if len(report) > 0 {
+		connectionReport = report[0]
+	}
+	p := observedPeer(&peer{conn: conn}, connectionReport)
+	p.writeFailure = failures.record
+	heartbeatDone := make(chan struct{})
+	go func() {
+		defer close(heartbeatDone)
+		heartbeat(ctx, p, func(err error) {
+			if ctx.Err() == nil || errors.Is(err, context.DeadlineExceeded) {
+				failures.record("heartbeat", err)
+			}
+		})
+	}()
+	defer func() { cancel(); <-heartbeatDone }()
 	if err := p.send(ctx, Message{Type: "hello", Capabilities: []string{"web-upload-v1", "codex-completion-v1", terminalFlowCapability}}); err != nil {
+		failures.record("hello-write", err)
 		return err
+	}
+	if len(report) > 0 {
+		report[0]("Gateway transport opened")
 	}
 	var mu sync.Mutex
 	terminals := map[string]*homeTerminal{}
@@ -108,61 +145,7 @@ func connectOnce(parent context.Context, endpoint, token string, cfg config.Home
 		}
 	}
 	// One shared catalog collector and one usage collector for all web sessions.
-	var latestMu sync.Mutex
-	var latest json.RawMessage
-	tracker := catalog.CompletionTracker{}
-	completion := newCompletionWorker(tracker.Observe, p.send)
-	workers.Add(1)
-	go func() {
-		defer workers.Done()
-		completion.run(ctx)
-	}()
-	workers.Add(1)
-	go func() {
-		defer workers.Done()
-		defer cancel()
-		_ = home.StreamCatalogsObservedWithRefresh(ctx, cfg, catalogRefresh, completion.enqueue, func(c model.Catalog) error {
-			// Enrich only the web stream so older strict catalog decoders continue
-			// receiving the existing negotiated host-metrics shape.
-			if used, total, ok := hostmetrics.DiskUsage(); ok {
-				if c.HostMetrics == nil || model.ValidateHostMetrics(c.HostMetrics) != nil {
-					c.HostMetrics = &model.HostMetrics{ObservedAt: time.Now().UTC()}
-				} else {
-					copy := *c.HostMetrics
-					c.HostMetrics = &copy
-				}
-				c.HostMetrics.DiskUsedBytes, c.HostMetrics.DiskTotalBytes = &used, &total
-			}
-			raw, e := json.Marshal(c)
-			if e != nil {
-				return e
-			}
-			latestMu.Lock()
-			latest = raw
-			latestMu.Unlock()
-			return p.send(ctx, Message{Type: "catalog", Payload: raw})
-		})
-	}()
-	workers.Add(1)
-	go func() {
-		defer workers.Done()
-		tick := time.NewTicker(5 * time.Second)
-		defer tick.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-tick.C:
-				latestMu.Lock()
-				raw := latest
-				latestMu.Unlock()
-				if raw != nil && p.send(ctx, Message{Type: "catalog", Payload: raw}) != nil {
-					cancel()
-					return
-				}
-			}
-		}
-	}()
+	startHomeCatalogCollectors(ctx, cancel, p, cfg, catalogRefresh, &workers, &failures)
 	// The usage collector re-reads CLI credentials only once a minute, so a new
 	// login or API key restarts it; a fresh collector reads them immediately.
 	usageRestart := make(chan struct{}, 1)
@@ -172,61 +155,7 @@ func connectOnce(parent context.Context, endpoint, token string, cfg config.Home
 		default:
 		}
 	}
-	workers.Add(1)
-	go func() {
-		defer workers.Done()
-		for {
-			streamCtx, stop := context.WithCancel(ctx)
-			reader, writer := io.Pipe()
-			var stream sync.WaitGroup
-			stream.Add(2)
-			go func() {
-				defer stream.Done()
-				<-streamCtx.Done()
-				_ = reader.Close()
-				_ = writer.Close()
-			}()
-			go func() {
-				defer stream.Done()
-				defer writer.Close()
-				_ = usagestream.RunWithSources(streamCtx, writer)
-			}()
-			ended := make(chan struct{})
-			go func() {
-				defer close(ended)
-				defer reader.Close()
-				decoder, err := usagestream.NewDecoder(reader)
-				if err != nil {
-					return
-				}
-				for {
-					f, err := decoder.Decode()
-					if err != nil {
-						return
-					}
-					if f.Type == "snapshot" && p.send(ctx, Message{Type: "usage", Payload: f.Snapshot}) != nil {
-						return
-					}
-				}
-			}()
-			restart := false
-			select {
-			case <-ctx.Done():
-			case <-usageRestart:
-				restart = true
-			case <-ended:
-			}
-			stop()
-			<-ended
-			stream.Wait()
-			if !restart {
-				if ctx.Err() == nil {
-					_ = p.send(ctx, Message{Type: "usage-unavailable"})
-				}
-				return
-			}
-		}
-	}()
+	startHomeUsageCollector(ctx, p, usageRestart, &workers)
 
 	// Closing the socket and pipe unblocks readers on cancellation.
 	go func() { <-ctx.Done(); _ = conn.CloseNow() }()
@@ -234,7 +163,7 @@ func connectOnce(parent context.Context, endpoint, token string, cfg config.Home
 	for {
 		m, err := p.read(ctx)
 		if err != nil {
-			return err
+			return &homeConnectionFailure{stage: "read", cause: err}
 		}
 		if len(m.ID) > 64 || m.ID == "" {
 			return errors.New("invalid request ID")
@@ -292,7 +221,7 @@ func connectOnce(parent context.Context, endpoint, token string, cfg config.Home
 				_ = p.send(ctx, Message{Type: "response", ID: m.ID, Error: "Home is busy"})
 				continue
 			}
-			requestCtx, requestCancel := context.WithCancel(ctx)
+			requestCtx, requestCancel := context.WithCancel(p.timingContext(ctx, logOperation(m)))
 			mu.Lock()
 			if _, exists := requests[m.ID]; exists {
 				mu.Unlock()
@@ -304,6 +233,7 @@ func connectOnce(parent context.Context, endpoint, token string, cfg config.Home
 			mu.Unlock()
 			workers.Add(1)
 			go func(m Message) {
+				doneProcessing := timing.Start(requestCtx, "home-processing", true)
 				defer workers.Done()
 				defer func() {
 					<-slots
@@ -403,6 +333,7 @@ func connectOnce(parent context.Context, endpoint, token string, cfg config.Home
 						restartUsage()
 					}
 				}
+				doneProcessing()
 				reply := Message{Type: "response", ID: m.ID}
 				if err != nil {
 					reply.Error = "Home operation unavailable"
@@ -415,9 +346,11 @@ func connectOnce(parent context.Context, endpoint, token string, cfg config.Home
 				} else {
 					reply.Payload, _ = json.Marshal(data)
 				}
+				doneSend := timing.Start(requestCtx, "home-response-send", true)
 				if p.send(ctx, reply) != nil {
 					cancel()
 				}
+				doneSend()
 			}(m)
 		case "output-ack":
 			mu.Lock()
@@ -458,201 +391,4 @@ func connectOnce(parent context.Context, endpoint, token string, cfg config.Home
 			return errors.New("unknown operation")
 		}
 	}
-}
-
-func runHomeUpload(ctx context.Context, p *peer, header filestage.Header, input <-chan Message) {
-	fail := func() {
-		_ = p.send(ctx, Message{Type: "upload-error", ID: header.RequestID, Error: "Home upload unavailable"})
-	}
-	root, err := homeFileStageRoot()
-	if err != nil {
-		fail()
-		return
-	}
-	reader, writer := io.Pipe()
-	var response bytes.Buffer
-	receiveDone := make(chan error, 1)
-	go func() {
-		err := filestage.ReceiveWithTTL(ctx, root, reader, &response, homeFileStageVerify, func() time.Time { return time.Now().UTC() }, webFileStageTTL)
-		_ = reader.CloseWithError(err)
-		receiveDone <- err
-	}()
-	receiverFinished := false
-	waitReceiver := func() error {
-		if !receiverFinished {
-			err = <-receiveDone
-			receiverFinished = true
-		}
-		return err
-	}
-	defer func() {
-		if !receiverFinished {
-			_ = writer.CloseWithError(context.Canceled)
-			_ = reader.CloseWithError(context.Canceled)
-			_ = waitReceiver()
-		}
-	}()
-	if err := filestage.WriteHeader(ctx, writer, header); err != nil {
-		_ = writer.CloseWithError(err)
-		fail()
-		return
-	}
-	if p.send(ctx, Message{Type: "upload-ready", ID: header.RequestID}) != nil {
-		_ = writer.CloseWithError(errors.New("gateway disconnected"))
-		return
-	}
-	var received int64
-	for {
-		select {
-		case <-ctx.Done():
-			_ = writer.CloseWithError(ctx.Err())
-			return
-		case err := <-receiveDone:
-			receiverFinished = true
-			_ = writer.CloseWithError(err)
-			fail()
-			return
-		case message := <-input:
-			switch message.Type {
-			case "upload-data":
-				if int64(len(message.Data)) > header.TotalBytes-received {
-					_ = writer.CloseWithError(errors.New("upload exceeds declared size"))
-					fail()
-					return
-				}
-				n, writeErr := writer.Write(message.Data)
-				if writeErr != nil || n != len(message.Data) {
-					_ = writer.CloseWithError(writeErr)
-					fail()
-					return
-				}
-				received += int64(n)
-				if p.send(ctx, Message{Type: "upload-ack", ID: header.RequestID, Received: received}) != nil {
-					_ = writer.CloseWithError(errors.New("gateway disconnected"))
-					return
-				}
-			case "upload-finish":
-				if received != header.TotalBytes {
-					_ = writer.CloseWithError(errors.New("upload is incomplete"))
-					fail()
-					return
-				}
-				if err := writer.Close(); err != nil {
-					fail()
-					return
-				}
-				if err := waitReceiver(); err != nil || response.Len() < 1 || response.Len() > filestage.MaximumResponseBytes {
-					fail()
-					return
-				}
-				_ = p.send(ctx, Message{Type: "upload-complete", ID: header.RequestID, Payload: append(json.RawMessage(nil), response.Bytes()...)})
-				return
-			}
-		}
-	}
-}
-
-func runHomeFileStageSweeper(ctx context.Context, root string, interval time.Duration, now func() time.Time) {
-	if interval <= 0 || now == nil {
-		return
-	}
-	sweep := func() {
-		sweepCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-		_ = homeFileStageSweep(sweepCtx, root, now().UTC())
-		cancel()
-	}
-	sweep()
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			sweep()
-		}
-	}
-}
-func changesCatalog(operation string) bool {
-	switch operation {
-	case "create", "alias", "hidden":
-		return true
-	}
-	return false
-}
-
-func homeAction(ctx context.Context, cfg config.HomeConfig, m Message) (any, error) {
-	switch m.Operation {
-	case "workspace":
-		var q struct {
-			Change *sharedworkspace.Change `json:"change"`
-		}
-		if strictPayload(m.Payload, &q) != nil {
-			return nil, errors.New("invalid workspace request")
-		}
-		return home.SharedWorkspace(ctx, cfg, q.Change)
-	case "profiles":
-		inventory, err := config.LoadInventory(cfg.InventoryPath)
-		if err != nil {
-			return nil, err
-		}
-		profiles := []map[string]string{}
-		for _, p := range inventory.Profiles {
-			profiles = append(profiles, map[string]string{"id": p.ID, "label": p.Label})
-		}
-		return profiles, nil
-	case "providers", "provider-key", "provider-job-start", "provider-job", "provider-job-input", "provider-job-cancel":
-		return providerAction(ctx, cfg, m.Operation, m.Payload)
-	case "create":
-		var q struct {
-			Profile string `json:"profile"`
-			Name    string `json:"name"`
-		}
-		if strictPayload(m.Payload, &q) != nil {
-			return nil, errors.New("invalid create")
-		}
-		inv, err := config.LoadInventory(cfg.InventoryPath)
-		if err != nil {
-			return nil, err
-		}
-		return home.CreateSession(ctx, cfg, inv, q.Profile, q.Name)
-	}
-	if model.ValidateSessionID(m.Session.ID) != nil || m.Session.CreatedAt < 1 {
-		return nil, errors.New("invalid session")
-	}
-	switch m.Operation {
-	case "conversation":
-		return home.Conversation(ctx, cfg, m.Session.ID, m.Session.CreatedAt)
-	case "alias":
-		var q struct {
-			Alias string `json:"alias"`
-		}
-		if strictPayload(m.Payload, &q) != nil {
-			return nil, errors.New("invalid alias")
-		}
-		return map[string]bool{"ok": true}, home.SetAliasExpected(ctx, cfg, m.Session.ID, m.Session.CreatedAt, q.Alias)
-	case "hidden":
-		var q struct {
-			Hidden *bool `json:"hidden"`
-		}
-		if strictPayload(m.Payload, &q) != nil || q.Hidden == nil {
-			return nil, errors.New("invalid hidden state")
-		}
-		return map[string]bool{"ok": true}, home.SetHiddenExpected(ctx, cfg, m.Session.ID, m.Session.CreatedAt, *q.Hidden)
-	}
-	return nil, errors.New("operation not permitted")
-}
-func strictPayload(raw json.RawMessage, v any) error {
-	if len(raw) > 16<<10 {
-		return errors.New("payload too large")
-	}
-	d := json.NewDecoder(strings.NewReader(string(raw)))
-	d.DisallowUnknownFields()
-	if err := d.Decode(v); err != nil {
-		return err
-	}
-	if d.Decode(&struct{}{}) != io.EOF {
-		return errors.New("trailing payload")
-	}
-	return nil
 }

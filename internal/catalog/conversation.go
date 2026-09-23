@@ -15,6 +15,7 @@ import (
 	"syscall"
 
 	"github.com/codemoo/hmux/internal/model"
+	"github.com/codemoo/hmux/internal/timing"
 )
 
 const (
@@ -27,6 +28,7 @@ const (
 )
 
 type conversationBinding struct {
+	provider    string
 	providerPID int
 	filePID     int
 	path        string
@@ -40,7 +42,7 @@ type conversationDependencies struct {
 	binding func(context.Context, int, string) (conversationBinding, sessionBindingStatus)
 }
 
-// ReadConversation returns public Codex user and assistant messages for one
+// ReadConversation returns public Codex/Claude user and assistant messages for one
 // exact Home tmux session instance. Operational discovery failures are
 // represented by the status field so source paths and command details never
 // cross the API boundary.
@@ -91,7 +93,7 @@ func readConversation(ctx context.Context, id string, createdAt int64, dependenc
 	if err != nil {
 		return emptyConversation(id, createdAt, model.ConversationUnavailable), nil
 	}
-	messages, truncated, readErr := readConversationMessages(ctx, file, info)
+	messages, truncated, readErr := readConversationMessages(ctx, file, info, binding.provider)
 	closeErr := file.Close()
 	if readErr != nil || closeErr != nil {
 		if ctx.Err() != nil {
@@ -117,7 +119,7 @@ func readConversation(ctx context.Context, id string, createdAt int64, dependenc
 	if secondStatus != sessionBindingReady {
 		return emptyConversation(id, createdAt, bindingModelStatus(secondStatus)), nil
 	}
-	if secondBinding.providerPID != binding.providerPID || secondBinding.filePID != binding.filePID || secondBinding.path != binding.path || secondBinding.root != binding.root || secondBinding.recordID != binding.recordID {
+	if secondBinding.provider != binding.provider || secondBinding.providerPID != binding.providerPID || secondBinding.filePID != binding.filePID || secondBinding.path != binding.path || secondBinding.root != binding.root || secondBinding.recordID != binding.recordID {
 		return emptyConversation(id, createdAt, model.ConversationAmbiguous), nil
 	}
 	secondFile, secondInfo, err := openConversationBinding(dependencies.home, secondBinding)
@@ -132,6 +134,7 @@ func readConversation(ctx context.Context, id string, createdAt int64, dependenc
 	result := model.Conversation{
 		SessionID: id,
 		CreatedAt: createdAt,
+		Provider:  binding.provider,
 		Status:    model.ConversationReady,
 		Messages:  messages,
 		Truncated: truncated,
@@ -191,16 +194,17 @@ func readConversationSession(ctx context.Context, runner Runner, id string, crea
 }
 
 func inspectConversationBinding(ctx context.Context, panePID int, home string) (conversationBinding, sessionBindingStatus) {
+	defer timing.Start(ctx, "conversation-binding", false)()
 	inspector := systemProcessInspector{}
 	nodes, err := inspector.processSnapshot(ctx)
 	if err != nil {
 		return conversationBinding{}, sessionBindingUnavailable
 	}
 	binding := inspector.resolveSessionBindings(ctx, nodes, []int{panePID}, home)[panePID]
-	if binding.provider != "codex" {
+	if binding.provider != "codex" && binding.provider != "claude" {
 		return conversationBinding{}, sessionBindingUnavailable
 	}
-	return conversationBinding{providerPID: binding.providerPID, filePID: binding.filePID, path: binding.path, root: binding.root, recordID: binding.recordID}, binding.status
+	return conversationBinding{provider: binding.provider, providerPID: binding.providerPID, filePID: binding.filePID, path: binding.path, root: binding.root, recordID: binding.recordID}, binding.status
 }
 
 func openBoundConversationFile(home, path string) (*os.File, os.FileInfo, error) {
@@ -220,9 +224,14 @@ func openConversationBinding(home string, binding conversationBinding) (*os.File
 	return openSessionRecord(binding.root, binding.path)
 }
 
-func readConversationMessages(ctx context.Context, file *os.File, info os.FileInfo) ([]model.ConversationMessage, bool, error) {
+func readConversationMessages(ctx context.Context, file *os.File, info os.FileInfo, providers ...string) ([]model.ConversationMessage, bool, error) {
+	defer timing.Start(ctx, "conversation-read", false)()
 	if err := ctx.Err(); err != nil {
 		return nil, false, err
+	}
+	parser := parseConversationMessage
+	if len(providers) > 0 && providers[0] == "claude" {
+		parser = parseClaudeConversationMessage
 	}
 	size := info.Size()
 	if size < 0 {
@@ -280,7 +289,7 @@ func readConversationMessages(ctx context.Context, file *os.File, info os.FileIn
 		lineNumber++
 		if len(line) > conversationLineLimit {
 			truncated = true
-		} else if message, ok, omitted := parseConversationMessage(line, identity, baseOffset+int64(lineStart)); omitted {
+		} else if message, ok, omitted := parser(line, identity, baseOffset+int64(lineStart)); omitted {
 			truncated = true
 		} else if ok {
 			_, compacted := handoffs[sha256.Sum256([]byte(strings.TrimSpace(message.Text)))]

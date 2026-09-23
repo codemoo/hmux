@@ -108,7 +108,17 @@ if __name__ == "__main__":
     parser.add_argument("--config-dir", type=Path, default=Path.home() / ".config/hmux")
     parser.add_argument("--workspace-dir", help="session base; new installs default to ~/.hmux")
     parser.add_argument("--binaries-only", action="store_true", help="leave configuration untouched")
+    parser.add_argument("--enable-service", action="store_true",
+                        help="enable a macOS LaunchAgent or Linux user service; adopt an existing connector if no URL is supplied")
+    parser.add_argument("--url", help="service gateway URL: wss://YOUR_HOST/connect")
+    parser.add_argument("--token-file", type=Path, help="existing private connector token for the service")
     args = parser.parse_args()
+    if args.binaries_only and args.enable_service:
+        parser.error("--binaries-only cannot be combined with --enable-service")
+    if (args.url or args.token_file) and not args.enable_service:
+        parser.error("--url and --token-file require --enable-service")
+    if bool(args.url) != bool(args.token_file):
+        parser.error("--url and --token-file must be supplied together")
     try:
         workspace = args.workspace_dir
         if not args.binaries_only:
@@ -125,5 +135,18 @@ if __name__ == "__main__":
                 command.extend(["--workspace-dir", workspace])
             subprocess.run(command, check=True)
             print("Home configured; existing paths are preserved unless --workspace-dir is supplied.")
+            if args.enable_service:
+                binary_path = str(check_directory(args.bin_dir) / "hmux-web")
+                command = [binary_path, "service", "install", "--binary", binary_path]
+                if args.url:
+                    config_path = config_dir / "home.toml"
+                    if not config_path.exists():
+                        config_path = config_dir / "client.toml"
+                    command.extend(["--url", args.url, "--token-file",
+                                    str(args.token_file.expanduser().absolute()),
+                                    "--config", str(config_path)])
+                else:
+                    command.append("--from-running")
+                subprocess.run(command, check=True)
     except (OSError, ValueError, subprocess.CalledProcessError, EOFError) as error:
         parser.exit(1, "Home installation refused: " + str(error) + "\n")

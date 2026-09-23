@@ -136,7 +136,10 @@ esac
 		t.Fatal(err)
 	}
 
-	value, err := CatalogAt(t.Context(), stateDir)
+	if _, err := CatalogAt(t.Context(), stateDir); err != nil {
+		t.Fatal(err)
+	}
+	value, err := BasicCatalogAt(t.Context(), stateDir)
 	if err != nil {
 		t.Fatalf("optional workflow state broke catalog: %v", err)
 	}

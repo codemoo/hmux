@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/codemoo/hmux/internal/safeexec"
+	"github.com/codemoo/hmux/internal/timing"
 )
 
 // sessionBinding is the sole provider-session association used by catalog and
@@ -31,16 +32,30 @@ type sessionBinding struct {
 }
 
 func (s systemProcessInspector) resolveSessionBindings(ctx context.Context, nodes map[int]processNode, panes []int, home string) map[int]sessionBinding {
-	return s.resolveBindings(ctx, nodes, panes, home, false)
+	return s.resolveBindings(ctx, nodes, panes, home, bindingFull)
+}
+
+type bindingMode uint8
+
+const (
+	bindingFull bindingMode = iota
+	bindingCompletion
+	bindingResume
+)
+
+// Resume capture needs both providers' exact identity, but no live model or
+// activity scan. It still runs the normal descriptor and ambiguity checks.
+func (s systemProcessInspector) resolveResumeBindings(ctx context.Context, nodes map[int]processNode, panes []int, home string) map[int]sessionBinding {
+	return s.resolveBindings(ctx, nodes, panes, home, bindingResume)
 }
 
 // Completion discovery needs exact Codex ownership, not another all-provider
 // metadata/state scan. Keep the same ambiguity and wrapper-chain checks.
 func (s systemProcessInspector) resolveCompletionBindings(ctx context.Context, nodes map[int]processNode, panes []int) map[int]sessionBinding {
-	return s.resolveBindings(ctx, nodes, panes, "", true)
+	return s.resolveBindings(ctx, nodes, panes, "", bindingCompletion)
 }
 
-func (s systemProcessInspector) resolveBindings(ctx context.Context, nodes map[int]processNode, panes []int, home string, completionOnly bool) map[int]sessionBinding {
+func (s systemProcessInspector) resolveBindings(ctx context.Context, nodes map[int]processNode, panes []int, home string, mode bindingMode) map[int]sessionBinding {
 	result := make(map[int]sessionBinding, len(panes))
 	children := processChildren(nodes)
 	owners := map[int]bool{}
@@ -52,7 +67,7 @@ func (s systemProcessInspector) resolveBindings(ctx context.Context, nodes map[i
 		binding := sessionBinding{providerPID: pid, status: status}
 		if pid > 0 {
 			binding.provider = nodes[pid].Provider
-			if !completionOnly || binding.provider == "codex" {
+			if mode != bindingCompletion || binding.provider == "codex" {
 				owners[pid] = true
 			}
 		}
@@ -94,11 +109,11 @@ func (s systemProcessInspector) resolveBindings(ctx context.Context, nodes map[i
 					}
 				}
 			}
-			if base.status == sessionBindingReady && !completionOnly {
+			if base.status == sessionBindingReady && mode == bindingFull {
 				base.model, base.state, base.workingSince = readCodexEvents(base.path, base.root)
 			}
 		} else if base.provider == "claude" {
-			base = bindClaudeSession(home, base)
+			base = bindClaudeSessionMode(home, base, mode == bindingFull)
 		}
 		resolved[pid] = base
 	}
@@ -154,6 +169,7 @@ func nearestSessionProvider(nodes map[int]processNode, children map[int][]int, p
 }
 
 func (s systemProcessInspector) providerRecordFiles(ctx context.Context, pids []int) map[int][]string {
+	defer timing.Start(ctx, "provider-open-files", false)()
 	out := map[int][]string{}
 	if len(pids) == 0 {
 		return out
@@ -303,6 +319,10 @@ func claudeConfigRoots(home string) []string {
 	return roots
 }
 func bindClaudeSession(home string, base sessionBinding) sessionBinding {
+	return bindClaudeSessionMode(home, base, true)
+}
+
+func bindClaudeSessionMode(home string, base sessionBinding, scanModel bool) sessionBinding {
 	var matches []sessionBinding
 	for _, root := range claudeConfigRoots(home) {
 		path := filepath.Join(root, "sessions", strconv.Itoa(base.providerPID)+".json")
@@ -361,18 +381,20 @@ func bindClaudeSession(home string, base sessionBinding) sessionBinding {
 			continue
 		}
 		b.status = sessionBindingReady
-		forEachTailRecord(b.path, b.root, func(line []byte) {
-			var e struct {
-				Message struct {
-					Model string `json:"model"`
-				} `json:"message"`
-			}
-			if json.Unmarshal(line, &e) == nil {
-				if m := validatedModel(e.Message.Model); m != "" {
-					b.model = m
+		if scanModel {
+			forEachTailRecord(b.path, b.root, func(line []byte) {
+				var e struct {
+					Message struct {
+						Model string `json:"model"`
+					} `json:"message"`
 				}
-			}
-		})
+				if json.Unmarshal(line, &e) == nil {
+					if m := validatedModel(e.Message.Model); m != "" {
+						b.model = m
+					}
+				}
+			})
+		}
 		// PID registry must still refer to the same session after reading its metadata.
 		f, _, err := openSessionRecord(filepath.Join(root, "sessions"), path)
 		if err != nil {

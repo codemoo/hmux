@@ -50,6 +50,35 @@ func TestCompletionResolverSkipsClaudeAndCodexStateScan(t *testing.T) {
 		t.Fatal("cancelled binding read accepted")
 	}
 }
+
+func TestResumeResolverBindsBothProvidersWithoutTranscriptScan(t *testing.T) {
+	home := t.TempDir()
+	codex := bindingRollout(t, filepath.Join(home, ".codex", "sessions"), "resume-codex", `"cli"`)
+	claudeRoot := filepath.Join(home, ".claude")
+	for _, dir := range []string{"sessions", "projects/project"} {
+		if err := os.MkdirAll(filepath.Join(claudeRoot, dir), 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(claudeRoot, "sessions", "30.json"), []byte(`{"pid":30,"sessionId":"resume-claude","status":"busy"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(claudeRoot, "projects", "project", "resume-claude.jsonl"), []byte("{\"message\":{\"model\":\"claude-test\"}}\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	fake := filepath.Join(t.TempDir(), "lsof")
+	if err := os.WriteFile(fake, []byte("#!/bin/sh\nprintf '%s\\n' \"$HMUX_BINDING_LSOF\"\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HMUX_BINDING_LSOF", "p20\nn"+codex)
+	nodes := map[int]processNode{10: {PID: 10, Process: "zsh"}, 20: {PID: 20, PPID: 10, Provider: "codex"}, 30: {PID: 30, Provider: "claude"}}
+	bindings := (systemProcessInspector{HomeDir: home, LsofPath: fake}).resolveResumeBindings(context.Background(), nodes, []int{10, 30}, home)
+	for pane, id := range map[int]string{10: "resume-codex", 30: "resume-claude"} {
+		if b := bindings[pane]; b.status != sessionBindingReady || b.recordID != id || b.model != "" {
+			t.Fatalf("resume binding for %d = %#v", pane, b)
+		}
+	}
+}
 func TestCodexBindingUsesMainMetadataNotFilenameOrAge(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "custom-codex-home", "sessions")
 	main := bindingRollout(t, root, "z-main", `"cli"`)

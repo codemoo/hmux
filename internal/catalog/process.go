@@ -18,6 +18,7 @@ import (
 
 	"github.com/codemoo/hmux/internal/model"
 	"github.com/codemoo/hmux/internal/safeexec"
+	"github.com/codemoo/hmux/internal/timing"
 )
 
 const (
@@ -131,6 +132,7 @@ func (s systemProcessInspector) Inspect(ctx context.Context, panePIDs []int) (ma
 }
 
 func (s systemProcessInspector) processSnapshot(ctx context.Context) (map[int]processNode, error) {
+	defer timing.Start(ctx, "process-snapshot", false)()
 	psPath := s.PSPath
 	if psPath == "" {
 		psPath = executablePath("ps", "/bin/ps", "/usr/bin/ps")

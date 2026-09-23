@@ -14,6 +14,7 @@ import (
 	"github.com/codemoo/hmux/internal/catalog"
 	"github.com/codemoo/hmux/internal/filelock"
 	"github.com/codemoo/hmux/internal/model"
+	"github.com/codemoo/hmux/internal/timing"
 )
 
 const (
@@ -84,6 +85,7 @@ type diskState struct {
 }
 
 func (s Store) Sync(ctx context.Context) error {
+	defer timing.Start(ctx, "recovery-sync", true)()
 	return s.withLock(ctx, func() error {
 		bootID, err := s.currentBootID(ctx)
 		if err != nil {
@@ -108,6 +110,7 @@ func (s Store) Sync(ctx context.Context) error {
 }
 
 func (s Store) Save(ctx context.Context) error {
+	defer timing.Start(ctx, "recovery-checkpoint", false)()
 	return s.withLock(ctx, func() error {
 		bootID, err := s.currentBootID(ctx)
 		if err != nil {
@@ -146,29 +149,36 @@ func (s Store) Apply(value *model.Catalog) error {
 	if value == nil {
 		return errors.New("recovery catalog is nil")
 	}
-	return s.withLock(context.Background(), func() error {
-		current, err := s.readState()
-		if errors.Is(err, os.ErrNotExist) {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		byTarget := make(map[string]restoredIdentity, len(current.Mappings))
-		for _, mapping := range current.Mappings {
-			byTarget[identityKey(mapping.To)] = mapping
-		}
-		for index := range value.Sessions {
-			session := &value.Sessions[index]
-			mapping, ok := byTarget[identityKey(model.SessionIdentity{ID: session.ID, CreatedAt: session.CreatedAt})]
-			if !ok || mapping.Name != session.Name {
-				continue
-			}
-			from := mapping.From
-			session.RestoredFrom = &from
-		}
+	if _, err := s.ensureRoot(); err != nil {
+		return err
+	}
+	// Writers replace state.json atomically. A committed snapshot can be read
+	// while a checkpoint holds the write lock, so catalogs do not wait on a
+	// potentially slow capture. Retry once if rename raced the open check.
+	current, err := s.readState()
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		current, err = s.readState()
+	}
+	if errors.Is(err, os.ErrNotExist) {
 		return nil
-	})
+	}
+	if err != nil {
+		return err
+	}
+	byTarget := make(map[string]restoredIdentity, len(current.Mappings))
+	for _, mapping := range current.Mappings {
+		byTarget[identityKey(mapping.To)] = mapping
+	}
+	for index := range value.Sessions {
+		session := &value.Sessions[index]
+		mapping, ok := byTarget[identityKey(model.SessionIdentity{ID: session.ID, CreatedAt: session.CreatedAt})]
+		if !ok || mapping.Name != session.Name {
+			continue
+		}
+		from := mapping.From
+		session.RestoredFrom = &from
+	}
+	return nil
 }
 
 func (s Store) saveLocked(ctx context.Context, bootID string, current *diskState) error {

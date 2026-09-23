@@ -20,6 +20,7 @@ import (
 	"github.com/codemoo/hmux/internal/safeexec"
 	"github.com/codemoo/hmux/internal/sessionlaunch"
 	"github.com/codemoo/hmux/internal/sessionstate"
+	"github.com/codemoo/hmux/internal/timing"
 	"github.com/codemoo/hmux/internal/workflow"
 )
 
@@ -28,7 +29,22 @@ func Catalog(ctx context.Context) (model.Catalog, error) {
 }
 
 func CatalogAt(ctx context.Context, stateDir string) (model.Catalog, error) {
-	value, err := catalog.Read(ctx, catalog.TmuxRunner{})
+	return catalogAt(ctx, stateDir, false)
+}
+
+// BasicCatalogAt retains identity, visibility and recovery metadata without
+// scanning provider processes or transcript files.
+func BasicCatalogAt(ctx context.Context, stateDir string) (model.Catalog, error) {
+	return catalogAt(ctx, stateDir, true)
+}
+
+func catalogAt(ctx context.Context, stateDir string, basic bool) (model.Catalog, error) {
+	defer timing.Start(ctx, "catalog-read", false)()
+	read := catalog.Read
+	if basic {
+		read = catalog.ReadBasic
+	}
+	value, err := read(ctx, catalog.TmuxRunner{})
 	if err != nil {
 		return value, err
 	}

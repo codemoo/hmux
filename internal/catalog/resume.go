@@ -8,6 +8,8 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/codemoo/hmux/internal/timing"
 )
 
 // ResumeReference stays on Home. It contains only the exact provider identity
@@ -31,6 +33,7 @@ func (r ResumeReference) Validate() error {
 // ResolveResumeReferences uses the same authority as catalog and conversation.
 // A second pass excludes provider replacement while the checkpoint is collected.
 func ResolveResumeReferences(ctx context.Context, panes []int) (map[int]ResumeReference, error) {
+	defer timing.Start(ctx, "resume-bindings", false)()
 	if len(panes) > maximumPanePIDs {
 		return nil, errors.New("pane process count exceeds limit")
 	}
@@ -43,12 +46,12 @@ func ResolveResumeReferences(ctx context.Context, panes []int) (map[int]ResumeRe
 	if err != nil {
 		return nil, err
 	}
-	first := s.resolveSessionBindings(ctx, nodes, panes, home)
+	first := s.resolveResumeBindings(ctx, nodes, panes, home)
 	nodes, err = s.processSnapshot(ctx)
 	if err != nil {
 		return nil, err
 	}
-	second := s.resolveSessionBindings(ctx, nodes, panes, home)
+	second := s.resolveResumeBindings(ctx, nodes, panes, home)
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}

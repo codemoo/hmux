@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """Exercise Home installation only in disposable directories, never the user's bin."""
 import importlib.util
+import json
+import os
 from pathlib import Path
 import stat
+import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -85,6 +89,50 @@ class HomeInstallTest(unittest.TestCase):
         with self.assertRaises(OSError):
             installer.install(self.source, self.target)
         self.assertFalse(list(self.target.iterdir()))
+
+    def test_service_enable_is_explicit_and_adopts_only_when_requested(self):
+        record = self.root / "calls.jsonl"
+        fixture = ("#!" + sys.executable + "\n" + """
+import json, os, pathlib, sys
+with open(os.environ['HMUX_INSTALL_TEST_LOG'], 'a') as out:
+    out.write(json.dumps([pathlib.Path(sys.argv[0]).name, *sys.argv[1:]]) + '\\n')
+if sys.argv[1] == 'setup-home':
+    config_dir = pathlib.Path(sys.argv[sys.argv.index('--config-dir') + 1])
+    (config_dir / 'home.toml').write_text('fixture')
+""").encode()
+        for name in installer.BINARIES:
+            (self.source / name).write_bytes(fixture)
+        command = [sys.executable, str(MODULE), "--source-dir", str(self.source),
+                   "--bin-dir", str(self.target), "--config-dir", str(self.root / "config")]
+        env = dict(os.environ, HMUX_INSTALL_TEST_LOG=str(record))
+        subprocess.run(command, env=env, check=True, capture_output=True)
+        calls = [json.loads(line) for line in record.read_text().splitlines()]
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][:2], ["hmux-agent", "setup-home"])
+        record.write_text("")
+        subprocess.run([*command, "--enable-service"], env=env, check=True, capture_output=True)
+        calls = [json.loads(line) for line in record.read_text().splitlines()]
+        self.assertEqual(calls[-1], ["hmux-web", "service", "install", "--binary",
+                                    str(self.target / "hmux-web"), "--from-running"])
+        record.write_text("")
+        subprocess.run([*command, "--enable-service", "--url", "wss://hmux.example/connect",
+                        "--token-file", str(self.root / "token")],
+                       env=env, check=True, capture_output=True)
+        calls = [json.loads(line) for line in record.read_text().splitlines()]
+        self.assertEqual(calls[-1], ["hmux-web", "service", "install", "--binary",
+                                    str(self.target / "hmux-web"), "--url",
+                                    "wss://hmux.example/connect", "--token-file", str(self.root / "token"),
+                                    "--config", str(self.root / "config/home.toml")])
+
+    def test_invalid_service_options_do_not_install_binaries(self):
+        command = [sys.executable, str(MODULE), "--source-dir", str(self.source),
+                   "--bin-dir", str(self.target), "--config-dir", str(self.root / "config")]
+        for options in (["--url", "wss://hmux.example/connect"],
+                        ["--enable-service", "--binaries-only"],
+                        ["--enable-service", "--token-file", str(self.root / "token")]):
+            result = subprocess.run([*command, *options], capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertFalse(self.target.exists())
 
 
 if __name__ == "__main__":

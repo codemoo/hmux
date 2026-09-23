@@ -2,55 +2,92 @@ package recovery
 
 import (
 	"context"
-	"errors"
+	"os"
+	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/codemoo/hmux/internal/model"
 )
 
-type checkpointStub struct {
-	saves int
-	fail  bool
+type blockingCheckpoint struct {
+	started chan struct{}
+	calls   atomic.Int32
 }
 
-func (s *checkpointStub) Save(context.Context) error {
-	s.saves++
-	if s.fail {
-		return errors.New("synthetic checkpoint failure")
+func (s *blockingCheckpoint) Save(ctx context.Context) error {
+	s.calls.Add(1)
+	select {
+	case s.started <- struct{}{}:
+	default:
 	}
-	return nil
+	<-ctx.Done()
+	return ctx.Err()
 }
 
-func TestCatalogRecoveryCheckpointCadenceAndRetry(t *testing.T) {
-	now := time.Unix(100, 0)
-	saver := &checkpointStub{}
-	fetches := 0
-	fetch := catalogFetchWithRecoveryClock(func(context.Context) (model.Catalog, error) { fetches++; return model.Catalog{}, nil }, saver, func() time.Time { return now })
-	for i := 0; i < 6; i++ {
-		if _, err := fetch(t.Context()); err != nil {
+func TestCatalogCheckpointIsIndependentAndJoined(t *testing.T) {
+	checkpoint := &blockingCheckpoint{started: make(chan struct{}, 1)}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	closeWorker := startCatalogCheckpoint(ctx, checkpoint, time.Millisecond)
+	select {
+	case <-checkpoint.started:
+	case <-time.After(time.Second):
+		t.Fatal("checkpoint did not start")
+	}
+	time.Sleep(20 * time.Millisecond)
+	if checkpoint.calls.Load() != 1 {
+		t.Fatal("checkpoint calls overlapped")
+	}
+	closed := make(chan struct{})
+	go func() { closeWorker(); close(closed) }()
+	select {
+	case <-closed:
+	case <-time.After(time.Second):
+		t.Fatal("checkpoint worker did not join")
+	}
+}
+
+func TestApplyReadsCommittedStateWhileCheckpointHoldsLock(t *testing.T) {
+	store := Store{StateDir: filepath.Join(t.TempDir(), "state")}
+	if _, err := store.ensureRoot(); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.writeState(recoveryTestState()); err != nil {
+		t.Fatal(err)
+	}
+	locked := make(chan struct{})
+	release := make(chan struct{})
+	defer close(release)
+	go func() { _ = store.withLock(t.Context(), func() error { close(locked); <-release; return nil }) }()
+	select {
+	case <-locked:
+	case <-time.After(time.Second):
+		t.Fatal("lock not acquired")
+	}
+	finished := make(chan error, 1)
+	go func() { finished <- store.Apply(&model.Catalog{}) }()
+	select {
+	case err := <-finished:
+		if err != nil {
 			t.Fatal(err)
 		}
-		now = now.Add(5 * time.Second)
+	case <-time.After(time.Second):
+		t.Fatal("Apply waited for checkpoint lock")
 	}
-	if saver.saves != 0 || fetches != 6 {
-		t.Fatal("checkpoint ran per catalog/tab")
-	}
-	saver.fail = true
-	if _, err := fetch(t.Context()); err != nil {
-		t.Fatal("checkpoint failure broke catalog")
-	}
-	saver.fail = false
-	if _, err := fetch(t.Context()); err != nil {
+}
+
+func TestApplyRejectsUnsafeRecoveryRoot(t *testing.T) {
+	parent := t.TempDir()
+	store := Store{StateDir: filepath.Join(parent, "state")}
+	if err := store.Apply(&model.Catalog{}); err != nil {
 		t.Fatal(err)
 	}
-	if saver.saves != 2 {
-		t.Fatal("failed checkpoint was not retried")
-	}
-	if _, err := fetch(t.Context()); err != nil {
+	if err := os.Chmod(store.root(), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if saver.saves != 2 {
-		t.Fatal("successful checkpoint was not throttled")
+	if err := store.Apply(&model.Catalog{}); err == nil {
+		t.Fatal("unsafe recovery root accepted")
 	}
 }
