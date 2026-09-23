@@ -12,6 +12,7 @@ have been removed alongside those implementations.
 | `npm test --prefix web` | Browser logic, keyboard/input, clipboard, connection recovery, settings and rendering contracts |
 | `internal/config` | Profile-only inventory, legacy Home config compatibility, precedence and fail-closed validation |
 | `internal/home` | Identity checks around grouped-view creation, cleanup, redraw and catalog observation |
+| `internal/homeservice` | User-service definitions/manager commands, environment allowlist, verified process adoption, singleton locking, bounded logs and safe backups |
 | `internal/webgateway` | Authentication/account scope, revocation, transport flow/closure, uploads, notifications and diagnostics |
 | `internal/recovery` | Checkpoints, boot identity, safe construction and verified tab remapping |
 

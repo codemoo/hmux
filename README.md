@@ -1,11 +1,16 @@
 # HMux
 
-**One host for Codex, Claude Code and shells. Pick up your sessions from anywhere.**
+**Low memory, web terminal for AI agents.**
 
 HMux keeps long-running terminal sessions on a host you control and makes them
 available through a lightweight web interface on desktop, phone and tablet.
 Close a browser, switch devices or reconnect later: the work stays on the host.
 The web/PWA app is the only user interface.
+
+Low memory overhead is a core design requirement. HMux favors native binaries,
+shared collectors and bounded terminal buffers. Agent CLIs, tmux, authentication
+and working directories stay on the host; Docker is not required. Installation
+should be simple, with as few runtime dependencies as possible.
 
 ## How it works
 
@@ -34,7 +39,7 @@ an arbitrary host OS has the same support just because a Go binary compiles ther
 - Password login, optional per-account TOTP, persistent logins and session revocation.
 - Responsive web/PWA interface, Korean input, selection/copy and explicit link opening.
 - File attachments with a three-hour retention window on the host.
-- Provider usage, host metrics and a filtered Codex conversation reader.
+- Provider usage, host metrics and a filtered Codex/Claude conversation reader.
 - Shared host state and recovery of verified tmux/provider sessions after a reboot.
 
 A web account grants terminal access to the connected host. Multiple accounts are
@@ -62,6 +67,9 @@ This creates the web assets and the currently supported Linux gateway/macOS host
 binaries under `dist/`. Building does not deploy or alter existing sessions.
 Install the Home connector and optional administration helper using
 [Operations](docs/OPERATIONS.md). macOS here refers to the host running tmux.
+An optional [native Home service](docs/OPERATIONS.md#automatic-home-startup-macos-and-linux)
+starts the connector at login and restarts it after exit, so no terminal window
+needs to stay open. macOS uses launchd; Linux uses a systemd user service.
 
 ## Repository map
 

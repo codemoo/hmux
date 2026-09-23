@@ -13,6 +13,29 @@ A missing tab retains its `{id, created_at}`; do not reconnect by a matching nam
 Close/reopen only the browser view if necessary. Never kill original tmux sessions
 or reset private state to troubleshoot a transport problem.
 
+## Automatic Home service
+
+Use `hmux-web service status` and the private `<state_dir>/home-service.log` (plus
+its single `.1` rotation). Running means the process is supervised; it does not
+prove gateway authentication or connectivity. Repeated "Gateway connection
+unavailable" can indicate network/TLS failure, a mismatched token or an older
+manual connector still occupying the gateway. Do not delete credentials or the
+connector lock. Stop the known foreground connector or use verified adoption.
+
+If a CLI works in Terminal but not through the service, stop the service and
+reinstall with explicit URL/token/config from that working terminal so PATH and
+configured provider paths are captured again. `--from-running` keeps the existing
+connector's environment. Version-manager
+paths can change when Node is upgraded. The service does not source shell startup
+files or copy API keys from the environment; use persistent provider authentication.
+An explicit missing Home config is a startup failure, not a fallback to new paths.
+
+On macOS, the user must have logged in to a GUI session and the Mac must be awake.
+No Terminal window is required. On Linux, check `systemctl --user status
+hmux-home.service` and `loginctl show-user USERNAME -p Linger`; lingering must be
+explicitly enabled for startup before login and continuity after logout. Details
+and removal commands are in [Operations](OPERATIONS.md#automatic-home-startup-macos-and-linux).
+
 ## Settings fail after upgrading
 
 New installations use `home.toml`; existing `client.toml` loads only when it is
@@ -126,7 +149,7 @@ palette or Android input/viewport behavior merely to compensate for an unverifie
 browser-specific effect. Samsung Internet acceptance remains pending.
 
 See [Web HMux](WEB.md) for implementation/operations and
-[Validation](VALIDATION.md#current-web-verification-2026-09-09) for confirmed results.
+[Validation](VALIDATION.md#browser-and-device-evidence) for confirmed results.
 
 ## Mobile input and native clipboard
 

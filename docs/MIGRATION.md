@@ -24,6 +24,15 @@ Home still supports macOS, tmux, provider CLIs and `hmux-agent` administration/h
    tmux views retain their old marker/name prefix for rolling-upgrade safety.
    Original tmux sessions must remain untouched.
 
+To move a foreground connector to automatic startup, use the opt-in
+[Home service installer](OPERATIONS.md#automatic-home-startup-macos-and-linux).
+`hmux-web service install --from-running` accepts only one current-user connector,
+rechecks its PID/start time/arguments, and signals only that process before starting
+the native service. It preserves the existing config, token reference and session
+workspaces. New connectors hold a private singleton lock, but old binaries do not;
+do not run a manual connector alongside the service. This migration enables a
+macOS LaunchAgent or Linux systemd user service, not a new desktop UI.
+
 ## Gateway and clients
 
 Keep credentials, persistent login sessions, account profiles, push keys and

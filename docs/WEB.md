@@ -47,6 +47,14 @@ provider credentials, aliases, hidden metadata or shell permissions.
 
 ## Conversation reader
 
+Codex and Claude public user/assistant messages are available from the active pane's
+authoritative provider binding. Claude uses the same PID registry and exact
+transcript binding as the catalog, including supported cswap roots; the reader
+never selects a transcript by directory recency. Provider and tmux identities are
+rechecked after reading. Claude tool results, thinking blocks, sidechain messages,
+metadata and compaction summaries are excluded. The assistant label follows the
+server-provided provider. Markdown tables and existing filters apply to both.
+
 Messages render GitHub-flavored Markdown: headings, emphasis, nested/task lists,
 quotes, links, fenced/indented code and aligned tables. Wide tables and code blocks
 scroll within the message on narrow screens. The question filter remains available;
@@ -234,7 +242,7 @@ review and verification; log collection does not execute code or apply changes.
   (an absent tab number does nothing); Alt+Shift+Left/Right changes tabs; Alt+L or Alt+Backquote (` / ₩ on Korean layouts) toggles sidebar;
   Alt+W closes the active shared tab without terminating its tmux session; Alt+Q logs out; Cmd/Ctrl+K searches.
   Auto-reveal scrolls the tab strip horizontally, never the whole mobile page.
-- Conversation reads the active Codex session resolved by Home/tmux. User messages
+- Conversation reads the active Codex or Claude session resolved by Home/tmux. User messages
   are included by default and kept in order; user fenced commands remain visible
   when assistant code is hidden. Initial opening scrolls to the latest message.
 - Settings → 사용량 saves independent Claude/Codex visibility and source
@@ -302,174 +310,23 @@ review and verification; log collection does not execute code or apply changes.
 
 ## Mobile/PWA invariants
 
-Android: Chrome is the recommended browser; the user confirmed both correct
-terminal colors and successful PWA installation on 2026-09-09. Use Chrome's
-menu → Add to Home Screen → Install, or HMux's login/settings install button.
-iOS: Safari → Share → Add to Home Screen (Open as Web App when shown).
-Edge can expose the install button but has not received device acceptance here.
-Manifest PNG icons are
-192/512px and Apple touch icon 180px. Standalone/browser logins may use separate
-storage. PWA updates do not forcibly reload an active terminal. Network is required.
-
-Samsung Internet's home-screen app showed unusual backgrounds on digits and
-symbols; the same issue was absent in Chrome. Samsung Internet remains unverified
-after the color-preservation mitigation; do not report it as fixed. See
-[web troubleshooting](TROUBLESHOOTING.md#webpwa-installation-and-terminal-colors).
-
-Terminal colors live in `theme.ts`. Bold text does not automatically promote ANSI
-colors to bright variants. Settings → 터미널 offers HMux Dark (default), Tokyo
-Night Storm, Catppuccin Mocha, Dracula and Nord. The choice is device-local,
-validated on load and applied immediately to every existing/future terminal,
-without reconnecting or clearing output. Chrome stays neutral/dark independently
-of the terminal palette. Settings categories support keyboard navigation and
-keep account requests tied to the original dialog. Pinned GitHub sources and
-licenses are in `web/public/licenses/terminal-themes-NOTICE.md`.
-
-Extended indices 22/52 use muted teal/red fills for
-observed tmux diff fills; other extended colors remain standard. Palette changes
-affect foregrounds and backgrounds; explicit truecolor output is unchanged.
-`color-scheme: only dark` opts out of user-agent auto-dark recoloring. Only xterm
-uses `forced-color-adjust: none` to preserve ANSI semantics; app controls remain
-eligible for accessibility color adaptation. Vendor overrides may behave differently.
-
-Monatendard Nerd Font Mono Regular/Bold are bundled for the web terminal, with
-licenses and all 11,172 modern Hangul syllables. Load both faces before measuring;
-Android explicitly registers FontFaces with WOFF2 then TTF fallback. Resume/network
-recovery retries loading and redraws terminals. Mobile font defaults to 10px,
-desktop 14px, both adjustable 8–24px with separate preferences. The self-hosted
-Pretendard Variable v1.3.9 font covers proportional UI and Korean labels; code
-blocks and terminal previews use Monatendard. Regular/Bold terminal metrics
-are identical, with modern Hangul syllables exactly twice the ASCII cell width.
-The monochrome bracket/H SVG mark also supplies the PWA PNG icons; versioned icon paths preserve
-the manifest identity. Existing installed launchers may refresh icons on their
-own schedule; the application never reinstalls or reloads an active terminal.
-
-`viewport.ts` owns visualViewport height/offset and safe-area geometry. Reserve
-insets once, retain top inset during keyboard transitions, reset on rotation, and
-subtract already-excluded bottom space. The keyboard-closed workspace reduces the
-remaining bottom inset by 12px; login/drawers/dialogs retain the full inset.
-Android resize-content shrinks both viewports, so keyboard detection tracks the
-expanded height per orientation. Never subtract keyboard height a second time.
-
-Keyboard-visible layout hides normal tabs/footer and exposes a top-right floating
-tab button. Auxiliary keys stay compact; pinch zoom is disabled. Remeasure on tab,
-dialog, focus, viewport and resume transitions, including settled measurements.
-
-Desktop macOS Safari uses the native-input bridge for the physical Safari 18.6
-Hangul trace: `insertText` arrives before keydown229 and selected
-`insertReplacementText` updates the local run. The browser owns syllable changes,
-including no-op replacements, resyllabification and Backspace. An inline preview
-remains local until space, Enter, navigation, a shortcut or paste flushes it once.
-Pending text and its short-lived echo preview use the cursor cell's background
-and foreground, including RGB, indexed theme colors and inverse video. Colors
-refresh on terminal redraw, so black and gray Codex input rows keep their own fill.
-This shared behavior also applies to the iPhone bridge.
-Modifiers alone do not flush. No remote delete/replace or Hangul reassembly is used.
-Desktop textarea geometry and mouse selection remain stock; standard composition
-stays with xterm. On 2026-09-10 the user confirmed the deployed Mac Safari input
-works and accepted the current behavior ("잘된다. 이정도면 괜찮음."). Automated
-regression checks and this user confirmation are separate evidence; no additional
-Mac input acceptance is pending. The diagnostic page retains its stock desktop
-baseline for comparison.
-
-Android retains stock xterm 6.0.0 input. iOS uses the same native xterm textarea
-with a targeted bridge for the physically observed keyCode-0 Hangul path: Safari
-updates syllables with deleteContentBackward + insertText and no composition
-events, while stock xterm sends raw jamo from keypress. The bridge leaves native
-DOM editing intact, shows the pending Korean run inside the terminal and commits
-it once at a boundary (space, Enter, navigation/control, paste or active-view blur).
-Backspace during that run edits the native value; it is not sent as remote repair.
-There is no separate editor, Hangul library, syllable-tail reassembly or NFC rewrite.
-Standard composition events use xterm. Safe view transitions flush to the original
-live connection first; unexpected disconnection cancels unfinished input so it
-cannot leak across reconnects/tabs. The user accepted the current Korean input,
-deletion and space-to-echo behavior. See [iOS terminal input](IOS_INPUT.md).
-
-Mobile browser-native selection on rendered rows remains enabled. Long press and
-selection-handle drags are excluded from tmux touch scrolling; a native selection
-is not replaced by xterm's internal selection. On iOS the existing cursor-positioned
-textarea is exposed for native long-press hit testing, with a small touch area and
-native callouts. Its gestures bypass desktop selection/refocus/scroll handlers
-without preventing browser defaults or rewriting its value. Paste still uses
-xterm's clipboard path, flushing pending Hangul first. No second input, clipboard
-dialog or custom menu is used. The user confirmed native Paste works; its slightly
-slow first menu appearance was accepted without further tuning.
-On rendered text, a touch context menu is kept native before its range appears;
-long-press/drag clicks do not refocus the input. Only a new short tap resumes it.
-On iPhone, selecting output still dismisses the keyboard. Selection/Copy with the
-keyboard kept open is not supported by the accepted behavior. The user chose to
-keep this behavior and stop that work; no additional confirmation is pending.
-
-Android keeps its top-left input anchor when opening the keyboard. Once the
-textarea is focused and the keyboard is visible, `android-native-paste.ts` exposes
-that same textarea across the current input row through a visual transform for
-native long-press Paste. Blur/keyboard dismissal restores pinned geometry. iOS and Android share
-editable gesture protection; Android's xterm input/composition/paste handlers are
-unchanged. The user reported that the full-row target appears to work in Chrome
-PWA and chose to keep it. This is initial feedback, not exhaustive device coverage.
-Inactive-host protections remain. iOS input positioning follows xterm normally.
-Tab/dialog transitions do
-not automatically focus Android input. Touch scrolling uses local history or tmux
-wheel events. Preserve these accepted input/viewport behaviors when maintaining
-the clipboard path.
+See [Mobile/PWA invariants](BROWSER_INPUT.md#mobilepwa-invariants).
 
 ## Accepted mobile behavior
 
-| Platform | Current behavior | Limits / decision |
-| --- | --- | --- |
-| iPhone | Inline native Korean editing, smooth space handoff, native long-press Paste | User accepted for current use; first Paste menu can be slightly slow |
-| iPhone output selection | Browser-native selection/Copy | Keyboard dismisses; user accepted this and stopped keyboard-open selection work |
-| Android Chrome PWA | Default xterm input; long press on the current input row with keyboard open | Full-row Paste target appears to work per initial user feedback; keep current behavior |
-| Samsung Internet | Color-preservation mitigation exists | Token-background issue remains unverified; Chrome is the confirmed path |
-
-The input caret area on iPhone and current input row on Android expose the real
-editable control. Output elsewhere remains browser-selectable terminal text.
-No custom clipboard menu or silent clipboard access is used. See
-[mobile input troubleshooting](TROUBLESHOOTING.md#mobile-input-and-native-clipboard)
-for regressions and [current evidence](VALIDATION.md)
-for build/deployment details.
+See [Accepted mobile behavior](BROWSER_INPUT.md#accepted-mobile-behavior).
 
 ## Source ownership
 
-| File/module | Responsibility |
-| --- | --- |
-| `web/src/main.ts` | UI composition, tab/connection lifecycle, API and workspace coordination |
-| `dom.ts`, `icons.ts` | Typed text-only DOM construction and fixed local SVG icons |
-| `conversation-view.ts`, `markdown.ts` | Markdown conversation display, question/code filters and return controls; request/epoch ownership stays in `main.ts` |
-| `native-input-preview.ts` | Screen-bounded native pending/echo text and local caret; no input transaction logic |
-| `usage-view.ts` | Usage footer, account gauges and usage dialog; quota interpretation stays in `usage.ts` |
-| `account-security.ts`, `login-sessions.ts` | Account settings and login-session dialogs with abort/disposal ownership |
-| `viewport.ts`, `mobile.ts` | Viewport/keyboard state, font preference bounds |
-| xterm 6.0.0 / `ios-native-input.ts`, `ios-native-input.css` | Default input; iPhone native Hangul transaction, echo preview and editable Paste target |
-| `native-clipboard.ts` | Native rendered-text selection/Copy and touch gesture ownership |
-| `android-native-paste.ts` | Keyboard-visible Android input-row Paste target; pinned keyboard-opening anchor |
-| `fonts.ts` | Font loading/registration and family selection |
-| `pwa.ts`, `public/sw.js` | Install UI and network-only navigation fallback |
-| `terminal-scroll.ts`, `terminal-session.ts` | Touch scroll routing and generation-safe view release |
-| `shared-workspace.ts`, `preferences.ts` | Validated workspace shape and guarded local storage |
-| `usage.ts`, `types.ts`, `theme.ts` | Usage formatting, data types and selectable terminal palettes |
-| `style.css` → `ios-native-input.css` → `chrome.css` → `dialogs.css` | Base/viewport → iOS input → workspace UI → dialog overrides |
-| `internal/webgateway` | Auth, bounded gateway/Home protocol, PTYs and account profiles |
-| `internal/hostmetrics` | Home platform resource collection, including disk allocation |
-| `provider-settings.ts`, `internal/providers` | Settings → AI 연결: provider CLI status, connect/update jobs and API keys |
-
-See [web maintenance instructions](../web/AGENTS.md). Preserve CSS order and edit
-owning rules rather than appending a new conflicting override.
+See [Source ownership](BROWSER_INPUT.md#source-ownership).
 
 ## Usage after connecting
 
-The embedded usage collector re-reads CLI credentials once a minute. When an API
-key is saved or cleared, or a connect/update job finishes, the Home connector
-restarts its usage collector, which reads the credentials immediately; the new
-login is reflected in about a second instead of up to a minute.
+See [Usage after connecting](PROVIDERS.md#usage-after-connecting).
 
 ## Usage source fallback
 
-Usage preferences default to the pooled sources (`cswap`, `codex-lb`). When the
-selected pooled source is unavailable on this Home (non-`ok` state without a
-valid measurement) and the CLI source has a valid measurement, the footer and
-usage dialog show the CLI source instead and label it as such. A working pooled
-source is always used as chosen.
+See [Usage source fallback](PROVIDERS.md#usage-source-fallback).
 
 ## Session list latency
 
@@ -482,173 +339,19 @@ for up to 12 seconds) instead of relying on a single refresh.
 
 ## AI provider setup
 
-Settings → AI 연결 lists Codex, Claude Code and Gemini on Home: installed version,
-connection state (`account`, `api-key` or none) and whether the new-session menu
-already launches the CLI. Status comes from each CLI's own files and commands
-(`codex login status`, `claude auth status --json`, `~/.claude/settings.json`,
-`~/.gemini/.env`, `~/.gemini/oauth_creds.json`), each bounded by a five-second
-timeout.
-
-- **연결하기** runs `internal/providers/setup.sh connect` for that provider in a
-  private tmux server (`tmux -L hmux-setup`, session `connect-<provider>`), so it
-  never appears in the session list. It installs the CLI when missing and then
-  starts the CLI's own login flow: `codex login --device-auth`, `claude auth login`
-  and `gemini` with Google login preselected in `~/.gemini/settings.json` (only
-  when no other non-key method is configured). HMux does not implement or proxy
-  OAuth. Settings polls the job once per second and shows its state, an "open
-  login page" button, a Codex device code, and an input that relays a pasted
-  authorization code with `tmux send-keys -l`. After input, raw pane lines are
-  withheld so an echoed authorization code cannot return in the browser log.
-  Login URLs are offered only for
-  https URLs on known login hosts printed after the login phase starts; pasted
-  codes must be 1–2048 printable ASCII bytes. The job ends on the script's exit
-  marker. Gemini completes only when a usable OAuth credential differs from the
-  one recorded when that login job began; an empty, corrupt, expired or
-  pre-existing stale file is never treated as success. Completed jobs are closed.
-  Reopening Settings reattaches to a job still running on Home; 취소 kills it.
-  Progress is read from a private state file (`~/.local/state/hmux-setup`), not
-  the pane, because CLIs such as Gemini clear the screen. After a successful
-  Claude login, and when a Claude key is saved, HMux records Claude Code's
-  first-run state in `~/.claude.json` (`hasCompletedOnboarding`,
-  `lastOnboardingVersion`, and the key's approval suffix) so the first session
-  opens ready instead of repeating onboarding and login.
-- **Install/update** (`setup.sh update`) installs only under `~/.local` and never
-  uses sudo: Codex from the latest `openai/codex` GitHub release binary, Claude
-  Code from `claude.ai/install.sh`, Gemini from npm `@google/gemini-cli`. When
-  Node.js 20+ is missing, Gemini first installs the latest Node.js 22 tarball to
-  `~/.local/share/hmux/node` after verifying `SHASUMS256.txt`. Saving an API key
-  for a provider that is not installed installs it first.
-- **API keys** are sent once to Home and written into the CLI's own storage:
-  `codex login --with-api-key` (stdin, never argv), `env.ANTHROPIC_API_KEY` in
-  `~/.claude/settings.json`, and `GEMINI_API_KEY` in `~/.gemini/.env`. Other
-  settings are preserved; an unparsable Claude settings file is left untouched.
-  Previous files are kept as timestamped `*.hmux-backup-*` copies (0600). Keys
-  are validated to `[A-Za-z0-9._-]{16,512}`, cleared from the input after submit
-  and never returned; responses carry only a `…abcd` suffix hint. Clearing a Codex
-  key logs out only an API-key login, never a ChatGPT account. Saving a Gemini key
-  also selects `gemini-api-key` auth. Gemini reads `~/.gemini/.env` only in
-  folders the user has trusted in Gemini's first-run prompt.
-- **Launch profiles**: after an explicit install, login or API-key save succeeds,
-  an installed CLI with no launch profile is appended to the Home inventory after
-  a timestamped backup. It inherits the configured workspace base (`~/.hmux` for
-  a new install, or the administrator's chosen path); status checks are read-only
-  and concurrent additions are serialized. Existing profiles are never rewritten.
-  Connected providers show **시작**, which creates and opens a session with that
-  profile.
-
-The empty workspace shows a provider card. Until one provider is connected it
-reads "AI 연결이 필요합니다" and opens Settings directly on AI 연결 ("나중에" hides
-it on that device). Once a provider is connected it offers "<provider> 시작"
-buttons instead. The card is refreshed once per login, when Settings closes and
-when the last tab closes.
-
-Provider credentials are Home-wide: every web account on this Home uses the same
-CLI logins and keys. The feature requires the Home role. Gemini tabs are ordinary
-sessions; provider-specific recovery, usage and conversation reading remain
-Codex/Claude only.
+See [AI provider setup](PROVIDERS.md#ai-provider-setup).
 
 ## Build and local provisioning
 
-```sh
-npm ci --prefix web
-npm run check --prefix web
-npm test --prefix web
-npm run build --prefix web
-go test ./internal/webgateway ./internal/home ./cmd/hmux-web
-go build -o dist/hmux-web ./cmd/hmux-web
-```
-
-`deploy/web/build.sh` builds Linux amd64 gateway assets and an Apple Silicon Home
-connector. Build dependencies are lockfile-pinned; the deployed server needs only
-its binary, built assets and private configuration. `npm audit --prefix web`
-checks the frontend dependencies; it is not a full security guarantee.
-
-On the trusted Linux host, run the interactive initializer with private paths:
-
-```sh
-hmux-web init --credentials /PRIVATE/credentials.json --token-file /PRIVATE/connector.token
-```
-
-It asks for a password without echoing it, displays a TOTP seed/URI for enrollment,
-checks an actual code and refuses to overwrite existing files. Copy only the
-connector token to private Home storage using the established trusted SSH channel.
-Never commit either file or include them in a public release archive.
+See [Build and local provisioning](OPERATIONS.md#build-and-local-provisioning).
 
 ## Linux/Nginx deployment
 
-Use `deploy/web/hmux-web.service` for the dedicated unprivileged `hmux-web` user.
-Place immutable releases under `/opt/hmux-web/releases/`, then atomically update
-`/opt/hmux-web/current`; retain the old release for rollback. Private runtime files
-live in `/var/lib/hmux-web` (0700 directory, 0600 files, service-user owned).
-`/etc/hmux-web/runtime.env` defines `HMUX_WEB_ORIGIN=https://YOUR_HOST`.
-
-Render `deploy/web/nginx.conf.example` with the public hostname and local certificate
-directory. Install it as a separate site, keeping timestamped backups of prior HMux
-site/service files. Do not replace global Nginx configuration. First expose only
-`/.well-known/acme-challenge/` on HTTP and return 503 elsewhere, then issue:
-
-```sh
-sudo certbot certonly --webroot -w /var/www/hmux-acme -d YOUR_HOST
-```
-
-Enable the HTTPS site only after successful issuance and `nginx -t`; reload Nginx,
-not unrelated applications. Retain the HTTP ACME location for renewals. A Certbot
-deploy hook should run `nginx -t` and reload Nginx when this certificate renews.
-The Go server refuses public bind addresses and cleartext public origins.
-
-Systemd restricts writable paths, capabilities, devices and Home-directory access,
-with a 256 MiB gateway memory limit. Do not run the gateway as root. Gateway logs
-contain startup/error categories, not terminal bytes, prompts or credentials.
+See [Linux/Nginx deployment](OPERATIONS.md#linuxnginx-deployment).
 
 ## Codex completion notifications
 
-Settings → 완료 알림 enables Web Push for this browser/PWA and this login.
-Permission is requested only after clicking 알림 켜기. Use 테스트 알림 to check
-OS delivery. iPhone/iPad require iOS/iPadOS 16.4 or later and an installed Home
-Screen web app; desktop/Android require a browser supporting Push API.
-
-Notifications show the tab's alias/name and completion status, without prompts,
-responses, paths or terminal output. Clicking focuses the existing app or opens
-HMux and selects the exact `{id, created_at}` session. A notification belonging
-to another or expired login cannot open a tab under the current account.
-
-One Home observer reads authoritative `task_started` / `task_complete` records
-from the exact bound Codex rollout. Shared catalog fetches (normally five seconds)
-feed one separate worker with one latest pending snapshot; slow notification work
-does not block catalog publication or cancel the connector on discovery/send
-failure. The worker skips Claude metadata and redundant Codex state-tail scans,
-checks cancellation between bounded file chunks/records, and waits five seconds
-after an over-budget scan. Peer write deadlines include waiting for the shared
-writer. It does not infer completion from idle output or CPU. The first scan,
-changed/ambiguous bindings and oversized/truncated history establish a baseline
-without replaying old work. A turn already running at baseline can still notify
-when it completes. Discovery errors leave terminal operation available. The
-connector must be running and Home awake; this is not a durable offline event
-queue or a notification for Claude/shell completion.
-
-The gateway checks each subscribed login against its account's authoritative
-shared workspace and sends only for matching open tabs. Visible/focused clients
-report only their selected session; a live presence lease suppresses that login's
-notification for the same tab. Leases expire after 45 seconds if a browser closes
-without reporting blur. Logout, revocation, credential-policy invalidation and
-seven-day login expiry stop future sends. Re-login requires explicit opt-in;
-subscriptions are never silently transferred to another account. Disabling
-notifications affects this login's device. Expired provider subscriptions (HTTP
-404/410) are removed. Events and outbound work are bounded, deduplicated, and have
-a two-minute push lifetime; delivery also depends on browser/OS push service.
-Before displaying a queued notification, the service worker verifies the current
-login with the gateway. Unreachable authentication or a different login suppresses
-the notification rather than exposing another account’s tab name.
-
-The first upgraded gateway run creates `<credentials-path>.push.json` (0600)
-with its persistent VAPID key pair and login-bound subscriptions. An owner-only
-`.lock` file prevents overlapping gateways from rewriting that state. Keep this file
-private and outside release archives, and preserve it across upgrades; losing
-the key requires devices to subscribe again. No provider account or API key is
-required. Outbound HTTPS is restricted to Apple, Google/FCM, Mozilla and Windows
-push-service endpoints with private-address and redirect checks. Payloads use
-standard encrypted Web Push and VAPID. A backend and Home connector update are
-required in addition to the frontend; restarting these does not end tmux work.
+See [Codex completion notifications](PUSH.md#codex-completion-notifications).
 
 ## Home operation and continuity
 
@@ -664,16 +367,21 @@ normal public TLS certificates and initiates the connection; no inbound Home por
 SSH host-key bypass or agent forwarding is needed. Disconnect/reconnect does not
 resume provider processes itself; common Home recovery owns that behavior.
 
-The connector must remain running while remote web access is needed. No macOS
-LaunchAgent/login item is installed. After a Home reboot the connector must be
-started again; its catalog path then invokes the existing tmux/provider recovery.
-A foreground connector launched from an administrator terminal is not an automatic
-boot-start solution. Do not claim unattended reboot availability without a separately
-authorized persistent startup mechanism.
+The connector must remain running while remote web access is needed. Optional
+native service installation provides a per-user macOS LaunchAgent or Linux systemd
+user service, preserving the user's PATH and existing Home configuration. See
+[automatic Home startup](OPERATIONS.md#automatic-home-startup-macos-and-linux) for
+installation, verified migration from a foreground connector, and stop/uninstall.
+The OS restarts an exited connector; the connector reconnects after network loss.
+Its state-directory lock prevents concurrent instances from duplicating collectors.
+macOS startup is after GUI login and requires an awake host. Linux boot/logout
+continuity requires explicitly configured lingering. On Home reboot, the catalog
+path invokes existing tmux/provider recovery; process-running status alone does
+not prove a live gateway connection.
 
 Closing a tab removes it from the account's shared workspace and therefore from
 every connected client of that account (normally within five seconds).
-A tab whose tmux session has ended (for example Ctrl+D in a provider CLI) is
+A tab whose tmux session has ended (for example exiting its final shell) is
 closed the same way once the session is missing from two consecutive catalogs
 while Home is online, instead of lingering as "세션 없음"; a transient gap or an
 offline Home never closes a tab. Closing a browser
@@ -808,3 +516,32 @@ child folder from its name and a unique folder/profile-prefixed tmux name. Repea
 names never attach to existing work or reuse existing directories. Codex/Claude
 exit returns to an interactive shell, including for resumed sessions. See
 [Operations](OPERATIONS.md#build-and-install-home) for naming and installation flags.
+
+## Fast workspace restoration
+
+After authentication, the browser can show a validated, account/profile-scoped
+local preview of the session list and open tabs before state synchronization.
+The preview stores only names, aliases, provider labels and exact session identities;
+no paths, provider state, credentials, transcripts or terminal output are cached.
+It is limited to 256 sessions, 32 tabs and seven days. Logout removes the current
+preview. A live online catalog is required before connecting a cached tab; shared
+workspace synchronization remains authoritative and reconciles remote changes.
+Existing profile-specific tab preferences remain a migration fallback; the old
+unscoped key is not imported into an account-scoped preview without ownership.
+
+Home shared-workspace requests use the basic catalog plus existing metadata,
+visibility and recovery overlays, avoiding process/provider transcript scans.
+Regular shared catalog collection still supplies current provider state.
+
+### Bounded background work and tab initialization
+
+Restored tabs keep lightweight identity/UI state until first selected; only selected
+tabs allocate xterm and its input bridges. Already visited tabs retain their terminal
+state, within the existing 32-tab limit. Only the visible view connects. Usage dialogs
+skip unchanged polls and reconcile changed text/attributes while preserving mounted
+nodes and scroll; time-dependent labels refresh on the existing 30-second cadence.
+
+Conversation loading uses the live catalog runtime to show Codex or Claude;
+unknown/unverified runtime uses a neutral label. The server response still owns
+final provider attribution. A compact message skeleton respects reduced-motion
+preferences and does not imply progress percentages.

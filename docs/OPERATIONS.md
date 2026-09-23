@@ -38,8 +38,9 @@ Reinstalling without `--workspace-dir` preserves every existing profile director
 including custom paths. An explicit `--workspace-dir` updates all profile bases
 with a timestamped inventory backup, preserving other settings and legacy fields.
 Existing `client.toml` remains authoritative when `home.toml` is absent; `state_dir`
-and provider command arguments are preserved. The installer never starts services
-or stops a running connector. `--binaries-only` skips configuration entirely.
+and provider command arguments are preserved. The installer starts a service only
+with `--enable-service`; without it, running connectors are untouched.
+`--binaries-only` skips configuration entirely and cannot enable a service.
 `--source-dir`, `--bin-dir` and `--config-dir` select alternative locations.
 Coordinate connector restart separately; restore binary backup bytes with executable
 mode if rolling back. Configuration errors stop the installer, but already installed
@@ -71,17 +72,108 @@ compatible; follow [MIGRATION.md](MIGRATION.md) before replacing it. Keep the sa
 ## Start the gateway and connector
 
 Initialize private credentials with `hmux-web init`; configure HTTPS and the
-unprivileged gateway service using [WEB.md](WEB.md#linuxnginx-deployment).
+unprivileged gateway service using [gateway deployment](#linuxnginx-deployment).
 Copy only the connector token to private Home storage over a trusted channel.
 
 ```sh
 ~/.local/bin/hmux-web connect --url wss://YOUR_HOST/connect --token-file /PRIVATE/connector.token
 ```
 
-The connector remains running while web access is needed. No login item or
-LaunchAgent is installed. Restart it after a Home reboot; recovery runs before
-the first catalog publication. Stopping it disconnects web views without ending
-the original tmux/provider processes.
+The connector remains running while web access is needed. For automatic startup
+and restart, install the native Home user service below. Recovery runs before the
+first catalog publication. Stopping a connector disconnects web views without
+ending the original tmux/provider processes.
+
+## Automatic Home startup (macOS and Linux)
+
+Run as the account that owns the tmux sessions and provider CLI authentication,
+from a terminal where those CLIs work. Do not use `sudo` for service installation.
+After building the Home binaries, an existing foreground connector can be migrated
+with one installation command:
+
+```sh
+python3 deploy/web/install-home.py --enable-service
+```
+
+It installs the binaries, preserves existing Home/workspace configuration, then
+adopts the **sole connector owned by this user**. Adoption reads its existing URL,
+token-file path and config arguments, rechecks PID/arguments/start time, sends
+SIGTERM only to that exact connector, and starts the managed replacement. A changed,
+ambiguous or relative-path command is refused; no process group is signalled.
+For an already installed service-capable binary, the equivalent command is:
+
+```sh
+~/.local/bin/hmux-web service install --from-running
+```
+
+For a new Home with configured profiles and an existing private connector token:
+
+```sh
+~/.local/bin/hmux-web service install \
+  --url wss://YOUR_HOST/connect --token-file /PRIVATE/connector.token
+```
+
+`--config /PRIVATE/home.toml` selects an explicit existing Home config. Otherwise
+installation pins the existing `home.toml`, falling back to `client.toml`; missing
+configuration is an error. The installer also accepts `--enable-service --url ...
+--token-file ...` for this setup. A Linux host can build its native binary with
+`go build -o dist/hmux-web ./cmd/hmux-web`, then use `dist/hmux-web service install`.
+The service command installs its executable at `~/.local/bin/hmux-web` by default
+(`--binary /ABSOLUTE/bin/hmux-web` overrides it; the installer preserves `--bin-dir`) and backs up
+previous binary/service files before replacement. It does not regenerate credentials
+or alter inventory workspace paths. Private token bytes are never put in the unit.
+
+The service captures the installation terminal's absolute PATH, including Homebrew
+and version-manager directories. With `--from-running`, it instead preserves the
+verified connector's allowlisted environment, even when the installer runs from a
+different terminal. HOME, SHELL, locale and explicitly configured provider/XDG paths
+are allowlisted; USER and LOGNAME are derived from the current OS account.
+Arbitrary environment variables, API keys and temporary SSH-agent sockets are not
+copied. Provider authentication should use the
+existing persistent provider configuration. After moving/upgrading a versioned
+Node or CLI path, stop the service and reinstall with explicit URL/token/config
+from a terminal with the corrected PATH; `--from-running` preserves the old process
+environment. `/usr/bin/env -i` clears the manager's environment and execs the connector without a resident
+wrapper. The connector itself reconnects after network outages; the OS manager
+restarts an exited process with a ten-second delay.
+
+| Platform | Registration | Automatic startup boundary |
+| --- | --- | --- |
+| macOS | `~/Library/LaunchAgents/io.github.codemoo.hmux.home.plist` | Starts after GUI login, independent of Terminal; the Mac must be awake |
+| Linux | `~/.config/systemd/user/hmux-home.service` (honors `XDG_CONFIG_HOME`) | Starts with the user's systemd manager; requires systemd |
+
+On Linux, an administrator can run `sudo loginctl enable-linger USERNAME` if the
+Home should start at boot and remain available after logout. Check with
+`loginctl show-user USERNAME -p Linger`. HMux does not change lingering, FileVault,
+automatic login or sleep settings. A macOS LaunchAgent does not run before login
+and cannot make a sleeping Mac reachable.
+
+```sh
+~/.local/bin/hmux-web service status
+~/.local/bin/hmux-web service restart
+~/.local/bin/hmux-web service stop
+~/.local/bin/hmux-web service start
+~/.local/bin/hmux-web service uninstall
+```
+
+`stop` disables automatic startup until `start` enables it again. `uninstall`
+removes the backed-up service definition while retaining binaries, private state,
+credentials and workspaces. macOS uses `AbandonProcessGroup`; Linux uses
+`KillMode=process`, so service management does not terminate original tmux/provider
+processes. OS logout/shutdown policies can still end user processes.
+
+`status` reports manager/process state, not proof of a live gateway connection.
+Fixed lifecycle categories are logged to `<state_dir>/home-service.log`, with one
+rotated `.1` file; each is limited to 1 MiB and mode 0600. Logs contain no terminal
+output, tokens or raw network errors. Disconnect records include a fixed `stage`
+(dial, hello-write, heartbeat, read, catalog-collector, catalog-write or
+catalog-keepalive-write), a classified `reason`, and HTTP/WebSocket status codes
+when available. These describe the observed failure, not proof of its underlying
+network cause. Repeated identical failures are suppressed until the state changes.
+Check the web UI to confirm Home connectivity.
+One connector can hold each state directory's private process-lifetime lock; stop
+an older manual connector before starting a service, or use the verified adoption
+command. Do not delete an active lock file to bypass the singleton.
 
 ## Administration
 
@@ -95,3 +187,108 @@ Optional workflow hooks use [CODEX_WORKFLOWS.md](CODEX_WORKFLOWS.md).
 Keep credential/session/profile/push stores and Home state private and outside
 release directories. Inspect bounded frontend diagnostics through Settings;
 never include tokens, transcripts or production topology in public reports.
+
+### Gateway transport diagnostics
+
+The gateway writes a private `credentials-file.transport.log` beside its credentials
+file. The log retains at most 1 MiB plus one 1 MiB previous file, with mode 0600.
+It records process-local connection numbers, elapsed time, Home acceptance/hello,
+first catalog readiness, heartbeat/read/write failures, and request/open duration
+with fixed error categories. Home service logs also record first catalog publication
+and transport write failures. A socket reconnect alone is not proof of readiness;
+check `home-catalog-ready` and subsequent successful requests.
+
+Logs omit tokens, addresses, account/session identifiers, arbitrary operation strings, terminal
+content and arbitrary error text. Correlate UTC timestamps with browser diagnostics.
+Browser request cancellation does not cancel an in-flight shared transport write;
+queue waits honor caller cancellation and have a 5-second bound, while admitted
+writes have their own 5-second bound. Neither a log entry nor a socket handshake
+alone establishes that an authenticated browser terminal is usable.
+
+### macOS service-manager access errors
+
+Run Home installation/update commands in the host account's normal Terminal.
+An agent's restricted command runner may not have the same launchd access, even
+when the user is logged in. Failure to query `gui/UID` does not by itself prove
+that the Mac is logged out. Domain availability checks discard the service listing
+and use its exit status, avoiding failures caused by a large GUI-domain listing.
+Agent approval timeouts are controlled by the agent runtime, not HMux; HMux does
+not disable those controls or introduce a privileged updater to bypass them.
+
+### Catalog collection cadence
+
+Initial recovery synchronization remains mandatory before catalog publication.
+Resume identity checks do not scan transcript model/state information. Each Home
+stream owns one host-metrics sampler (five seconds after each sample) and one
+recovery checkpoint worker (30 seconds after success, five seconds after failure;
+each save has a five-second context). Both are cancelled and joined on stream exit.
+Catalog reads use the latest completed metrics sample with its original timestamp
+and atomically committed recovery mapping, without waiting on periodic collection.
+
+### Latency diagnostics
+
+Gateway request completion records include an allowlisted `operation`, total
+`duration_ms` and `send_ms` (shared-writer queue plus frame transmission). The
+remaining time includes transport and Home processing; it is not a pure network
+measurement. Home records operation-tagged `home-processing` and
+`home-response-send` durations. Initial `recovery-sync`, recurring `catalog-fetch`
+and `catalog-publish` spans separate startup collection from publication. Nested
+process snapshots, provider open-file lookup, resume binding, checkpoints and
+conversation binding/read spans are emitted only at 250 ms or slower. Nested
+spans overlap and must not be summed. Existing bounded logs retain the records;
+no extra collector or background process is introduced. Operation names are
+allowlisted; identifiers, paths, payloads and raw error messages are excluded.
+
+## Build and local provisioning
+
+```sh
+npm ci --prefix web
+npm run check --prefix web
+npm test --prefix web
+npm run build --prefix web
+go test ./internal/webgateway ./internal/home ./cmd/hmux-web
+go build -o dist/hmux-web ./cmd/hmux-web
+```
+
+`deploy/web/build.sh` builds Linux amd64 gateway assets and an Apple Silicon Home
+connector. Build dependencies are lockfile-pinned; the deployed server needs only
+its binary, built assets and private configuration. `npm audit --prefix web`
+checks the frontend dependencies; it is not a full security guarantee.
+
+On the trusted Linux host, run the interactive initializer with private paths:
+
+```sh
+hmux-web init --credentials /PRIVATE/credentials.json --token-file /PRIVATE/connector.token
+```
+
+It asks for a password without echoing it, displays a TOTP seed/URI for enrollment,
+checks an actual code and refuses to overwrite existing files. Copy only the
+connector token to private Home storage using the established trusted SSH channel.
+Never commit either file or include them in a public release archive.
+
+
+## Linux/Nginx deployment
+
+Use `deploy/web/hmux-web.service` for the dedicated unprivileged `hmux-web` user.
+Place immutable releases under `/opt/hmux-web/releases/`, then atomically update
+`/opt/hmux-web/current`; retain the old release for rollback. Private runtime files
+live in `/var/lib/hmux-web` (0700 directory, 0600 files, service-user owned).
+`/etc/hmux-web/runtime.env` defines `HMUX_WEB_ORIGIN=https://YOUR_HOST`.
+
+Render `deploy/web/nginx.conf.example` with the public hostname and local certificate
+directory. Install it as a separate site, keeping timestamped backups of prior HMux
+site/service files. Do not replace global Nginx configuration. First expose only
+`/.well-known/acme-challenge/` on HTTP and return 503 elsewhere, then issue:
+
+```sh
+sudo certbot certonly --webroot -w /var/www/hmux-acme -d YOUR_HOST
+```
+
+Enable the HTTPS site only after successful issuance and `nginx -t`; reload Nginx,
+not unrelated applications. Retain the HTTP ACME location for renewals. A Certbot
+deploy hook should run `nginx -t` and reload Nginx when this certificate renews.
+The Go server refuses public bind addresses and cleartext public origins.
+
+Systemd restricts writable paths, capabilities, devices and Home-directory access,
+with a 256 MiB gateway memory limit. Do not run the gateway as root. Gateway logs
+contain startup/error categories, not terminal bytes, prompts or credentials.
