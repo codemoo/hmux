@@ -6,10 +6,11 @@ Detailed dated evidence is preserved in [validation history](archive/VALIDATION_
 
 ## Current verified baseline
 
-- Gateway/web and native macOS Home: `timing-20260923T152524Z`. Both binary hashes
+- Gateway/web and native macOS Home: `cleanup-20260923T154706Z` (runtime commit `fe0c509`). Both binary hashes
   and all 47 public asset hashes verified; gateway active with zero automatic restarts.
-- Prior release verified no-store/PWA CSP, five anonymous API 401 barriers and
-  preservation of all 25 original tmux identities. Existing rollback releases and
+- Current release verified no-store/PWA CSP, five anonymous API 401 barriers and
+  preservation of all 25 original tmux identities. Browser-only disposable views
+  were recreated on reconnect. Existing rollback releases and
   timestamped Home backups remain available.
 - `make check`, `make integration` and `make build` passed for the performance
   baseline. Subsequent latency instrumentation passed focused Go tests/race/vet
@@ -56,5 +57,9 @@ tests). Installer, hooks and isolated session-create integration passed. Isolate
 PTY integration initially failed because the sandbox denied `/bin/ps`; its targeted
 rerun in the normal host environment passed. Local Markdown paths/headings and
 archive discovery checks passed. `make build` passed for web assets, Linux gateway
-and macOS Home/helper binaries. A local refactor or build does not change the
-deployed release above.
+and macOS Home/helper binaries. The cleanup was subsequently deployed as the
+release above. Linux CI exposed a scalar WorkingDirectory quoting error and a
+disposable-process test assumption about birth-time resolution; both were fixed
+in `fe0c509`. GitHub Actions run `35883961196` passed all three jobs for that runtime commit:
+macOS Go/unit/race/vet/integration, Linux native service verification, and web
+check/test/build.
