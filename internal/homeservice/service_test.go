@@ -330,3 +330,12 @@ func TestGUIAvailabilityDoesNotAssumeLoggedOut(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestSystemdWorkingDirectoryIsScalarPath(t *testing.T) {
+	s := sampleSpec()
+	s.Home = "/home/example space%name"
+	raw := string(SystemdUnit(s))
+	if !strings.Contains(raw, "\nWorkingDirectory=/home/example space%%name\n") {
+		t.Fatal("working directory must not use ExecStart quotes")
+	}
+}

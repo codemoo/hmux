@@ -83,9 +83,13 @@ func TestConnectorLockAcrossProcesses(t *testing.T) {
 	probe("0")
 }
 
-func testChild(t *testing.T) *exec.Cmd {
+func testChild(t *testing.T, duration ...string) *exec.Cmd {
 	t.Helper()
-	cmd := exec.Command("/bin/sleep", "60")
+	seconds := "60"
+	if len(duration) > 0 {
+		seconds = duration[0]
+	}
+	cmd := exec.Command("/bin/sleep", seconds)
 	cmd.Env = append(os.Environ(), "HMUX_TEST_SECRET=must-not-be-captured")
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
@@ -96,7 +100,9 @@ func testChild(t *testing.T) *exec.Cmd {
 
 func TestVerifiedStopOnlySignalsExactDisposableChild(t *testing.T) {
 	child := testChild(t)
-	other := testChild(t)
+	// Linux start times have tick resolution: simultaneous children may share
+	// a birth tick, so give the unrelated process distinct arguments as well.
+	other := testChild(t, "61")
 	p, err := readProcess(child.Process.Pid)
 	if errors.Is(err, syscall.EPERM) || errors.Is(err, syscall.EACCES) {
 		t.Skip("sandbox denies disposable process metadata")

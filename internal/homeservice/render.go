@@ -89,7 +89,9 @@ func SystemdUnit(s Spec) []byte {
 		}
 		out.WriteString(unitQuote(arg, true))
 	}
-	fmt.Fprintf(&out, "\nWorkingDirectory=%s\n", unitQuote(s.Home, false))
+	// WorkingDirectory is a scalar path, not an ExecStart argument list.
+	// Quotes would become literal path characters; only specifiers expand here.
+	fmt.Fprintf(&out, "\nWorkingDirectory=%s\n", strings.ReplaceAll(s.Home, "%", "%%"))
 	out.WriteString(`Restart=always
 RestartSec=10
 TimeoutStopSec=20
