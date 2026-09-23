@@ -1,3 +1,8 @@
+import {
+  workspaceCacheKey,
+  encodeWorkspaceCache,
+  decodeWorkspaceCache,
+} from "./workspace-cache";
 import { bindTerminalKeyButton } from "./terminal-key-button.ts";
 import {
   createDiagnostics,
@@ -54,8 +59,13 @@ import {
 } from "./shared-workspace";
 import { createTextFactory, iconButton } from "./dom";
 import { icon } from "./icons";
-import { renderUsageFooter, renderUsagePanel } from "./usage-view";
-import { renderConversation, type Conversation } from "./conversation-view";
+import { renderUsageFooter } from "./usage-view";
+import { createUsagePanelUpdater } from "./usage-panel-update";
+import {
+  renderConversation,
+  renderConversationLoading,
+  type Conversation,
+} from "./conversation-view";
 import { createTerminalAppearance } from "./theme";
 import { installThemePicker } from "./theme-picker";
 import { installSettingsNavigation } from "./settings-navigation";
@@ -111,7 +121,7 @@ let layoutFrame = 0;
 let layoutSettledTimers: number[] = [];
 function fitActiveTerminal() {
   const tab = tabs.get(active);
-  if (!tab || reading || !tab.host.isConnected) return;
+  if (!tab || !tab.initialized || reading || !tab.host.isConnected) return;
   const bounds = tab.host.getBoundingClientRect();
   if (bounds.width < 2 || bounds.height < 2) return;
   tab.fit.fit();
@@ -156,6 +166,8 @@ let workspaceEpoch = 0;
 let workspaceRequest: AbortController | undefined;
 let lastWorkspaceTabs = "[]";
 let workspaceStorageKey = "hmux.tabs";
+let previewStorageKey = "";
+let catalogVerified = false;
 let pendingWorkspace: { tabs?: Identity[]; active?: Identity } | undefined;
 let attachments: ReturnType<typeof installAttachments> | undefined;
 let pushPresence: ReturnType<typeof installPushPresence> | undefined;
@@ -259,6 +271,7 @@ async function action(
   );
 }
 function disposeAll() {
+  catalogVerified = false;
   usagePreferences = defaultUsagePreferences();
   diagnostics.dispose();
   accountEpoch++;
@@ -289,7 +302,7 @@ function disposeAll() {
     t.nativeInput?.dispose();
     t.disposeNativePaste?.();
     t.interaction?.dispose();
-    t.term.dispose();
+    if (t.initialized) t.term.dispose();
     t.host.remove();
   }
   tabs.clear();
@@ -455,6 +468,7 @@ function shell() {
     try {
       await api("/api/logout", {});
       preferences.remove(workspaceStorageKey);
+      if (previewStorageKey) preferences.remove(previewStorageKey);
       showLogin();
     } catch (e) {
       reportError(e);
@@ -628,6 +642,17 @@ function renderSessions() {
       ),
     );
 }
+function persistPreview() {
+  if (!previewStorageKey || !catalogVerified || !sharedLoaded) return;
+  preferences.set(
+    previewStorageKey,
+    encodeWorkspaceCache(
+      sessions,
+      [...tabs.values()].map((t) => t.identity),
+      tabs.get(active)?.identity,
+    ),
+  );
+}
 function persistTabs() {
   const serialized = JSON.stringify([...tabs.values()].map((t) => t.identity));
   if (sharedLoaded && !applyingShared && serialized !== lastWorkspaceTabs) {
@@ -637,6 +662,7 @@ function persistTabs() {
     void syncSharedWorkspace();
   }
   if (bootstrapping) return;
+  persistPreview();
   preferences.set(
     workspaceStorageKey,
     JSON.stringify({
@@ -742,7 +768,7 @@ function closeTab(k: string) {
   t.nativeInput?.dispose();
   t.disposeNativePaste?.();
   t.interaction?.dispose();
-  t.term.dispose();
+  if (t.initialized) t.term.dispose();
   t.host.remove();
   tabs.delete(k);
   if (active === k) {
@@ -773,7 +799,9 @@ function selectTab(k: string) {
   $("#reader").hidden = true;
   $("#reader").replaceChildren();
   $("#conversation").setAttribute("aria-pressed", "false");
+  tabs.get(k)?.initialize();
   for (const [id, t] of tabs) {
+    if (!t.initialized) continue;
     // Hidden mobile input must not remain the keyboard's scroll anchor.
     if (
       (isAndroid || isIOS) &&
@@ -842,91 +870,107 @@ function openSession(s: Session, activate = true) {
   const host = document.createElement("div");
   host.className = "terminal-host";
   $("#stage").append(host);
-  const term = new Terminal({
-    theme: appearanceState.current().colors,
-    fontFamily: terminalFonts.family(),
-    fontSize,
-    scrollback: 5000,
-    drawBoldTextInBrightColors: false,
-    cursorBlink: true,
-    cursorStyle: "bar",
-    cursorInactiveStyle: "bar",
-    cursorWidth: 1,
-    allowProposedApi: false,
-    allowTransparency: false,
-    convertEol: false,
-    screenReaderMode: false,
-  });
-  const fit = new FitAddon();
-  term.attachCustomKeyEventHandler((event) => {
-    if (isTerminalCopy(term, event)) return false;
-    return !handleWorkspaceShortcut(event);
-  });
-  term.loadAddon(fit);
-  term.open(host);
+  let term: Terminal;
+  let fit: FitAddon;
   const t: Tab = {
     identity: { id: s.id, created_at: s.created_at },
-    term,
-    fit,
+    initialized: false,
+    initialize() {
+      if (t.initialized) return;
+      initializeTerminal();
+      t.initialized = true;
+    },
+    get term() {
+      t.initialize();
+      return term;
+    },
+    get fit() {
+      t.initialize();
+      return fit;
+    },
     host,
     status: "disconnected",
     generation: 0,
     recovery: createConnectionRecovery(),
     output: createTerminalOutput(
-      (bytes, done) => term.write(bytes, done),
+      (bytes, done) => t.term.write(bytes, done),
       () => {
         if (t.status === "disconnected") scheduleReconnect(t);
       },
     ),
   };
   tabs.set(k, t);
-  if (isIOS || isAndroid)
-    t.interaction = installMobileTerminalLinks(
-      term,
-      host,
-      () => loggedIn && active === k && !reading,
-    );
-  else
-    t.interaction = installDesktopTerminal(
-      term,
-      host,
-      () => loggedIn && active === k && !reading,
-      () => t.nativeInput?.flush(),
-    );
-  if (isIOS || isMacSafari)
-    t.nativeInput = (
-      isIOS ? installIOSNativeInput : installMacSafariNativeInput
-    )(
-      term,
-      host,
-      () => loggedIn && active === k && !reading && t.status === "connected",
-    );
-  if (isAndroid) t.disposeNativePaste = installAndroidNativePaste(term, host);
-  if (isIOS || isAndroid) installNativeClipboard(term, host);
-  installTerminalScroll(
-    term,
-    host,
-    () => active === k && !reading,
-    () => (isIOS || isAndroid) && hasNativeSelection(host),
-  );
-  term.onData((data) => {
-    if (active === key(t.identity)) send(data);
-  });
-  term.onBinary((data) => {
-    if (t.ws?.readyState === WebSocket.OPEN && t.status === "connected")
-      t.ws.send(Uint8Array.from(data, (c) => c.charCodeAt(0)));
-  });
-  term.onResize(({ cols, rows }) => {
-    if (t.ws?.readyState === WebSocket.OPEN && t.status === "connected")
-      t.ws.send(
-        JSON.stringify({ type: "resize", ...terminalSize(cols, rows) }),
+  function initializeTerminal() {
+    term = new Terminal({
+      theme: appearanceState.current().colors,
+      fontFamily: terminalFonts.family(),
+      fontSize,
+      scrollback: 5000,
+      drawBoldTextInBrightColors: false,
+      cursorBlink: true,
+      cursorStyle: "bar",
+      cursorInactiveStyle: "bar",
+      cursorWidth: 1,
+      allowProposedApi: false,
+      allowTransparency: false,
+      convertEol: false,
+      screenReaderMode: false,
+    });
+    fit = new FitAddon();
+    term.attachCustomKeyEventHandler((event) => {
+      if (isTerminalCopy(term, event)) return false;
+      return !handleWorkspaceShortcut(event);
+    });
+    term.loadAddon(fit);
+    term.open(host);
+    if (isIOS || isAndroid)
+      t.interaction = installMobileTerminalLinks(
+        term,
+        host,
+        () => loggedIn && active === k && !reading,
       );
-  });
+    else
+      t.interaction = installDesktopTerminal(
+        term,
+        host,
+        () => loggedIn && active === k && !reading,
+        () => t.nativeInput?.flush(),
+      );
+    if (isIOS || isMacSafari)
+      t.nativeInput = (
+        isIOS ? installIOSNativeInput : installMacSafariNativeInput
+      )(
+        term,
+        host,
+        () => loggedIn && active === k && !reading && t.status === "connected",
+      );
+    if (isAndroid) t.disposeNativePaste = installAndroidNativePaste(term, host);
+    if (isIOS || isAndroid) installNativeClipboard(term, host);
+    installTerminalScroll(
+      term,
+      host,
+      () => active === k && !reading,
+      () => (isIOS || isAndroid) && hasNativeSelection(host),
+    );
+    term.onData((data) => {
+      if (active === key(t.identity)) send(data);
+    });
+    term.onBinary((data) => {
+      if (t.ws?.readyState === WebSocket.OPEN && t.status === "connected")
+        t.ws.send(Uint8Array.from(data, (c) => c.charCodeAt(0)));
+    });
+    term.onResize(({ cols, rows }) => {
+      if (t.ws?.readyState === WebSocket.OPEN && t.status === "connected")
+        t.ws.send(
+          JSON.stringify({ type: "resize", ...terminalSize(cols, rows) }),
+        );
+    });
+  }
   if (activate) selectTab(k);
   else {
     if (isAndroid) t.host.inert = true;
     t.host.style.visibility = "hidden";
-    t.term.options.disableStdin = true;
+    if (t.initialized) t.term.options.disableStdin = true;
   }
 }
 function ensureActiveConnection() {
@@ -970,6 +1014,9 @@ function scheduleReconnect(t: Tab) {
 }
 function connect(t: Tab, manual = false) {
   if (
+    !catalogVerified ||
+    !snapshot.online ||
+    !sessions.some((s) => key(s) === key(t.identity)) ||
     !loggedIn ||
     loggingOut ||
     !navigator.onLine ||
@@ -1417,7 +1464,9 @@ function settingsDialog(initialTab?: string) {
     (id) => {
       appearanceState.select(
         id,
-        [...tabs.values()].map((tab) => tab.term),
+        [...tabs.values()]
+          .filter((tab) => tab.initialized)
+          .map((tab) => tab.term),
       );
     },
   );
@@ -1444,7 +1493,8 @@ function settingsDialog(initialTab?: string) {
     value.textContent = `${fontSize}px`;
     preview.style.fontSize = `${fontSize}px`;
     preferences.set(fontPreferenceKey(), String(fontSize));
-    for (const t of tabs.values()) t.term.options.fontSize = fontSize;
+    for (const t of tabs.values())
+      if (t.initialized) t.term.options.fontSize = fontSize;
     scheduleTerminalLayout();
   }
   input.oninput = () => apply(Number(input.value));
@@ -1506,6 +1556,7 @@ function settingsDialog(initialTab?: string) {
       api,
       () => {
         preferences.remove(workspaceStorageKey);
+        if (previewStorageKey) preferences.remove(previewStorageKey);
         showLogin();
       },
       () => attachments?.cancel(),
@@ -1566,8 +1617,11 @@ async function toggleReader() {
   t.term.blur();
   const reader = $("#reader");
   reader.hidden = false;
-  reader.replaceChildren(
-    text("p", "현재 tmux 세션의 Codex 대화를 확인하고 있습니다…", "muted"),
+  renderConversationLoading(
+    reader,
+    catalogVerified
+      ? sessions.find((session) => key(session) === key(identity))?.runtime
+      : undefined,
   );
   try {
     const data = (await action(
@@ -1602,16 +1656,9 @@ function renderFooter() {
 function usageDialog() {
   const body = dialog("계정 사용량");
   $("#dialog").classList.add("usage-dialog");
+  const updatePanel = createUsagePanelUpdater(body);
   const render = () => {
-    const scrollTop = body.scrollTop;
-    body.replaceChildren();
-    renderUsagePanel(
-      body,
-      snapshot,
-      $("#metrics").textContent || "",
-      usagePreferences,
-    );
-    body.scrollTop = scrollTop;
+    updatePanel(snapshot, $("#metrics").textContent || "", usagePreferences);
   };
   render();
   refreshUsageDialog = render;
@@ -1636,6 +1683,7 @@ async function refresh() {
     if (!loggedIn || epoch !== accountEpoch || refreshRequest !== request)
       return;
     snapshot = next;
+    if (!next.online || !next.catalog?.sessions) catalogVerified = false;
     const nextPreferences = parseUsagePreferences(next.usage_preferences);
     if (
       nextPreferences &&
@@ -1644,6 +1692,7 @@ async function refresh() {
       usagePreferences = nextPreferences;
     if (next.catalog?.sessions) {
       sessions = next.catalog.sessions;
+      catalogVerified = next.online;
       if (next.online) closeEndedSessionTabs();
     }
     $("#home-state").textContent = next.online
@@ -1653,6 +1702,7 @@ async function refresh() {
     renderSessions();
     renderTabs();
     renderFooter();
+    persistPreview();
     refreshUsageDialog?.();
     ensureActiveConnection();
     resolvePushTarget();
@@ -1722,6 +1772,7 @@ function restoreTerminalFonts(): Promise<void> {
     try {
       await terminalFonts.load();
       for (const tab of tabs.values()) {
+        if (!tab.initialized) continue;
         tab.term.options.fontFamily = terminalFonts.family();
         tab.term.clearTextureAtlas();
         tab.term.refresh(0, tab.term.rows - 1);
@@ -1757,9 +1808,13 @@ async function start() {
   try {
     const session = await api("/api/session");
     if (epoch !== accountEpoch) return;
-    workspaceStorageKey = session.profile
-      ? `hmux.tabs.${session.profile}`
-      : "hmux.tabs";
+    previewStorageKey = workspaceCacheKey(
+      session.username,
+      session.profile || "",
+    );
+    workspaceStorageKey = `${previewStorageKey}.tabs`;
+    catalogVerified = false;
+    snapshot = { online: false };
     csrf = session.csrf;
     loginID = session.login_id;
     diagnostics.bind(loginID);
@@ -1771,10 +1826,36 @@ async function start() {
     pushPresence = installPushPresence(api, () => tabs.get(active)?.identity);
     try {
       pendingWorkspace = JSON.parse(
-        preferences.get(workspaceStorageKey) || "{}",
+        preferences.get(workspaceStorageKey) ||
+          (session.profile
+            ? preferences.get(`hmux.tabs.${session.profile}`)
+            : null) ||
+          "{}",
       );
     } catch {
       pendingWorkspace = {};
+    }
+    const preview = decodeWorkspaceCache(preferences.get(previewStorageKey));
+    if (preview) {
+      sessions = preview.sessions;
+      pendingWorkspace = { tabs: preview.tabs, active: preview.active };
+      applyingShared = true;
+      try {
+        for (const id of preview.tabs) {
+          const found = sessions.find((s) => key(s) === key(id));
+          if (found) openSession(found, false);
+        }
+        const selected =
+          preview.active && tabs.has(key(preview.active))
+            ? key(preview.active)
+            : [...tabs.keys()][0];
+        if (selected) selectTab(selected);
+      } finally {
+        applyingShared = false;
+      }
+      renderSessions();
+      renderTabs();
+      $("#home-state").textContent = "저장된 목록 · 최신 상태 확인 중";
     }
     // Font downloads and shared-tab synchronization must not block recovery.
     void restoreTerminalFonts();
@@ -2125,7 +2206,8 @@ mobileScreen.addEventListener("change", () => {
     mobileScreen.matches,
     preferences.get(fontPreferenceKey()),
   );
-  for (const tab of tabs.values()) tab.term.options.fontSize = fontSize;
+  for (const tab of tabs.values())
+    if (tab.initialized) tab.term.options.fontSize = fontSize;
   requestAnimationFrame(() => tabs.get(active)?.fit.fit());
 });
 

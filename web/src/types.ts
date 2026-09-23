@@ -59,6 +59,8 @@ export type Snapshot = {
 export type Tab = {
   identity: Identity;
   term: Terminal;
+  initialized: boolean;
+  initialize(): void;
   fit: FitAddon;
   host: HTMLElement;
   ws?: WebSocket;

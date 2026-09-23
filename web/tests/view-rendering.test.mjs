@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { renderMarkdown } from "../src/markdown.ts";
-import { renderConversation } from "../src/conversation-view.ts";
+import {
+  renderConversation,
+  renderConversationLoading,
+} from "../src/conversation-view.ts";
 import { renderUsageFooter, renderUsagePanel } from "../src/usage-view.ts";
 
 // A small document fixture: textContent stays text and does not parse HTML.
@@ -539,4 +542,41 @@ test("codex-lb details use account-list observation, never credential or aggrega
   assert.ok(partial.textContent.includes("73%"));
   assert.ok(partial.textContent.includes("79%"));
   assert.ok(!partial.textContent.includes("60%"));
+});
+
+test("Claude conversation keeps provider label and Markdown tables", () => {
+  const view = root();
+  renderConversation(
+    view,
+    {
+      status: "ready",
+      provider: "claude",
+      truncated: false,
+      messages: [{ role: "assistant", text: "| A | B |\n|---|---|\n|1|2|" }],
+    },
+    () => {},
+  );
+  assert.match(view.textContent, /CLAUDE/);
+  assert.doesNotMatch(view.textContent, /CODEX/);
+  assert.ok(all(view).some((node) => node.tagName === "table"));
+});
+
+test("conversation loading follows known provider and has neutral fallback", () => {
+  for (const [runtime, expected] of [
+    ["codex", "Codex"],
+    ["claude", "Claude"],
+    [undefined, "대화"],
+    ["<script>secret</script>", "대화"],
+  ]) {
+    const view = root();
+    renderConversationLoading(view, runtime);
+    assert.ok(view.textContent.includes("대화를 불러오는 중"));
+    assert.equal(
+      all(view).find((n) => n.className === "conversation-loading-provider")
+        .textContent,
+      expected,
+    );
+    assert.ok(!view.textContent.includes("secret"));
+    assert.ok(all(view).some((n) => n.attrs.role === "status"));
+  }
 });
