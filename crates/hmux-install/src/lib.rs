@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fs::{self, File, Metadata, OpenOptions};
 use std::io::{self, Read, Seek, Write};
-use std::os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt};
+use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt, PermissionsExt};
 use std::path::{Component, Path, PathBuf};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -99,7 +99,12 @@ fn directory(path: &Path, create: bool) -> io::Result<PathBuf> {
         }
     }
     if create {
-        fs::create_dir_all(&path)?;
+        // Every new component must satisfy the ownership policy even under a
+        // group-writable umask. Existing directory permissions stay untouched.
+        fs::DirBuilder::new()
+            .recursive(true)
+            .mode(0o700)
+            .create(&path)?;
     }
     let meta = fs::symlink_metadata(&path)?;
     if !meta.is_dir() || meta.uid() != uid || meta.mode() & 0o022 != 0 {

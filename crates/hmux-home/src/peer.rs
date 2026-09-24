@@ -943,7 +943,7 @@ async fn run_owned(
                         let id = open.id.clone();
                         pending.insert(id.clone(), handle.stop.clone());
                         terminals.insert(id.clone(), handle.clone());
-                        let job = terminal::Job { request:open, target:target.clone(), sender:sender.clone(), protocol, link_stop:stop.clone(), permit:permit.expect("checked") };
+                        let job = terminal::Job { request:open, target:target.clone(), sender:sender.clone(), protocol, link_stop:stop.clone(), permit:permit.expect("checked"), reporter:reporter.clone() };
                         jobs.spawn(async move { let result=job.run(&handle,receiver).await; (id,result) });
                     }
                     UploadStart(start) => {

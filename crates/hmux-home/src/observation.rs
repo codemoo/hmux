@@ -10,6 +10,7 @@ pub type Reporter = Arc<dyn Fn(Event) + Send + Sync>;
 pub enum Stage {
     Catalog,
     Action,
+    ViewCleanup,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -27,6 +28,7 @@ pub enum Reason {
     Slow,
     Recovered,
     Published,
+    Quarantined,
 }
 
 impl Reason {
@@ -68,6 +70,7 @@ impl fmt::Display for Event {
         let stage = match self.stage {
             Stage::Catalog => "catalog",
             Stage::Action => "action",
+            Stage::ViewCleanup => "view-cleanup",
         };
         let reason = match self.reason {
             Reason::Busy => "busy",
@@ -83,6 +86,7 @@ impl fmt::Display for Event {
             Reason::Slow => "slow",
             Reason::Recovered => "recovered",
             Reason::Published => "published",
+            Reason::Quarantined => "quarantined",
         };
         write!(
             f,

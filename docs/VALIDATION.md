@@ -74,6 +74,44 @@ The metadata-overlay failure path and a combined live-view recovery through the
 40-second freshness expiry were not separately exercised by the new regression.
 This update does not establish long-running or physical-device acceptance.
 
+## Rust quality review
+
+A subsequent source review found and corrected three bounded failure paths:
+
+- Failure to configure one accepted socket now rejects only that connection;
+  it cannot exit the Gateway HTTP listener through the socket-option error path.
+- Failed disposable-view cleanup now emits a fixed, privacy-safe diagnostic and
+  a non-success terminal exit. Its admission slot remains quarantined; unrelated
+  views and requests remain live. Reporting belongs to the cleanup owner so it
+  also runs after the requesting task is dropped.
+- Native installation creates all new parent directories with mode 0700, including
+  when the invoking shell uses umask 0002. Existing permissions and trust checks
+  are preserved. The old installer failure was reproduced in a temporary Home.
+
+[CI for `73bdfe7`](https://github.com/codemoo/hmux/actions/runs/36037687994)
+failed separately: the macOS job exposed two key-file tests racing a process-wide
+admission slot, and Linux ShellCheck rejected three hook-script conditionals.
+Those tests now serialize around the existing admission contract, and the shell
+guards use explicit conditionals. Production admission limits are unchanged.
+
+The regression checks exercise child-specific umask, both terminal codecs with
+cleanup failure and a surviving view, and injected socket setup failure followed
+by a successful HTTP request. The quarantine test runs in its own child process
+so intentionally lost permits cannot change other tests' capacity. Independent
+review found no material defects in this change. An actual OS socket-option
+failure and cleanup diagnostics during cancelled startup are not separately
+reproduced. These findings are not established causes of the earlier live incident.
+
+Local verification of the integrated changes passed:
+
+- `make check`: formatting, strict Clippy, 642 Rust tests (20 opt-in tests ignored),
+  ShellCheck, TypeScript and 171 web tests.
+- `make integration`: actual native Gateway/Home login, terminal and reconnect;
+  Home WSS with both codecs, CLI/hooks and isolated real-tmux lifecycle checks.
+- `make build` and all five bundle checks on macOS ARM64; `make shfmt-check`.
+
+This source review does not change the maintained deployment recorded below.
+
 ## Maintained deployment
 
 The stability update replaced the maintained Linux Gateway and macOS Home/helper

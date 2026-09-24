@@ -26,10 +26,10 @@ stat_mode() {
 }
 validate_owned_directory() {
 	HMUX_DIRECTORY_CHECK="$1"
-	[ -d "$HMUX_DIRECTORY_CHECK" ] && [ ! -L "$HMUX_DIRECTORY_CHECK" ] || {
+	if [ ! -d "$HMUX_DIRECTORY_CHECK" ] || [ -L "$HMUX_DIRECTORY_CHECK" ]; then
 		echo "unsafe directory: $HMUX_DIRECTORY_CHECK" >&2
 		exit 1
-	}
+	fi
 	[ "$(stat_uid "$HMUX_DIRECTORY_CHECK")" = "$CURRENT_UID" ] || {
 		echo "directory is not owned by the current user: $HMUX_DIRECTORY_CHECK" >&2
 		exit 1
@@ -40,10 +40,10 @@ validate_owned_directory() {
 		exit 1
 		;;
 	esac
-	[ $((HMUX_DIRECTORY_MODE / 10 % 10 & 2)) -eq 0 ] && [ $((HMUX_DIRECTORY_MODE % 10 & 2)) -eq 0 ] || {
+	if [ $((HMUX_DIRECTORY_MODE / 10 % 10 & 2)) -ne 0 ] || [ $((HMUX_DIRECTORY_MODE % 10 & 2)) -ne 0 ]; then
 		echo "directory is group/other writable: $HMUX_DIRECTORY_CHECK" >&2
 		exit 1
-	}
+	fi
 }
 ensure_owned_directory() {
 	HMUX_DIRECTORY_TARGET="$1"
@@ -91,10 +91,10 @@ if [ -e "$HOOKS_FILE" ]; then
 		exit 1
 		;;
 	esac
-	[ $((file_mode / 10 % 10 & 2)) -eq 0 ] && [ $((file_mode % 10 & 2)) -eq 0 ] || {
+	if [ $((file_mode / 10 % 10 & 2)) -ne 0 ] || [ $((file_mode % 10 & 2)) -ne 0 ]; then
 		echo "Codex hooks file is group/other writable" >&2
 		exit 1
-	}
+	fi
 	[ "$(wc -c <"$HOOKS_FILE")" -le 1048576 ] || {
 		echo "Codex hooks file exceeds 1 MiB" >&2
 		exit 1

@@ -19,6 +19,9 @@ fn captured(home: &Path, values: &[(&str, &str)]) -> Options {
 }
 
 static NEXT: AtomicU64 = AtomicU64::new(0);
+// load_lb deliberately shares one process-wide admission slot. Independent
+// fixtures must not make these success/validation tests race for that slot.
+static KEY_TESTS: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 struct SyntheticHome(PathBuf);
 impl SyntheticHome {
     fn new() -> Self {
@@ -141,6 +144,7 @@ fn bad_required_home_or_path_is_redacted_error() {
 
 #[tokio::test]
 async fn env_key_precedence_and_deferred_private_file() {
+    let _serial = KEY_TESTS.lock().await;
     let home = SyntheticHome::new();
     let cancel = CancellationToken::new();
     let opts = captured(
@@ -165,6 +169,7 @@ async fn env_key_precedence_and_deferred_private_file() {
 
 #[tokio::test]
 async fn private_key_file_rejects_permissions_links_and_oversize() {
+    let _serial = KEY_TESTS.lock().await;
     let home = SyntheticHome::new();
     let opts = captured(&home.0, &[]);
     let cancel = CancellationToken::new();

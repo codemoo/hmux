@@ -178,6 +178,13 @@ the first successful catalog publication for a connection. Check fresh Gateway
 state and a successful operation as well.
 Logs contain no terminal output, tokens or raw network errors. Failure categories
 describe the observed failure, not proof of its underlying network cause.
+`home stage=view-cleanup operation=none reason=quarantined` means cleanup of an
+owned disposable view could not be confirmed. That view's capacity stays reserved
+until the Home process exits; other views and requests keep working. For an open
+terminal on a live connection, Home sends `view-cleanup-failed` in its exit. Diagnose the tmux
+command failure and inspect disposable-view ownership before a controlled Home
+restart; restarting alone does not remove leftover views. Never remove original
+tmux/provider sessions to recover view capacity.
 One connector can hold each state directory's private process-lifetime lock; stop
 an older manual connector before starting a service, or use the verified adoption
 command. Do not delete an active lock file to bypass the singleton.

@@ -58,6 +58,7 @@ elif cmd=='new-session':
  if mode=='setup-wait':time.sleep(30)
 elif cmd=='set-hook':pass
 elif cmd=='if-shell':
+ if mode=='cleanup-fail':sys.exit(7)
  path=root/(args[3]+'.owner')
  if path.exists() and path.read_text() in args[4]:path.unlink()
  (root/'cleaned').touch()
@@ -316,6 +317,77 @@ impl Peer {
                 .unwrap(),
             Ok(())
         );
+    }
+}
+
+#[tokio::test]
+async fn cleanup_failure_is_reported_without_disconnecting_other_views() {
+    // Quarantine intentionally lasts until process exit. Keep this fault in a
+    // child so it cannot consume the capacity tested by other cases.
+    if std::env::var_os("HMUX_TEST_VIEW_CLEANUP_CHILD").is_none() {
+        let output = timeout(
+            Duration::from_secs(20),
+            tokio::process::Command::new(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    "cleanup_failure_is_reported_without_disconnecting_other_views",
+                    "--nocapture",
+                ])
+                .env("HMUX_TEST_VIEW_CLEANUP_CHILD", "1")
+                .kill_on_drop(true)
+                .output(),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        assert!(
+            output.status.success(),
+            "{}\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return;
+    }
+    let _serial = SERIAL.lock().await;
+    for protocol in [Negotiated::JsonV1, Negotiated::ProtobufV2] {
+        let f = Fixture::new();
+        let events = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let reported = events.clone();
+        let reporter = std::sync::Arc::new(move |event: hmux_home::observation::Event| {
+            reported.lock().unwrap().push(event);
+        });
+        let mut peer = Peer::start_reported(&f, protocol, Some(reporter)).await;
+        peer.open("failed", true).await;
+        peer.open("survivor", true).await;
+        f.mode("cleanup-fail");
+        peer.send(p::envelope::Body::Close(p::Reference {
+            id: "failed".into(),
+        }))
+        .await;
+        assert!(
+            matches!(peer.receive().await, p::envelope::Body::TerminalExit(r) if r.id == "failed" && r.error == "view-cleanup-failed")
+        );
+        let diagnostics: Vec<_> = events
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|e| e.stage == hmux_home::observation::Stage::ViewCleanup)
+            .map(ToString::to_string)
+            .collect();
+        assert_eq!(diagnostics.len(), 1);
+        assert!(diagnostics[0]
+            .starts_with("home stage=view-cleanup operation=none reason=quarantined duration_ms="));
+        assert_eq!(f.owners(), 2); // The uncertain view is never blindly removed.
+        peer.profiles().await;
+        peer.input("survivor", b"ALIVE\n").await;
+        peer.text("survivor", b"ECHO:ALIVE\n", true).await;
+        f.mode("");
+        peer.close("survivor").await;
+        peer.open("replacement", true).await;
+        peer.close("replacement").await;
+        peer.shutdown().await;
+        assert_eq!(f.owners(), 1);
+        f.reaped();
     }
 }
 

@@ -1,7 +1,7 @@
 //! Synthetic native-install command checks; no service manager or real HOME.
 use std::{
     fs,
-    os::unix::fs::PermissionsExt,
+    os::unix::fs::{DirBuilderExt, PermissionsExt},
     path::PathBuf,
     process::Command,
     sync::atomic::{AtomicU64, Ordering},
@@ -20,8 +20,11 @@ impl Fixture {
             // Wall-clock resolution does not guarantee unique concurrent fixtures.
             NEXT.fetch_add(1, Ordering::Relaxed)
         ));
-        fs::create_dir(&root).unwrap();
-        fs::create_dir(root.join("source")).unwrap();
+        fs::DirBuilder::new().mode(0o700).create(&root).unwrap();
+        fs::DirBuilder::new()
+            .mode(0o700)
+            .create(root.join("source"))
+            .unwrap();
         for name in ["hmux-web", "hmux-agent"] {
             let path = root.join("source").join(name);
             fs::write(
@@ -34,17 +37,56 @@ impl Fixture {
         Self(root)
     }
     fn command(&self) -> Command {
+        self.command_at("installed")
+    }
+    fn command_at(&self, bin_dir: &str) -> Command {
         let mut cmd = Command::new(env!("CARGO_BIN_EXE_hmux-web"));
         cmd.arg("install-home")
             .arg("--source-dir")
             .arg(self.0.join("source"))
             .arg("--bin-dir")
-            .arg(self.0.join("installed"))
+            .arg(self.0.join(bin_dir))
             .arg("--config-dir")
             .arg(self.0.join("config"))
             .env("HOME", &self.0)
             .env("HMUX_TEST_ARGS", self.0.join("args"));
         cmd
+    }
+}
+#[test]
+fn native_install_creates_private_parents_under_group_writable_umask() {
+    let fixture = Fixture::new();
+    let mut install = fixture.command_at("new-parent/bin");
+    install.arg("--binaries-only");
+    // Change umask only in the child, never in the concurrent test process.
+    let mut cmd = Command::new("/bin/sh");
+    cmd.args(["-c", "umask 002; exec \"$@\"", "hmux-install-test"])
+        .arg(install.get_program())
+        .args(install.get_args());
+    for (name, value) in install.get_envs() {
+        cmd.env(name, value.unwrap());
+    }
+    let out = cmd.output().unwrap();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    for name in ["new-parent", "new-parent/bin"] {
+        assert_eq!(
+            fs::metadata(fixture.0.join(name))
+                .unwrap()
+                .permissions()
+                .mode()
+                & 0o777,
+            0o700
+        );
+    }
+    for name in ["hmux-web", "hmux-agent"] {
+        assert_eq!(
+            fs::read(fixture.0.join("source").join(name)).unwrap(),
+            fs::read(fixture.0.join("new-parent/bin").join(name)).unwrap()
+        );
     }
 }
 impl Drop for Fixture {

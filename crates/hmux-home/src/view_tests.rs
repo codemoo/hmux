@@ -485,6 +485,7 @@ async fn failed_cleanup_quarantines_admission_without_a_retry_task() {
         permit,
         ready_tx,
         done_tx,
+        None,
     ));
     assert_eq!(ready_rx.await.unwrap(), Ok(()));
     stop.cancel();

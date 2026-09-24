@@ -22,7 +22,7 @@ use std::{
 };
 use subtle::ConstantTimeEq;
 use tokio::{
-    net::TcpListener,
+    net::{TcpListener, TcpStream},
     sync::{OwnedSemaphorePermit, Semaphore},
     task::JoinSet,
     time::timeout,
@@ -539,6 +539,24 @@ where
     F: Fn(Request<Incoming>, RequestContext) -> Fut + Send + Sync + 'static,
     Fut: Future<Output = Reply> + Send + 'static,
 {
+    serve_with_socket_setup(listener, policy, handler, shutdown, |socket| {
+        socket.set_nodelay(true)
+    })
+    .await
+}
+
+async fn serve_with_socket_setup<F, Fut, S>(
+    listener: TcpListener,
+    policy: Arc<Policy>,
+    handler: F,
+    shutdown: CancellationToken,
+    setup: S,
+) -> io::Result<()>
+where
+    F: Fn(Request<Incoming>, RequestContext) -> Fut + Send + Sync + 'static,
+    Fut: Future<Output = Reply> + Send + 'static,
+    S: Fn(&TcpStream) -> io::Result<()>,
+{
     loopback_address(&listener.local_addr()?.to_string())?;
     let handler = Arc::new(handler);
     let permits = Arc::new(Semaphore::new(MAX_CONNECTIONS));
@@ -554,7 +572,9 @@ where
             incoming = listener.accept() => {
                 let (socket, peer) = match incoming { Ok(pair) => pair, Err(error) => break Err(error) };
                 let Ok(permit) = permits.clone().try_acquire_owned() else { continue; };
-                socket.set_nodelay(true)?;
+                // A socket-local setup failure must not stop the listener and
+                // cancel unrelated HTTP and upgraded terminal connections.
+                if setup(&socket).is_err() { continue; }
                 let context = RequestContext { peer, shutdown: stopped.clone(), _connection: Arc::new(permit), upgrades: upgrades.clone() };
                 let policy = policy.clone();
                 let handler = handler.clone();
@@ -605,6 +625,52 @@ fn closing_error(status: StatusCode) -> Reply {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn socket_setup_failure_does_not_stop_the_gateway() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let policy = Arc::new(Policy::new("https://hmux.example", &"A".repeat(43)).unwrap());
+        let stop = CancellationToken::new();
+        let calls = Arc::new(AtomicUsize::new(0));
+        let attempts = calls.clone();
+        let server = tokio::spawn(serve_with_socket_setup(
+            listener,
+            policy,
+            |_, _| async { json(&true) },
+            stop.clone(),
+            move |socket| {
+                if attempts.fetch_add(1, Ordering::SeqCst) == 0 {
+                    Err(io::Error::other("synthetic socket option failure"))
+                } else {
+                    socket.set_nodelay(true)
+                }
+            },
+        ));
+        timeout(Duration::from_secs(5), async {
+            let mut failed = TcpStream::connect(address).await.unwrap();
+            assert_eq!(failed.read(&mut [0; 1]).await.unwrap(), 0);
+            let mut healthy = TcpStream::connect(address).await.unwrap();
+            healthy
+                .write_all(b"GET / HTTP/1.1\r\nHost: hmux.example\r\nConnection: close\r\n\r\n")
+                .await
+                .unwrap();
+            let mut reply = String::new();
+            healthy.read_to_string(&mut reply).await.unwrap();
+            assert!(reply.starts_with("HTTP/1.1 200 OK\r\n"));
+            assert!(reply.ends_with("true"));
+        })
+        .await
+        .unwrap();
+        stop.cancel();
+        assert!(timeout(Duration::from_secs(5), server)
+            .await
+            .unwrap()
+            .unwrap()
+            .is_ok());
+        assert_eq!(calls.load(Ordering::SeqCst), 2);
+    }
 
     #[tokio::test]
     async fn json_budget_survives_http_body_handoff_and_small_byte_slices() {

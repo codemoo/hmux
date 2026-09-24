@@ -1,6 +1,9 @@
 //! Owned disposable tmux grouped views. This module never attaches a client or
 //! signals an original session. Every cleanup checks the fresh ownership nonce.
-use crate::catalog::{TmuxCatalogReader, TmuxSocket};
+use crate::{
+    catalog::{TmuxCatalogReader, TmuxSocket},
+    observation::{self, Event, Reason, Stage},
+};
 use hmux_core::command::{CommandRunner, CommandSpec, RunErrorKind};
 use hmux_model::{validate_session_id, SessionIdentity};
 use std::{
@@ -259,6 +262,16 @@ pub async fn open(
     session: SessionIdentity,
     shutdown: CancellationToken,
 ) -> Result<OwnedView, Error> {
+    open_reported(target, runner, session, shutdown, None).await
+}
+
+pub(crate) async fn open_reported(
+    target: Target,
+    runner: CommandRunner,
+    session: SessionIdentity,
+    shutdown: CancellationToken,
+    reporter: Option<observation::Reporter>,
+) -> Result<OwnedView, Error> {
     if validate_session_id(&session.id).is_err() || session.created_at < 1 {
         return Err(Error::Invalid);
     }
@@ -284,6 +297,7 @@ pub async fn open(
         permit,
         ready_sender,
         done_sender,
+        reporter,
     ));
     let result = ready.await.map_err(|_| Error::Worker)?;
     if let Err(error) = result {
@@ -345,6 +359,7 @@ async fn owner(
     permit: OwnedSemaphorePermit,
     ready: oneshot::Sender<Result<(), Error>>,
     done: oneshot::Sender<Result<(), Error>>,
+    reporter: Option<observation::Reporter>,
 ) {
     let deadline = Instant::now() + SETUP_TIMEOUT;
     let mut attempted = false;
@@ -368,6 +383,7 @@ async fn owner(
         }
         stop.cancelled().await;
     }
+    let cleanup_started = std::time::Instant::now();
     let cleanup = if attempted {
         // One dedicated cleanup slot for each admitted view; setup/request
         // pressure cannot consume this independent, process-wide pool.
@@ -383,6 +399,16 @@ async fn owner(
         // Quarantine this slot for this process's lifetime, without a resident
         // retry task. Report the failure to the caller for operational recovery.
         permit.forget();
+        // Report here, where cleanup is owned, including cancelled startup or a
+        // dropped terminal job. Never record tmux names, paths or raw stderr.
+        if let Some(report) = reporter {
+            report(Event::new(
+                Stage::ViewCleanup,
+                None,
+                Reason::Quarantined,
+                cleanup_started,
+            ));
+        }
     } else {
         drop(permit);
     }

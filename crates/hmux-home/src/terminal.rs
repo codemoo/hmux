@@ -1,6 +1,7 @@
 //! One bounded terminal job. The shared peer never waits on PTY input or output
 //! credit. Its owner joins the child and guarded view cleanup before returning.
 use crate::{
+    observation,
     peer::{self, Error},
     pty, view,
 };
@@ -243,6 +244,7 @@ pub(crate) struct Job {
     pub(crate) protocol: Negotiated,
     pub(crate) link_stop: CancellationToken,
     pub(crate) permit: OwnedSemaphorePermit,
+    pub(crate) reporter: Option<observation::Reporter>,
 }
 impl Job {
     pub(crate) async fn run(
@@ -257,6 +259,7 @@ impl Job {
             protocol,
             link_stop,
             permit,
+            reporter,
         } = self;
         // Catalog collection must never compete with slow creates or refreshes.
         // One process-wide pool serves all admitted terminal jobs; view cleanup
@@ -270,7 +273,7 @@ impl Job {
         let id = request.id;
         let stop = handle.stop.clone();
         let session = request.session.expect("validated wire identity");
-        let opened = view::open(
+        let opened = view::open_reported(
             target,
             runner.clone(),
             SessionIdentity {
@@ -278,6 +281,7 @@ impl Job {
                 created_at: session.created_at,
             },
             stop.clone(),
+            reporter,
         )
         .await;
         let opened = match opened {
@@ -377,7 +381,7 @@ impl Job {
             end
         };
         stop.cancel();
-        let _ = view.close().await;
+        let cleanup_failed = view.close().await.is_err();
         if end == End::Transport {
             return Err(Error::Transport);
         }
@@ -390,7 +394,9 @@ impl Job {
             p::envelope::Body::TerminalExit(p::Response {
                 id,
                 result: None,
-                error: if end == End::Stalled {
+                error: if cleanup_failed {
+                    "view-cleanup-failed".into()
+                } else if end == End::Stalled {
                     "output-stalled".into()
                 } else {
                     String::new()
