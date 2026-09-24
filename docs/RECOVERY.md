@@ -1,9 +1,10 @@
 # Home reboot recovery
 
-HMux checkpoints Home tmux while its foreground catalog connection is open. On
-the next connection after Home reboots, it recreates missing sessions before
-publishing the first catalog. No LaunchAgent, login item or daemon is installed;
-recovery starts when HMux connects, not before Home login/SSH becomes available.
+HMux checkpoints Home tmux while its connector is running. On the next connection
+after Home reboots, it recreates missing sessions before publishing the first
+catalog. Recovery itself installs no service. A connector started manually or by
+the optional [Home user service](OPERATIONS.md#automatic-home-startup-macos-and-linux) recovers before
+publishing its first catalog.
 
 Restoring sessions starts the tmux server automatically. If the saved checkpoint
 is empty after a reboot and no live sessions exist, HMux creates a detached

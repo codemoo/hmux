@@ -11,7 +11,7 @@ outbound WSS → gateway. All terminal/catalog/provider operations originate on 
 One shared catalog/usage collector serves every web client; computer resources
 always describe Home, never the phone or Linux gateway.
 
-The gateway terminates authentication/TLS and is trusted with terminal authority.
+Nginx terminates public TLS; the gateway owns authentication and terminal authority.
 It is not an end-to-end encrypted SSH relay. An authenticated terminal permits an
 interactive shell. Additional account profiles isolate tab layouts, not files,
 provider credentials, aliases, hidden metadata or shell permissions.
@@ -141,6 +141,69 @@ The status tooltip and notice explain the last failure; browser console entries
 record only category, close code, attempt and retry delay, never terminal content,
 account identifiers or raw server reasons. The original tmux/provider processes
 remain running.
+
+### Login session management
+
+Settings lists only the signed-in user's login sessions, showing browser/OS,
+login IP, approximate city/region/country, login time, recent activity, expiry,
+and the current-browser badge. Each login can be revoked, including the current
+one. Revocation uses same-origin + CSRF and verifies ownership server-side;
+opaque public IDs grant no authentication. Existing tmux sessions are not ended.
+Recent activity follows existing active-input/action semantics (passive polling
+is not activity), with disk updates throttled to five minutes.
+
+With owner authorization, public login IPs are looked up server-side over HTTPS
+using `ipwho.is`; no username, cookie, terminal content or other credential is
+sent. Results are approximate, particularly with VPNs/mobile networks. Lookups
+are bounded to two seconds/two concurrent requests, cached for 24 hours on
+success and one hour for provider failures, and capped at 256 IPs in memory.
+Cancelled requests are not failure-cached. Private/reserved IPs are not sent.
+Location lookup does not gate login or revocation; unavailable results show
+“위치 확인 불가”. Provider reference: https://ipwhois.io/documentation.
+
+The initial upgrade from the old memory-only version requires one fresh login;
+subsequent gateway restarts preserve new sessions. Back up the private session
+store with configuration, but do not restore an old session snapshot after
+revocations: it can restore previously valid logins. For emergency sign-out,
+stop the service, timestamp-backup/remove the session file and restart.
+
+## New-session workspaces
+
+Home installation selects each profile's workspace base (new-install default:
+`~/.hmux`; existing custom bases are retained). Creating a session allocates a new
+child folder from its name and a unique folder/profile-prefixed tmux name. Repeated
+names never attach to existing work or reuse existing directories. Codex/Claude
+exit returns to an interactive shell, including for resumed sessions. See
+[Operations](OPERATIONS.md#build-and-install-home) for naming and installation flags.
+
+## Fast workspace restoration
+
+After authentication, the browser can show a validated, account/profile-scoped
+local preview of the session list and open tabs before state synchronization.
+The preview stores only names, aliases, provider labels and exact session identities;
+no paths, provider state, credentials, transcripts or terminal output are cached.
+It is limited to 256 sessions, 32 tabs and seven days. Logout removes the current
+preview. A live online catalog is required before connecting a cached tab; shared
+workspace synchronization remains authoritative and reconciles remote changes.
+Existing profile-specific tab preferences remain a migration fallback; the old
+unscoped key is not imported into an account-scoped preview without ownership.
+
+Home shared-workspace requests use the basic catalog plus existing metadata,
+visibility and recovery overlays, avoiding process/provider transcript scans.
+Regular shared catalog collection still supplies current provider state.
+
+### Bounded background work and tab initialization
+
+Restored tabs keep lightweight identity/UI state until first selected; only selected
+tabs allocate xterm and its input bridges. Already visited tabs retain their terminal
+state, within the existing 32-tab limit. Only the visible view connects. Usage dialogs
+skip unchanged polls and reconcile changed text/attributes while preserving mounted
+nodes and scroll; time-dependent labels refresh on the existing 30-second cadence.
+
+Conversation loading uses the live catalog runtime to show Codex or Claude;
+unknown/unverified runtime uses a neutral label. The server response still owns
+final provider attribution. A compact message skeleton respects reduced-motion
+preferences and does not imply progress percentages.
 
 ### Connection diagnostics
 
@@ -287,6 +350,9 @@ review and verification; log collection does not execute code or apply changes.
   The cswap adapter uses the installed `cswap list --json` command with bounded
   execution/output and no shell. cswap owns its existing shared quota/cache and
   credential handling; HMux never calls switch/login/service-install commands.
+- Remaining-capacity gauges use red at 15% or less, amber at 35% or less,
+  otherwise green. Unknown values show a patterned waiting track; freshness and
+  reset rules still apply.
 - Footer shows only `Codex` / `Claude` provider labels, with Codex first in the
   footer, usage dialog and settings. Source names remain inside the dialog.
   The dialog separates combined capacity from account rows, using larger summary
@@ -307,6 +373,66 @@ review and verification; log collection does not execute code or apply changes.
   or reduced motion shows a still frame. No raster filters or CSS masks.
 - Dialogs have 4px corners, a fixed title row, scrolling body and aligned actions.
   Settings has no background dimming; dialogs have no drop shadow.
+
+### Terminal selection and links
+
+When tmux mouse tracking is enabled, ordinary primary dragging selects local
+terminal text for Cmd+C on macOS or Ctrl+C elsewhere. macOS Ctrl+C remains
+a terminal interrupt. Primary clicks and wheel remain remote mouse
+input; modified gestures retain xterm behavior. Local dragging takes priority
+over remote pane dragging. Mobile selection and IME behavior remain unchanged.
+HTTP(S) text URLs and OSC8 links show a small URL popover on click, with an
+explicit new-window action (`noopener noreferrer`). Unsafe schemes and embedded
+credentials are not opened. Wrapped links retain the full address. Dragging a
+URL selects text without opening the popover; Escape/outside click/scroll,
+settings opening and tab switch dismiss it.
+
+On iPhone and Android, a short single-finger tap on a terminal HTTP(S) URL or
+OSC8 link opens the same popover. Long presses (350 ms or more), movement over
+5 px, multiple fingers and existing native selections do not activate links.
+Editable input/Paste targets retain native gesture ownership. Tapping a link does
+not focus the keyboard; the explicit “새 창에서 열기” action opens a new tab/window.
+Touch scrolling and native selection/copy keep their existing behavior.
+The shared popover is constrained to the visible viewport and uses 44 px action
+targets. Mobile hit testing reuses the pinned xterm 6 synchronous link providers;
+validate repeated taps, wrapped URLs and OSC8 if upgrading xterm.
+
+
+### Web file attachments
+
+Drop images/files onto the work area on desktop, or use the paperclip in the
+terminal toolbar. On mobile the native file picker offers the platform's file/photo
+sources; the keyboard-visible auxiliary row also has an attachment button. Only
+an active connected terminal accepts an attachment. Directories and empty files
+are rejected. Limits are 1–16 files, 32 MiB per file and 128 MiB total.
+
+An attachment streams through an authenticated same-origin WebSocket (`/api/upload`)
+to the existing Home connector, with CSRF in the first frame. Each binary chunk
+is at most 256 KiB and is acknowledged before the next. Global concurrency is two,
+with one per login; the overall deadline is five minutes and idle timeout 30 seconds.
+The connector advertises `web-upload-v1`; older connectors fail closed. Existing
+Nginx HTTP request-body limits do not need changing for this WebSocket path.
+Original names and local paths stay in the browser: only size and sanitized
+extension accompany the bytes. Home stores files in the existing private staging
+spool with generated names and verifies exact tmux identity before and after the
+transfer. Gateway validates response identity, generated paths, sizes and SHA-256.
+
+Successful uploads insert POSIX-quoted paths through xterm paste without Enter.
+Automatic insertion requires the same original tab instance, identity, terminal
+connection generation and selection epoch, with the app visible and focused.
+Tab/dialog/reader/focus changes leave an explicit “경로 넣기” action for the original
+tab. Closing that tab, cancelling or starting logout cancels the transfer. Pending
+state belongs to the current browser/account and is cleared at disposal.
+
+Web attachments expire **three hours after upload completion**. The foreground Home
+connector sweeps expired files on startup and every minute, including during its
+network reconnect loop. If Home is asleep or the connector is stopped, cleanup
+runs when it resumes/restarts; no separate daemon is installed. Paths left in a
+terminal/conversation no longer refer to an available attachment after cleanup.
+Partial uploads are cleaned up
+on cancellation; spool ownership, symlink checks, 512 MiB quota and 100-stage cap
+continue to apply. Only the temporary uploaded copy is removed; the original file
+on the attaching device is untouched.
 
 ## Mobile/PWA invariants
 
@@ -332,7 +458,7 @@ See [Usage source fallback](PROVIDERS.md#usage-source-fallback).
 
 Home polls tmux every five seconds, but operations that change tmux state
 (`create`, `alias`, `hidden`) and the end of a terminal view request an
-immediate catalog poll (`catalogstream.ProduceWithRefresh`). The browser
+immediate catalog poll through the Home peer's change notification. The browser
 refreshes shortly after such operations and after a terminal socket closes, and
 a newly created session is opened as soon as it appears in the catalog (checked
 for up to 12 seconds) instead of relying on a single refresh.
@@ -396,7 +522,7 @@ reconnection uses exact tmux identity, not an old provider ID or display name.
 
 ## Verification and acceptance
 
-Run the build/check commands above. Optional live checks use isolated resources:
+Follow [contributor checks](../CONTRIBUTING.md) and [native verification](../tests/RUST.md).
 
 Run `make integration` for the native Gateway/Home runtime and isolated tmux
 lifecycle checks. It uses only disposable `hmux-e2e-*` resources and never targets
@@ -404,7 +530,6 @@ an existing tmux server.
 
 The socket test uses fake Home/loopback. The tmux test uses a dedicated socket and
 `hmux-e2e-*` names; never attach or alter pre-existing sessions for testing.
-`TestBrowserPreview` serves fake data only in tests and is not in production.
 
 Automated coverage does not prove physical-device UI acceptance. Verify Android
 tab → keyboard transitions, background/resume, iOS direct Korean composition, safe areas,
@@ -414,133 +539,3 @@ A frontend deployment needs no gateway restart when the process serves assets
 through the current symlink. Backend changes require restart; Home-only disk
 collection also requires the updated Home connector. Never claim disk is live
 merely because the frontend or Linux binary was updated.
-
-Account usage dialog presents provider summaries and per-account weekly/5-hour
-remaining-capacity gauges in a responsive, wide desktop layout. Low remaining capacity (15% or less) is red, 35% or
-less amber, otherwise green; unavailable values show a patterned waiting track.
-Percentages retain existing quota freshness/reset validation. Inactive tabs have
-a subtle border; the active tab retains its blue emphasis.
-
-
-### Login session management
-
-Settings lists only the signed-in user's login sessions, showing browser/OS,
-login IP, approximate city/region/country, login time, recent activity, expiry,
-and the current-browser badge. Each login can be revoked, including the current
-one. Revocation uses same-origin + CSRF and verifies ownership server-side;
-opaque public IDs grant no authentication. Existing tmux sessions are not ended.
-Recent activity follows existing active-input/action semantics (passive polling
-is not activity), with disk updates throttled to five minutes.
-
-With owner authorization, public login IPs are looked up server-side over HTTPS
-using `ipwho.is`; no username, cookie, terminal content or other credential is
-sent. Results are approximate, particularly with VPNs/mobile networks. Lookups
-are bounded to two seconds/two concurrent requests, cached for 24 hours on
-success and one hour for provider failures, and capped at 256 IPs in memory.
-Cancelled requests are not failure-cached. Private/reserved IPs are not sent.
-Location lookup does not gate login or revocation; unavailable results show
-“위치 확인 불가”. Provider reference: https://ipwhois.io/documentation.
-
-The initial upgrade from the old memory-only version requires one fresh login;
-subsequent gateway restarts preserve new sessions. Back up the private session
-store with configuration, but do not restore an old session snapshot after
-revocations: it can restore previously valid logins. For emergency sign-out,
-stop the service, timestamp-backup/remove the session file and restart.
-
-### Terminal selection and links
-
-When tmux mouse tracking is enabled, ordinary primary dragging selects local
-terminal text for Cmd+C on macOS or Ctrl+C elsewhere. macOS Ctrl+C remains
-a terminal interrupt. Primary clicks and wheel remain remote mouse
-input; modified gestures retain xterm behavior. Local dragging takes priority
-over remote pane dragging. Mobile selection and IME behavior remain unchanged.
-HTTP(S) text URLs and OSC8 links show a small URL popover on click, with an
-explicit new-window action (`noopener noreferrer`). Unsafe schemes and embedded
-credentials are not opened. Wrapped links retain the full address. Dragging a
-URL selects text without opening the popover; Escape/outside click/scroll,
-settings opening and tab switch dismiss it.
-
-On iPhone and Android, a short single-finger tap on a terminal HTTP(S) URL or
-OSC8 link opens the same popover. Long presses (350 ms or more), movement over
-5 px, multiple fingers and existing native selections do not activate links.
-Editable input/Paste targets retain native gesture ownership. Tapping a link does
-not focus the keyboard; the explicit “새 창에서 열기” action opens a new tab/window.
-Touch scrolling and native selection/copy keep their existing behavior.
-The shared popover is constrained to the visible viewport and uses 44 px action
-targets. Mobile hit testing reuses the pinned xterm 6 synchronous link providers;
-validate repeated taps, wrapped URLs and OSC8 if upgrading xterm.
-
-
-### Web file attachments
-
-Drop images/files onto the work area on desktop, or use the paperclip in the
-terminal toolbar. On mobile the native file picker offers the platform's file/photo
-sources; the keyboard-visible auxiliary row also has an attachment button. Only
-an active connected terminal accepts an attachment. Directories and empty files
-are rejected. Limits are 1–16 files, 32 MiB per file and 128 MiB total.
-
-An attachment streams through an authenticated same-origin WebSocket (`/api/upload`)
-to the existing Home connector, with CSRF in the first frame. Each binary chunk
-is at most 256 KiB and is acknowledged before the next. Global concurrency is two,
-with one per login; the overall deadline is five minutes and idle timeout 30 seconds.
-The connector advertises `web-upload-v1`; older connectors fail closed. Existing
-Nginx HTTP request-body limits do not need changing for this WebSocket path.
-Original names and local paths stay in the browser: only size and sanitized
-extension accompany the bytes. Home stores files in the existing private staging
-spool with generated names and verifies exact tmux identity before and after the
-transfer. Gateway validates response identity, generated paths, sizes and SHA-256.
-
-Successful uploads insert POSIX-quoted paths through xterm paste without Enter.
-Automatic insertion requires the same original tab instance, identity, terminal
-connection generation and selection epoch, with the app visible and focused.
-Tab/dialog/reader/focus changes leave an explicit “경로 넣기” action for the original
-tab. Closing that tab, cancelling or starting logout cancels the transfer. Pending
-state belongs to the current browser/account and is cleared at disposal.
-
-Web attachments expire **three hours after upload completion**. The foreground Home
-connector sweeps expired files on startup and every minute, including during its
-network reconnect loop. If Home is asleep or the connector is stopped, cleanup
-runs when it resumes/restarts; no separate daemon is installed. Paths left in a
-terminal/conversation no longer refer to an available attachment after cleanup.
-Partial uploads are cleaned up
-on cancellation; spool ownership, symlink checks, 512 MiB quota and 100-stage cap
-continue to apply. Only the temporary uploaded copy is removed; the original file
-on the attaching device is untouched.
-
-## New-session workspaces
-
-Home installation selects each profile's workspace base (new-install default:
-`~/.hmux`; existing custom bases are retained). Creating a session allocates a new
-child folder from its name and a unique folder/profile-prefixed tmux name. Repeated
-names never attach to existing work or reuse existing directories. Codex/Claude
-exit returns to an interactive shell, including for resumed sessions. See
-[Operations](OPERATIONS.md#build-and-install-home) for naming and installation flags.
-
-## Fast workspace restoration
-
-After authentication, the browser can show a validated, account/profile-scoped
-local preview of the session list and open tabs before state synchronization.
-The preview stores only names, aliases, provider labels and exact session identities;
-no paths, provider state, credentials, transcripts or terminal output are cached.
-It is limited to 256 sessions, 32 tabs and seven days. Logout removes the current
-preview. A live online catalog is required before connecting a cached tab; shared
-workspace synchronization remains authoritative and reconciles remote changes.
-Existing profile-specific tab preferences remain a migration fallback; the old
-unscoped key is not imported into an account-scoped preview without ownership.
-
-Home shared-workspace requests use the basic catalog plus existing metadata,
-visibility and recovery overlays, avoiding process/provider transcript scans.
-Regular shared catalog collection still supplies current provider state.
-
-### Bounded background work and tab initialization
-
-Restored tabs keep lightweight identity/UI state until first selected; only selected
-tabs allocate xterm and its input bridges. Already visited tabs retain their terminal
-state, within the existing 32-tab limit. Only the visible view connects. Usage dialogs
-skip unchanged polls and reconcile changed text/attributes while preserving mounted
-nodes and scroll; time-dependent labels refresh on the existing 30-second cadence.
-
-Conversation loading uses the live catalog runtime to show Codex or Claude;
-unknown/unverified runtime uses a neutral label. The server response still owns
-final provider attribution. A compact message skeleton respects reduced-motion
-preferences and does not imply progress percentages.

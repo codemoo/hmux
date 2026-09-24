@@ -4,6 +4,11 @@ Start with [current documentation](../README.md) and [validation status](../VALI
 These records preserve what was known at the stated date; pending deployment
 statements and old UI experiments are not current instructions.
 
+- [Rust contract plan through 2026-09-25](RUST_CONTRACTS_HISTORY_2026-09-25.md):
+  proposal review, former Go source map, migration phases and gates before consolidation.
+  [Runtime contracts](../RUST_CONTRACTS.md) remain the durable current reference.
+- [Validation through 2026-09-25](VALIDATION_HISTORY_2026-09-25.md): full rollout and
+  publication record before separating current evidence from historical checkpoints.
 - [Rust migration through 2026-09-24](RUST_MIGRATION_HISTORY_2026-09-24.md): preserved
   candidate checkpoints, reviews, tests, claim limits and the pre-release control
   before documentation consolidation; current control is

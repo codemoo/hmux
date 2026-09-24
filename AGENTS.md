@@ -25,7 +25,7 @@ web/PWA. macOS remains a supported Home host; browser-native input is part of th
   agent/tmux usage; do not present an unmeasured target as an achieved result.
 - Rust is the native runtime for Gateway, Home, usage collection and helpers.
   Preserve CLI, configuration, protocol, security and session lifecycle contracts.
-  Historical rollout evidence remains in `docs/VALIDATION.md`; current limitations
+  `docs/VALIDATION.md` summarizes recorded checks/deployments; current limitations
   and follow-up acceptance work are in `docs/RUST_MIGRATION.md`. Web/PWA remains
   TypeScript; measure resource use and regressions throughout changes.
 

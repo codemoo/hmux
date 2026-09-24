@@ -8,7 +8,8 @@ runtime or build dependencies.
 
 This cutover does **not** turn earlier trials into passed release gates. Keep the
 actual deployment records and measurements in [validation](VALIDATION.md), and keep
-historical contract/transition evidence in [RUST contracts](RUST_CONTRACTS.md).
+durable rules in [runtime contracts](RUST_CONTRACTS.md) and transition evidence in
+the [archive](archive/README.md).
 Neither document authorizes a deployment.
 
 ## Current product path
@@ -41,7 +42,7 @@ runtime or toolchain:
 | Long-running behavior | Existing macOS trial was interrupted; the recorded Linux progress was incomplete | New frozen-artifact 24-hour runs and the planned 72-hour RC run with progress and final assertions |
 | Resource claims | Measurements are scoped synthetic/native observations | Matched successful Gateway/Home workloads with separate process metrics; no inferred whole-product budget |
 | Service lifecycle | Fixed-name service CLI needs isolated real-account acceptance | launchd GUI-session and systemd-user-manager checks that preserve original tmux/provider processes |
-| Release review | Source cutover does not publish or deploy an artifact | Independent review of the exact manifest, hashes, notices, deployment and current-state rollback procedure |
+| Release review | Review applies only to the recorded frozen artifact | Repeat manifest, hash, notice, deployment and current-state rollback review for each release |
 
 Use [Rust verification](../tests/RUST.md) for runnable checks. Reuse recorded results
 only when the source and exact artifact are unchanged. Record failures, skips and

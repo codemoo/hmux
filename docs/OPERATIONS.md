@@ -6,7 +6,8 @@ Detailed gateway/authentication settings are in [WEB.md](WEB.md).
 
 ## Build and install Home
 
-Install the pinned Rust toolchain, Node.js 22+, tmux and the desired provider CLIs.
+Install the pinned Rust toolchain, Node.js 22+, Python 3, tmux and the desired provider CLIs.
+Contributor checks additionally require ShellCheck and jq; see [CONTRIBUTING.md](../CONTRIBUTING.md).
 Authenticate the providers as the Home user, then build:
 
 ```sh
@@ -163,20 +164,20 @@ and cannot make a sleeping Mac reachable.
 ```
 
 `stop` disables automatic startup until `start` enables it again. `uninstall`
-removes the backed-up service definition while retaining binaries, private state,
-credentials and workspaces. macOS uses `AbandonProcessGroup`; Linux uses
+removes the installed service definition while retaining timestamped backups,
+binaries, private state, credentials and workspaces. macOS uses `AbandonProcessGroup`; Linux uses
 `KillMode=process`, so service management does not terminate original tmux/provider
 processes. OS logout/shutdown policies can still end user processes.
 
 `status` reports manager/process state, not proof of a live gateway connection.
-Fixed lifecycle categories are logged to `<state_dir>/home-service.log`, with one
-rotated `.1` file; each is limited to 1 MiB and mode 0600. Logs contain no terminal
-output, tokens or raw network errors. Disconnect records include a fixed `stage`
-(dial, hello-write, heartbeat, read, catalog-collector, catalog-write or
-catalog-keepalive-write), a classified `reason`, and HTTP/WebSocket status codes
-when available. These describe the observed failure, not proof of its underlying
-network cause. Repeated identical failures are suppressed until the state changes.
-Check the web UI to confirm Home connectivity.
+The Rust connector writes fixed lifecycle states and Home operation diagnostics to
+`<state_dir>/home-service.log`, with one rotated `.1` file; each is limited to
+1 MiB and mode 0600. `Connected` establishes the WSS connection, not catalog or
+browser readiness. `home stage=catalog operation=none reason=published` records
+the first successful catalog publication for a connection. Check fresh Gateway
+state and a successful operation as well.
+Logs contain no terminal output, tokens or raw network errors. Failure categories
+describe the observed failure, not proof of its underlying network cause.
 One connector can hold each state directory's private process-lifetime lock; stop
 an older manual connector before starting a service, or use the verified adoption
 command. Do not delete an active lock file to bypass the singleton.
@@ -198,11 +199,12 @@ never include tokens, transcripts or production topology in public reports.
 
 The gateway writes a private `credentials-file.transport.log` beside its credentials
 file. The log retains at most 1 MiB plus one 1 MiB previous file, with mode 0600.
-It records process-local connection numbers, elapsed time, Home acceptance/hello,
-first catalog readiness, heartbeat/read/write failures, and request/open duration
-with fixed error categories. Home service logs also record first catalog publication
-and transport write failures. A socket reconnect alone is not proof of readiness;
-check `home-catalog-ready` and subsequent successful requests.
+It records process-local connection numbers, Home connect/disconnect, request/open
+duration and fixed failure categories. HTTP action failures add `stage=action-failed`
+and `http_status`, separating Home offline, admission busy, remote operation,
+transport/request, invalid response, workspace and deadline failures. A remote
+operation error is not classified as malformed protocol. Pair Gateway records with
+Home diagnostics and browser request status to identify which boundary failed.
 
 Logs omit tokens, addresses, account/session identifiers, arbitrary operation strings, terminal
 content and arbitrary error text. Correlate UTC timestamps with browser diagnostics.
@@ -224,26 +226,34 @@ not disable those controls or introduce a privileged updater to bypass them.
 ### Catalog collection cadence
 
 Initial recovery synchronization remains mandatory before catalog publication.
-Resume identity checks do not scan transcript model/state information. Each Home
-stream owns one host-metrics sampler (five seconds after each sample) and one
-recovery checkpoint worker (30 seconds after success, five seconds after failure;
-each save has a five-second context). Both are cancelled and joined on stream exit.
+Resume identity checks do not scan transcript model/state information. Host metrics
+and recovery checkpoints run as shared bounded workers, not per-browser collectors.
 Catalog reads use the latest completed metrics sample with its original timestamp
-and atomically committed recovery mapping, without waiting on periodic collection.
+and atomically committed recovery mapping.
+
+Transient tmux catalog or metadata failures retry after five seconds without
+terminating the connected peer or its live views. Retries retain the last published
+catalog timestamp; repeated failure can expire the Gateway's 40-second freshness
+lease. Failed reads never publish an empty success. Catalog, completion and recovery
+inspection share at most one of two scan permits, retaining interactive capacity;
+completion is enqueued after catalog annotation releases its permit.
 
 ### Latency diagnostics
 
 Gateway request completion records include an allowlisted `operation`, total
 `duration_ms` and `send_ms` (shared-writer queue plus frame transmission). The
 remaining time includes transport and Home processing; it is not a pure network
-measurement. Home records operation-tagged `home-processing` and
-`home-response-send` durations. Initial `recovery-sync`, recurring `catalog-fetch`
-and `catalog-publish` spans separate startup collection from publication. Nested
-process snapshots, provider open-file lookup, resume binding, checkpoints and
-conversation binding/read spans are emitted only at 250 ms or slower. Nested
-spans overlap and must not be summed. Existing bounded logs retain the records;
-no extra collector or background process is introduced. Operation names are
-allowlisted; identifiers, paths, payloads and raw error messages are excluded.
+measurement. Home records `stage=action` or `stage=catalog`, fixed `reason` and
+`duration_ms`. Categories distinguish admission pressure, query timeout/failure,
+metadata/parse/worker errors, cancellation and recovery. Successful actions of at
+least 500 ms are recorded as slow. Repeated identical catalog failures and
+consecutive slow catalog samples are suppressed until their state changes.
+
+These logs use one bounded 64-record nonblocking queue per process; saturated logs
+report dropped records. There is no per-tab logger or added resident process.
+Operation names are allowlisted; identifiers, paths, payloads and raw error messages
+are excluded. Historical Go log-stage names in archived reports are not current
+Rust instrumentation.
 
 ## Build and local provisioning
 

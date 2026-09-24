@@ -1,14 +1,19 @@
-# Rust runtime contracts and release gates
+> Historical snapshot of `docs/RUST_CONTRACTS.md` at source commit
+> `9211fb95edc78bbacb0d265b37b31708515a0b6a`, preserved on 2026-09-25.
+> Original text follows with relative links rebased. Its current/default/pending
+> statements describe different checkpoints and are not current instructions.
+> Use [current documentation](../README.md) for operating guidance.
 
-Durable requirements for the native runtime. [Rust runtime status](RUST_MIGRATION.md)
-owns current limitations and acceptance work; [Validation](VALIDATION.md) records
-completed checks and deployment observations. The superseded proposal review, Go
-replacement map and phase plan remain in [contract history](archive/RUST_CONTRACTS_HISTORY_2026-09-25.md).
+# Rust migration contracts and release gates
+
+Scoped reference: durable runtime invariants plus historical migration evidence.
+Read [Rust runtime status](../RUST_MIGRATION.md) first; it owns current limitations and
+next acceptance work. Historical source baseline: `245d4e6839939839fd56b7632600d7398726e359`.
 
 ## Decision and scope
 
-HMux's purpose remains **"low memory, web terminal for ai agents"**. Rust owns
-all HMux native runtime code: gateway, Home connector,
+HMux's purpose remains **"low memory, web terminal for ai agents"**. The chosen
+end state is Rust for all HMux native runtime code: gateway, Home connector,
 embedded usage collection, administration and workflow helpers. This is a product
 direction, not an experiment conditional on Rust beating Go. Measurements decide
 optimizations and release readiness; a regression requires investigation rather
@@ -19,12 +24,12 @@ browser with WASM, a desktop app or a terminal selector. Provider CLIs, tmux,
 provider credentials and workspaces stay on the host. Nginx remains the public
 HTTPS boundary. Docker and a separate resident supervisor are not required.
 
-This is the durable Rust runtime contract. [RUST_MIGRATION.md](RUST_MIGRATION.md)
+This is the durable Rust runtime contract. [RUST_MIGRATION.md](../RUST_MIGRATION.md)
 alone controls current limits and next actions. Architecture and Operations describe
 the Rust product path. Validation records deployments; this reference is not evidence
 that a deployment or acceptance gate has passed.
 
-### Native implementation boundary
+### What “complete” means
 
 - `hmux-web init|serve|connect|service` and every supported `hmux-agent` command
   are implemented in Rust, retaining executable names and external contracts.
@@ -43,6 +48,53 @@ that a deployment or acceptance gate has passed.
   runtime dependencies.
 - Third-party attribution/license obligations remain after a port. External
   provider CLIs and tmux are dependencies, not HMux code to rewrite.
+
+## Changes from the supplied proposal
+
+The supplied “HMux 서버 Rust 전환·저메모리 최적화 — Codex 실행 지시서” v1.0
+(2026-09-22) is an input, not the current repository contract. Its review used
+`a4fcecf`; refresh all source assumptions against the baseline above.
+
+Keep its protocol/state compatibility, bounded resource accounting, fair
+backpressure, cancellation safety, synthetic measurements and current-state
+rollback requirements. Expand its optional Home migration into required work.
+The later user decision adds Protobuf over the Home WebSocket as the target wire
+format; JSON v1 remains a versioned compatibility contract. Do not retain references
+to a native macOS UI, desktop bridge, SSH client transport or Xcode acceptance. Use
+the Rust crates and current tests.
+The root product/security specification remains an active reference.
+
+Gateway PSS ≤16 MiB (stretch ≤10 MiB), 30% below tuned Go and idle CPU ≤0.1%
+are **proposed gateway targets**, not achieved results or Home budgets. Ratify
+measurement conditions before adopting thresholds. Gateway changes do not alone
+fix Home catalog/process/provider scanning delays; measure those independently.
+External references and crate APIs from the proposal must be checked against
+selected versions before implementation; no dependency selection is final here.
+
+## Historical source and replacement map
+
+| Existing owner | Required Rust responsibility |
+| --- | --- |
+| `cmd/hmux-web/` | CLI parsing, enrollment, serve/connect entrypoints and errors |
+| `internal/webgateway/{server,http_api,http_auth,http_action,browser_terminal}.go` | HTTP/static assets, security gates, accounts and terminal admission |
+| `internal/webgateway/{protocol,hub,terminal_flow}.go` | Wire v1, peer generations, pending requests, flow control and fan-out |
+| Other gateway auth/upload/push/diagnostics files | Full account/security/storage and API parity, not relay-only MVP |
+| `internal/webgateway/home*.go`, `internal/home/` | Outbound connector, shared collectors, request handling and disposable PTYs |
+| `internal/catalog/`, `internal/catalogstream/` | tmux catalog, exact provider binding, Codex/Claude conversations and completion |
+| `internal/agent/`, `internal/config/`, `internal/model/`, `internal/sessionstate/` | Profile launch, typed contracts, configuration and metadata |
+| `internal/providers/`, `internal/webgateway/providers.go` | Existing Codex/Claude/Gemini status, install/login/update jobs, key management and allowlisted auth URLs |
+| `internal/sessionlaunch/` | Provider argv, signal handling and return to an interactive shell |
+| `internal/recovery/`, `internal/sharedworkspace/` | Verified restore/checkpoint and workspace continuity |
+| `internal/filestage/` | Private bounded attachment staging and three-hour cleanup |
+| `internal/homeservice/`, `internal/hostmetrics/` | launchd/systemd lifecycle, process identity, OS metrics |
+| `internal/workflow/`, `cmd/hmux-agent/` | Hooks, workflow records and all headless administrative commands |
+| `internal/filelock/`, `internal/safeexec/`, `internal/timing/` | Locking, bounded process output and safe timings |
+| `third_party/token-terrier-server/stream` and reachable collectors | In-process source-separated usage, auth readers and bounded polling |
+| `deploy/web/`, `scripts/`, CI/Makefile | Packaging, install/update, service definitions, notices and checks |
+
+The vendored collector also contains unused upstream daemon/SSH support. Audit
+reachable imports and public HMux behavior; do not recreate that unused runtime.
+Capture CLI/route/state details in fixtures instead of assuming this map is exhaustive.
 
 ## Rust layout
 
@@ -65,9 +117,9 @@ Crates are compilation boundaries, not additional services. Avoid a generic
 framework or one crate per Go package. Share explicit wire types while keeping
 security-sensitive storage validation and transaction ownership with their owners.
 
-Use the pinned stable Rust toolchain and Cargo.lock, with license/advisory checks
-for maintained HTTP/WebSocket/crypto/PTY dependencies. Use verified crypto
-implementations. Default to the system allocator;
+Start with stable Rust, a pinned toolchain and Cargo.lock. Evaluate Tokio/Axum,
+Serde, bytes and maintained HTTP/WebSocket/crypto/PTY libraries with license and
+advisory checks. Use verified crypto implementations. Default to system allocator;
 compare runtime worker counts and allocators only after profiling. Bind all
 blocking process/file/KDF work to bounded admission and cancellation semantics.
 Runtime crates forbid unsafe Rust. The small `hmux-platform` crate isolates the
@@ -84,7 +136,7 @@ in packaged binaries. The loopback gateway continues to rely on Nginx for TLS.
 
 - Preserve CLI flags, exit behavior, JSON/stdout contracts, config precedence,
   decode-only legacy keys, unknown-field rejection and profile validation.
-- Preserve JSON v1 base64 byte fields, omitted/null/false distinctions, timestamps,
+- Preserve base64 byte fields, omitted/null/false distinctions, timestamps,
   integer bounds, strict decoding, WS frame types, deadlines and close behavior.
 - Preserve account scope, Host/Origin/CSRF/cookie policy, password strength, TOTP
   atomic replay protection, persistent login, revocation and active-work cancellation.
@@ -92,7 +144,7 @@ in packaged binaries. The loopback gateway continues to rely on Nginx for TLS.
 - Preserve private modes, symlink defenses, per-store lock ordering, atomic
   persistence and auth-critical durability. One connector owns each Home; helpers
   and hooks may access its stores concurrently only through compatible transaction
-  locks. Preserve the transaction semantics described below.
+  locks. Mixed-language lock semantics require explicit verification (see below).
 - Require `{id, created_at}` and authoritative provider bindings. Preserve grouped
   view markers/names during rolling upgrades. Closing a browser or connector does
   not terminate original tmux/provider work; provider exit leaves the host shell.
@@ -114,8 +166,8 @@ in packaged binaries. The loopback gateway continues to rely on Nginx for TLS.
 - Isolate caller cancellation from shared transport lifetime. A queued request
   can be canceled; once its frame starts, complete it within an independent bounded
   transport deadline. Dropping a Rust future must not leave a partial frame, lose
-  the writer or disconnect unrelated tabs. Keep paused-write coverage in
-  native Gateway tests; verify stale-result discard and cancellation before
+  the writer or disconnect unrelated tabs. Port the paused-write tests in
+  native Gateway cancellation tests; verify stale-result discard and cancellation before
   admission, mid-write, during reply wait and on peer change.
 - Preserve opt-in launchd/systemd user services, explicit PATH, singleton locks,
   verified process adoption and configuration backups. Check owner and process birth
@@ -128,7 +180,32 @@ in packaged binaries. The loopback gateway continues to rely on Nginx for TLS.
 - Preserve browser input, IME, uploads, notifications/deep links, tab continuity
   and cache isolation. Native-backend replacement does not justify UI regressions.
 
-## State locks and executable handoff
+## Historical transition sequence and exit gates
+
+The following phase plan is historical evidence for the completed source cutover.
+It does not describe the current build, installation or deployment path. Current
+acceptance limits are in [RUST_MIGRATION.md](../RUST_MIGRATION.md).
+
+| Phase | Work | Required exit evidence |
+| --- | --- | --- |
+| 0 — Contracts and baseline | Enumerate CLI/routes/wire/state/OS contracts; sanitized golden fixtures; synthetic Home/browser drivers; Go current/tuned benchmarks; map existing tests | Reproducible results or explicit unavailable-environment status; Go oracle, complete owner/test matrix and proposed machine-readable budgets |
+| 1 — Rust foundation | Workspace/toolchain/CI, v1 adapter + Protobuf v2 schema/codecs/limits, CLI shell, security admission and bounded blocking primitives | Bidirectional Go/Rust fixtures; protected incomplete routes fail closed; isolated candidate builds, outside production artifact paths |
+| 2 — Gateway parity | Auth/state/profiles, negotiated v1/v2 hub, terminal/ACK, uploads, usage/conversations forwarding, push and diagnostics | Complete route matrix; Go Home + Rust gateway E2E; revoke/fault/slow-view tests; current-state Go rollback |
+| 3 — Home core | Config/catalog/process inspection, provider bindings/conversations, tmux/PTY, session creation, file staging, host metrics, provider setup jobs and shared collection | Rust Home + Go gateway and Rust gateway E2E; original sessions survive view/reconnect/upgrade; macOS/Linux OS tests |
+| 4 — Usage and continuity | Port reachable usage collectors, recovery, shared workspace, completion and workflow persistence | All supported usage sources and provider parsing covered; fake-provider reboot recovery; preference and identity compatibility |
+| 5 — CLI and installation | All hmux-agent commands, setup/hooks, service install/adoption/status/logs/update, existing Python installer transition | macOS launchd/Linux systemd isolated tests; paths with spaces, PATH, process reuse, mixed helper locks and interrupted two-binary install/rollback |
+| 6 — Performance and release rehearsal | Allocation/runtime tuning, full-stack stress/soak, package both binaries/assets/notices, canary and rollback procedure | Functional/security parity; measured budgets; 24h and release-candidate 72h soak; actual device acceptance distinguished from emulation |
+| 7 — Rust default and Go retirement | Coordinated service replacement, documentation/check/build switch, remove active Go sources/tooling after rollback window | Released gateway/Home/helper versions and hashes verified; no Go runtime dependency; clean Rust-only build; rollback artifact retained |
+
+During the transition, the phase plan required explicit mixed-version checks before
+removing the old owners. The shipped runtime now tests Rust↔Rust JSON v1 and
+Protobuf v2 compatibility. Gateway and connector replacements remain sequential with
+exclusive service ownership; helper/hook concurrency remains separately tested.
+Binary rollback uses **current** state, never automatically restores old
+sessions/credentials that could revive revoked access. New persisted schemas still
+require explicit migration and downgrade decisions before release.
+
+### State locks and executable handoff
 
 - Home `home-connector.lock` is a lifetime `flock`; recovery/workspace/session/workflow
   stores have separate transaction locks. Preserve lock paths, `flock` semantics,
@@ -150,18 +227,19 @@ in packaged binaries. The loopback gateway continues to rely on Nginx for TLS.
   historical artifacts and compatibility evidence, while the outstanding 72-hour,
   OS and current-state rollback acceptance limits remain explicit in the runtime status.
 
-## Protobuf and JSON compatibility
+### Protobuf target transport (user decision, 2026-09-24)
 
 Use Protobuf binary messages over the existing Home↔gateway WebSocket. Do not add
 gRPC, HTTP/2 infrastructure, a sidecar or another persistent connection. Browser
 terminal bytes are already binary; keep that path and browser JSON HTTP APIs.
 Persisted authentication/config formats remain unchanged for rollback.
 
-The versioned [Home wire contract](../proto/README.md) owns subprotocol tokens,
-typed operations, schema evolution and numeric limits. Keep checked-in generated
+Design the versioned `.proto` schema during the foundation phase, with generated
 Rust types and schema/codegen drift checks. Internally use typed operations and
-bounded byte buffers; JSON v1 is the compatibility adapter. Terminal/input/upload
-byte fields use Protobuf `bytes` without base64.
+bounded byte buffers; JSON v1 is a compatibility adapter, not the permanent core.
+The initial Protobuf envelope may carry explicitly named JSON control payloads
+while typed control schemas are completed; never call that stage full Protobuf
+parity. Terminal/input/upload byte fields must avoid base64 from the first version.
 
 Require explicit WebSocket subprotocol selection before sending v2 frames. No
 selection means legacy v1 where supported; auth/TLS failure never triggers a
@@ -192,7 +270,7 @@ RSS/PSS/cgroup and macOS footprint are different metrics; do not add overlapping
 figures. Exclude/report driver and profiling overhead. Record revision, binaries,
 toolchain, dependencies, machine limits, workload seed and raw synthetic samples.
 
-Acceptance workloads cover readiness, connected idle, 1/2/4/8 views,
+Port the proposal's S00–S14 workloads: readiness, connected idle, 1/2/4/8 views,
 normal/slow output, concurrent KDF/upload/typing, 10,000 lifecycle churn,
 reconnect/replacement, revocation, malformed input, storage failures, long soak,
 capacity rejection and catalog limits. Add Home-specific catalog scan latency,
@@ -200,18 +278,18 @@ process/provider lookup, transcript growth, source polling and burst-to-idle tes
 The historical baseline froze scenario seeds, warm-up, OS/machine definitions and
 byte/count/time budgets before comparison. Version budgets for both Gateway and Home;
 separate historical comparison values, hard safety limits and proposed Rust targets. Until
-measured budgets and required environment results exist, implementation may proceed
-but cannot be marked release-ready. For interactive p99, start with
+measured budgets and required environment results exist, a phase may proceed in
+implementation but cannot be marked release-ready. For interactive p99, start with
 a regression allowance of max(10% of paired baseline, 1 ms); ratify it with noise
 measurements and equal throughput/success rates. Do not silently relax failed gates.
 Use paired runs and report throughput/errors with p50/p95/p99. Distinguish socket
 receipt from the actual xterm write callback. Measure cold and warm readiness.
 
 Historical Go tests are behavior evidence, not code to transliterate mechanically.
-Use [Rust verification](../tests/RUST.md) and [contributor checks](../CONTRIBUTING.md)
-for formatting, Clippy, unit/integration, build and separate advisory/license gates. Rust's type system and Clippy
+Current `make check`, `make integration` and `make build` run Rust formatting,
+Clippy, unit/integration and advisory/license checks. Rust's type system and Clippy
 do not replace behavioral concurrency tests for ACK races, cancellation, revocation,
-locks and worker shutdown. Maintain bounded parser fuzzing/property tests and fault
+locks and worker shutdown. Add bounded parser fuzzing/property tests and fault
 injection; task panics and disk failures must produce a defined failed/closed state,
 not an apparently healthy hub. Run host tests on macOS and Linux; cross-compilation
 alone cannot verify PTYs, process birth identity, filesystem durability or service

@@ -66,7 +66,7 @@ git clone https://github.com/codemoo/hmux.git
 cd hmux
 ```
 
-Follow the [web setup guide](docs/WEB.md) to configure your own host, gateway,
+Follow the [installation guide](docs/OPERATIONS.md) to configure your own host, gateway,
 domain and credentials. No hosted service, private configuration or maintainer
 infrastructure access is included. Build prerequisites are the pinned Rust toolchain,
 Node.js 22+, Python 3 and tmux on the Home host. HTTPS is required for remote web access.
