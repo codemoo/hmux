@@ -18,11 +18,20 @@ command -v jq >/dev/null 2>&1 || {
 
 umask 077
 CURRENT_UID="$(id -u)"
+HMUX_STAT_SYSTEM="$(uname -s)"
 stat_uid() {
-	stat -f '%u' "$1" 2>/dev/null || stat -c '%u' "$1"
+	case "$HMUX_STAT_SYSTEM" in
+	Darwin) stat -f '%u' "$1" ;;
+	Linux) stat -c '%u' "$1" ;;
+	*) return 1 ;;
+	esac
 }
 stat_mode() {
-	stat -f '%Lp' "$1" 2>/dev/null || stat -c '%a' "$1"
+	case "$HMUX_STAT_SYSTEM" in
+	Darwin) stat -f '%Lp' "$1" ;;
+	Linux) stat -c '%a' "$1" ;;
+	*) return 1 ;;
+	esac
 }
 validate_owned_directory() {
 	HMUX_DIRECTORY_CHECK="$1"

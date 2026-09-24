@@ -43,8 +43,17 @@ HOME="$TEST_ROOT/home-empty" "$ROOT/scripts/install-codex-workflow-hooks.sh" >/d
 jq -e '([.hooks[] | .[] | .hooks[] | .command | select(contains("HMUX_WORKFLOW_HOOK=1"))] | length == 8)' \
 	"$TEST_ROOT/home-empty/.codex/hooks.json" >/dev/null
 [ -z "$(find "$TEST_ROOT/home-empty/.codex" -maxdepth 1 -name '.hooks.hmux.source.*' -print -quit)" ]
-[ "$(stat -f '%Lp' "$TEST_ROOT/home/.codex/hooks.json" 2>/dev/null || stat -c '%a' "$TEST_ROOT/home/.codex/hooks.json")" = "600" ]
-[ "$(stat -f '%Lp' "$TEST_ROOT/home/.config" 2>/dev/null || stat -c '%a' "$TEST_ROOT/home/.config")" = "755" ]
+case "$(uname -s)" in
+Darwin)
+	[ "$(stat -f '%Lp' "$TEST_ROOT/home/.codex/hooks.json")" = "600" ]
+	[ "$(stat -f '%Lp' "$TEST_ROOT/home/.config")" = "755" ]
+	;;
+Linux)
+	[ "$(stat -c '%a' "$TEST_ROOT/home/.codex/hooks.json")" = "600" ]
+	[ "$(stat -c '%a' "$TEST_ROOT/home/.config")" = "755" ]
+	;;
+*) exit 1 ;;
+esac
 
 hash_file() {
 	if command -v sha256sum >/dev/null 2>&1; then
