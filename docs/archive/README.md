@@ -4,6 +4,17 @@ Start with [current documentation](../README.md) and [validation status](../VALI
 These records preserve what was known at the stated date; pending deployment
 statements and old UI experiments are not current instructions.
 
+- [Rust migration through 2026-09-24](RUST_MIGRATION_HISTORY_2026-09-24.md): preserved
+  candidate checkpoints, reviews, tests, claim limits and the pre-release control
+  before documentation consolidation; current control is
+  [Rust migration](../RUST_MIGRATION.md).
+- [Rust protocol checkpoints](RUST_PROTOCOL_CHECKPOINTS_2026-09-24.md): superseded
+  implementation/test narrative; current protocol contracts remain in
+  [proto/README.md](../../proto/README.md).
+- [Rust contract checkpoints](RUST_CONTRACT_CHECKPOINTS_2026-09-24.json): unchanged
+  snapshot of the former per-contract implementation notes, including superseded
+  `not_started`/pending labels. The live [inventory](../../tests/fixtures/contracts.json)
+  retains every contract and test-owner mapping; current status is in the migration control.
 - [Validation through 2026-09-24](VALIDATION_HISTORY_2026-09-24.md): dated tests,
   release receipts, blocked attempts, acceptance evidence and claim limits.
 - [Web UI history](WEB_UI_HISTORY_2026-09-09.md): superseded browser experiments.

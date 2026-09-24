@@ -23,9 +23,11 @@ web/PWA. macOS remains a supported Home host; browser-native input is part of th
 - Assess memory impact for new resident services and dependencies. Substantiate
   memory claims with measurements, separating HMux gateway/Home, browser and
   agent/tmux usage; do not present an unmeasured target as an achieved result.
-- Go is the current implementation. A future partial or full Rust migration must
-  preserve CLI, configuration, protocol, security and session-lifecycle contracts;
-  evaluate it against measured resource use and maintainability.
+- Go remains the default build; maintained Gateway/Home/helper Rust trials are recorded
+  in `docs/VALIDATION.md`. Full native-runtime migration to Rust is the
+  chosen direction. Follow `docs/RUST_MIGRATION.md`, preserving CLI, configuration,
+  protocol, security and session lifecycle. Web/PWA remains TypeScript; measure
+  resource use and regressions throughout the migration.
 
 ## Change discipline
 

@@ -23,7 +23,18 @@ collector's checks, ShellCheck, TypeScript and frontend tests. `make build` also
 builds production assets and Linux gateway/macOS Home binaries. `make integration`
 checks the Home installer in a temporary directory and uses a private tmux socket for session creation and browser-view lifecycle tests;
 it never targets an existing user's tmux server. The hook test uses temporary HOME.
-`make shfmt-check` optionally checks shell formatting.
+`make shfmt-check` optionally checks shell formatting. It installs the pinned
+shfmt 3.13.1 release into ignored `.tools/`, verifies its SHA-256 before use and
+reuses the verified binary. This tool needs curl and a SHA-256 utility, not Go;
+override `SHFMT_DIR` to keep it in another developer-owned directory.
+
+The native runtime is being migrated to Rust. Use the pinned
+`rust-toolchain.toml` and tracked `Cargo.lock`; start with `make rust-check`,
+`make rust-compat` and `make rust-build`. Default build outputs remain Go;
+the maintained Rust deployment trials do not change those commands.
+[Current migration status](docs/RUST_MIGRATION.md) owns the execution queue;
+[Rust verification](tests/RUST.md) holds detailed commands, prerequisites and
+claim limits for native packages, compatibility, workloads and OS checks.
 
 See [tests/README.md](tests/README.md) for coverage and opt-in recovery checks.
 Report browser emulation separately from physical device acceptance. Preserve the

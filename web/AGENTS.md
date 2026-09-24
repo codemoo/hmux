@@ -9,8 +9,10 @@ logs are not current implementation instructions. Web/PWA is the only UI.
 - Android Chrome PWA installation/colors are user-confirmed. Samsung Internet
   token backgrounds remain unverified; do not generalize that issue to Android
   or change IME/viewport code for it. Preserve only-dark/terminal color semantics.
-- Keep this a TypeScript/xterm.js client and one Go gateway/Home connector. Reuse
-  Home catalog, conversation, quota and recovery code; do not infer provider IDs in tabs.
+- Keep this a TypeScript/xterm.js client and a shared gateway/Home connection.
+  Go/Rust runtime migration follows `docs/RUST_MIGRATION.md`; preserve
+  browser contracts. Reuse Home catalog, conversation, quota and recovery services;
+  do not infer provider IDs in tabs.
 - Keep `{id, created_at}` identity checks, profile isolation and shared tab ordering.
   Selected tabs, terminal theme and font preferences are device-local; account profiles are not shell isolation.
 - One live terminal view per visible browser, eight across the gateway. Releasing
@@ -76,7 +78,8 @@ logs are not current implementation instructions. Web/PWA is the only UI.
 - Render external/session/transcript values with textContent. Keep the service
   worker network-only; do not cache credentials, transcripts or terminal bytes.
 - Run `npm run check --prefix web`, `npm test --prefix web`, and
-  `npm run build --prefix web`. Gateway changes also require relevant Go tests.
+  `npm run build --prefix web`. Gateway changes also require relevant Go/Rust
+  backend tests and compatibility checks for shared contracts.
   Opt-in live tests may use only isolated `hmux-e2e-*` resources.
 - Report automated checks separately from browser/device acceptance. Do not call
   a typecheck a mobile UI test. Preserve timestamped configuration/release backups.

@@ -28,6 +28,12 @@ retain the previous release, then switch the service. Check authentication, CSP,
 static assets and Home connectivity after activation. Publishing source does not
 update running installations automatically.
 
+The native Rust runtime has separate `make rust-package` bundles. Follow
+[Rust verification](../tests/RUST.md#test-entry-point) before using a new artifact;
+[migration status](RUST_MIGRATION.md) and [validation](VALIDATION.md#rust-transition)
+distinguish maintained trials from full release acceptance. Publishing the Rust
+source does not switch default builds, retire Go or complete device/soak gates.
+
 ## Source license
 
 A top-level HMux license has not yet been selected. Public source visibility does

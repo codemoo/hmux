@@ -9,6 +9,14 @@ have been removed alongside those implementations.
 | `make check` | Go formatting/unit/race/vet, vendored collector, ShellCheck, TypeScript and frontend tests |
 | `make build` | Production web assets, Linux gateway and macOS Home/helper binaries |
 | `make integration` | Safe Home installation, managed workflow hooks, isolated profile creation and browser PTY lifecycle |
+| `make rust-native-matrix` | Candidate Go/Rust native pairs, both wire codecs, slow-view isolation and reconnect/revocation |
+| `make rust-native-stress` | Opt-in native Rust view churn and separate gateway/Home resource checkpoints; see required output path in tests/RUST.md |
+| `make rust-native-capacity` | Native eight-view capacity, ninth rejection, admitted-view survival and released-slot reuse; both wire codecs, synthetic host fixtures |
+| `make rust-native-activity` | Actual native Home collector plus terminal echoes: synthetic JSONL backfill/append/replacement, exact state totals and separate process checkpoints |
+| `make rust-native-perf` | Linux paired native gateway/Home resource and socket-latency measurements; distinct from browser rendering and budget acceptance |
+| `cargo run --locked --release -p hmux-home --example activity_bench -- 512` | Opt-in production JSONL reader workload: synthetic backfill, zero-content quiet polls, append and inode replacement; reader-level timing only |
+| `make rust-native-soak` | Bounded 24h/72h synthetic native runs with frozen binaries, progress, cadence and final lifecycle assertions; no device acceptance claim |
+| `make rust-dependencies` / `make rust-notices-check` | Locked Rust advisory/license/source policy, transitive native notices and standard-library attribution; see tool/database setup in tests/RUST.md |
 | `npm test --prefix web` | Browser logic, keyboard/input, clipboard, connection recovery, settings and rendering contracts |
 | `internal/config` | Profile-only inventory, legacy Home config compatibility, precedence and fail-closed validation |
 | `internal/home` | Identity checks around grouped-view creation, cleanup, redraw and catalog observation |
@@ -20,6 +28,11 @@ have been removed alongside those implementations.
 `hmux-e2e-*` session names. The PTY test checks original session options/process
 survival, view resize/close/cancellation and stale identities. Hook installation
 runs only against a temporary HOME. A missing tool is a skipped check, not a pass.
+
+Rust candidate command details and opt-in OS checks are in
+[Rust verification](RUST.md); the [migration control](../docs/RUST_MIGRATION.md)
+records their current acceptance. Default build outputs remain Go while the
+maintained Rust trials and remaining release gates are evaluated.
 
 Additional recovery integration, using fake providers on an isolated socket:
 

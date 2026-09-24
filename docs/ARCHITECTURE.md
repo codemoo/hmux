@@ -4,7 +4,7 @@ HMux's purpose is **"low memory, web terminal for ai agents"**. Low memory
 overhead and simple installation guide architecture and deployment decisions.
 
 HMux has one interface: a TypeScript/xterm.js web app, installable as a PWA.
-A Home host owns tmux, Codex/Claude authentication, transcripts and files. A Go
+A Home host owns tmux, Codex/Claude authentication, transcripts and files. The
 gateway authenticates web users and routes bounded operations to one outbound
 Home WebSocket connection. Nginx provides public HTTPS; Home needs no inbound port.
 
@@ -15,10 +15,12 @@ queues and caches keep HMux overhead controlled as browsers and tabs increase.
 Memory claims need measurements that distinguish gateway/Home overhead, browser
 memory and the agent/tmux workloads; no numerical memory budget is established here.
 
-Go is the current implementation. A future partial or full Rust replacement must
-preserve command-line options, configuration, wire protocols, security and session
-lifecycle behavior. Evaluate that choice through measured resource use and
-maintainability; the implementation language does not define the product.
+Both Go and Rust implement the native runtime during migration; the web/PWA
+remains TypeScript. The maintained Gateway/Home/helper installation runs Rust
+trials, while default build commands still produce Go. The
+[Rust migration control](RUST_MIGRATION.md) owns remaining acceptance and Go
+retirement; [validation](VALIDATION.md) records actual deployments. The boundaries
+below apply to both implementations.
 
 ```text
 Browser/PWA ── HTTPS/WSS ── Nginx ── loopback hmux-web serve
@@ -45,9 +47,17 @@ Browser/PWA ── HTTPS/WSS ── Nginx ── loopback hmux-web serve
 | `cmd/hmux-agent/` | Headless administration, recovery and optional workflow hooks |
 | `deploy/web/` | Gateway service/proxy templates and web/Home build bundle |
 
+Rust maps these boundaries to `crates/hmux-gateway`, `hmux-home`, `hmux-usage`,
+`hmux-web` and `hmux-agent`. `hmux-model`, `hmux-core` and `hmux-platform` hold
+shared models, bounded process/storage primitives and OS access; `hmux-service`
+and `hmux-install` own native lifecycle and installation. `hmux-protocol` implements
+the typed Home transport in [proto/README.md](../proto/README.md), with Protobuf v2
+negotiation and rolling JSON v1 compatibility. Browser HTTP/WebSocket contracts
+remain unchanged.
+
 The tested deployment is a macOS Home and Linux gateway. macOS support refers to
 host services, not a separate graphical application. `hmux-agent` is an admin/hook
-helper; the connector calls local Go services directly and never starts a desktop
+helper; the connector calls local services directly and never starts a desktop
 bridge, terminal selector or remote SSH client.
 
 Home can run under an opt-in native user service: launchd on macOS or systemd on

@@ -12,6 +12,19 @@ shared collectors and bounded terminal buffers. Agent CLIs, tmux, authentication
 and working directories stay on the host; Docker is not required. Installation
 should be simple, with as few runtime dependencies as possible.
 
+## Memory
+
+In an isolated Linux comparison of retained deployed artifacts, the Rust + Protobuf
+gateway/Home pair used **55–57% less memory** than Go + JSON (median PSS, three runs each):
+
+| Gateway + Home | Go | Rust |
+| --- | ---: | ---: |
+| Connected idle | 24.88 MiB | 11.08 MiB |
+| After 10,000 terminal echoes | 25.65 MiB | 11.07 MiB |
+
+This measures HMux processes with synthetic host tools; browser, tmux and agent CLI
+memory is excluded. See [workload, artifacts and limits](bench/hmux/README.md#deployed-artifact-memory-comparison-2026-09-25).
+
 ## How it works
 
 ```text
@@ -31,7 +44,7 @@ Desktop / phone / tablet browser
 The host owns terminal processes, provider authentication and files. The gateway
 handles web authentication and connections; it does not run your agent workloads.
 The current tested host setup is macOS with a Linux HTTPS gateway. Do not assume
-an arbitrary host OS has the same support just because a Go binary compiles there.
+an arbitrary host OS has the same support just because a binary compiles there.
 
 ## Features
 
@@ -71,6 +84,11 @@ An optional [native Home service](docs/OPERATIONS.md#automatic-home-startup-maco
 starts the connector at login and restarts it after exit, so no terminal window
 needs to stay open. macOS uses launchd; Linux uses a systemd user service.
 
+The native Rust runtime is implemented and runs the maintained Gateway/Home/helper
+trials. The default setup above still builds Go while release acceptance continues.
+For current status and the isolated Rust build/test entry point, start with
+[Rust migration](docs/RUST_MIGRATION.md).
+
 ## Repository map
 
 | Location | Responsibility |
@@ -80,12 +98,14 @@ needs to stay open. macOS uses launchd; Linux uses a systemd user service.
 | `internal/home/`, `internal/agent/`, `cmd/hmux-agent/` | Local tmux services, administration and workflow hooks |
 | `internal/catalog/`, `internal/recovery/` | Session identity, provider binding and reboot recovery |
 | `third_party/` | Licensed in-tree usage collector |
+| `crates/`, `proto/`, `tests/RUST.md` | Rust native runtime, versioned Home protocol and isolated verification |
 | `docs/` | Architecture, setup, security and validation references |
 
 ## Development and releases
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) for checks and [AGENTS.md](AGENTS.md) for
-change rules. CI checks the Go host/gateway, isolated tmux lifecycles and the web client.
+change rules. CI checks Go/Rust runtimes and compatibility, native lifecycle fixtures,
+the web client, generated protocol types and Rust dependency policy.
 Source and deployment procedures are tracked in [RELEASING.md](docs/RELEASING.md).
 Third-party notices are preserved in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
