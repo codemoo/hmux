@@ -11,6 +11,7 @@ pub enum Stage {
     Catalog,
     Action,
     ViewCleanup,
+    Usage,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -71,6 +72,7 @@ impl fmt::Display for Event {
             Stage::Catalog => "catalog",
             Stage::Action => "action",
             Stage::ViewCleanup => "view-cleanup",
+            Stage::Usage => "usage",
         };
         let reason = match self.reason {
             Reason::Busy => "busy",

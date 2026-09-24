@@ -112,6 +112,32 @@ Local verification of the integrated changes passed:
 
 This source review does not change the maintained deployment recorded below.
 
+### Usage collector recovery
+
+A reported missing-usage symptom prompted a further review. A synthetic regression
+confirmed that a short source `retry_at` could expire between quota refreshes:
+heartbeat publication advanced `generated_at_utc`, failed the future-deadline
+validation and permanently cancelled both providers' collection. Publication now
+clears elapsed retry deadlines when it advances the publication timestamp, without
+changing quota observation time. Invalid data is withdrawn while existing bounded
+source workers continue; the next valid result recovers without a Home restart.
+Fixed-category diagnostics record first publication, validation failure and recovery.
+The prior runtime lacked these diagnostics, so this reproduction alone does not
+prove the exact trigger of the live missing-usage incident.
+
+The focused publication/recovery regressions, all 288 Home tests (8 opt-in tests
+ignored), workspace strict Clippy, `make integration`, macOS ARM64 release build
+and all five bundle checks passed. Independent review found no material defects.
+These checks cover collector recovery; a valid snapshot pair alone does not prove
+that each provider returned current quota data.
+
+[CI for `a6e1588`](https://github.com/codemoo/hmux/actions/runs/36044120812) passed
+macOS, web, Protobuf and dependency checks. Linux passed Rust/lint checks and the
+native pair, then failed the workflow-hook installer: GNU `stat -f` printed
+filesystem information before the BSD-to-GNU fallback. The installer and its
+permission assertions now choose flags explicitly by OS; isolated hook checks
+passed on both Linux and macOS.
+
 ## Maintained deployment
 
 The stability update replaced the maintained Linux Gateway and macOS Home/helper

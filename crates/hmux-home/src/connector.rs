@@ -283,10 +283,11 @@ impl Driver for Production {
     }
     fn start_collectors(&mut self, stop: &CancellationToken) {
         self.usage = self.usage_options.take().map(|options| {
-            usage::Collector::start(
+            usage::Collector::start_reported(
                 options,
                 self.client.as_ref().expect("startup completed").clone(),
                 stop,
+                self.reporter.clone(),
             )
         });
     }

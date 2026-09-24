@@ -1,8 +1,8 @@
 //! One usage collector per Home connector lifetime. Slow sources run independently;
 //! reconnecting peers subscribe to a single latest-value channel, never start work.
 use crate::{
-    dial, peer, usage_activity, usage_config, usage_credentials, usage_http, usage_lb, usage_oauth,
-    usage_sources,
+    dial, observation, peer, usage_activity, usage_config, usage_credentials, usage_http, usage_lb,
+    usage_oauth, usage_sources,
 };
 use chrono::{DateTime, Utc};
 use hmux_protocol::{
@@ -13,7 +13,10 @@ use hmux_protocol::{
 use hmux_usage::{
     activity::ActivitySnapshot, cswap, model::format_time, sources, transport, Provider, Snapshot,
 };
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 use tokio::{
     sync::watch,
     task::JoinHandle,
@@ -60,16 +63,34 @@ impl Collector {
         client: dial::Client,
         parent: &CancellationToken,
     ) -> Self {
+        Self::start_reported(options, client, parent, None)
+    }
+    pub(crate) fn start_reported(
+        options: usage_config::Options,
+        client: dial::Client,
+        parent: &CancellationToken,
+        reporter: Option<observation::Reporter>,
+    ) -> Self {
         let stop = parent.child_token();
         let (sender, latest) = watch::channel(None);
         let (refresh, refresh_rx) = watch::channel(0);
-        let task = tokio::spawn(run(
-            options,
-            usage_http::Client::new(client),
-            sender,
-            refresh_rx,
-            stop.clone(),
-        ));
+        let task_stop = stop.clone();
+        let task = tokio::spawn(async move {
+            let started = Instant::now();
+            let result = run(
+                options,
+                usage_http::Client::new(client),
+                sender,
+                refresh_rx,
+                task_stop,
+                reporter.clone(),
+            )
+            .await;
+            if result.is_err() {
+                report(&reporter, observation::Reason::Unavailable, started);
+            }
+            result
+        });
         Self {
             refresh: RefreshHandle(refresh),
             latest,
@@ -121,6 +142,7 @@ async fn run(
     output: watch::Sender<Option<Latest>>,
     refresh: watch::Receiver<u64>,
     stop: CancellationToken,
+    reporter: Option<observation::Reporter>,
 ) -> Result<(), Error> {
     let _cancel_on_drop = stop.clone().drop_guard();
     let now = Utc::now();
@@ -164,7 +186,8 @@ async fn run(
                 activity
             },
             output,
-            &stop
+            &stop,
+            reporter
         ),
     );
     result
@@ -311,8 +334,7 @@ impl Inputs {
             activity(&mut codex, &current.codex);
         }
         for snapshot in [&mut claude, &mut codex] {
-            snapshot.seq = seq;
-            snapshot.generated_at_utc = format_time(now);
+            stamp(snapshot, seq, now);
         }
         let parsed = self
             .swap
@@ -327,8 +349,7 @@ impl Inputs {
         let claude = sources::bundle(&claude, &swap, false).map_err(|_| Error::Encoding)?;
         let mut codex =
             sources::bundle(&codex, &lb.snapshot, lb.selected).map_err(|_| Error::Encoding)?;
-        codex.seq = seq;
-        codex.generated_at_utc = format_time(now);
+        stamp(&mut codex, seq, now);
         transport::validate(&claude).map_err(|_| Error::Encoding)?;
         transport::validate(&codex).map_err(|_| Error::Encoding)?;
         Ok(Latest {
@@ -337,29 +358,75 @@ impl Inputs {
         })
     }
 }
+fn stamp(snapshot: &mut Snapshot, seq: i64, now: DateTime<Utc>) {
+    snapshot.seq = seq;
+    snapshot.generated_at_utc = format_time(now);
+    // Heartbeats are more frequent than quota refresh. A source's cooldown can
+    // expire between them; never publish a past retry deadline as a future one.
+    // Quota observation time and cached values remain source-owned.
+    if let Some(deadline) = snapshot
+        .status
+        .retry_at
+        .as_deref()
+        .and_then(hmux_usage::model::parse_time)
+    {
+        snapshot.status.retry_at = hmux_usage::quota_state::retry_at(deadline, now);
+    }
+}
+fn report(reporter: &Option<observation::Reporter>, reason: observation::Reason, started: Instant) {
+    if let Some(report) = reporter {
+        report(observation::Event::new(
+            observation::Stage::Usage,
+            None,
+            reason,
+            started,
+        ));
+    }
+}
 async fn publish(
     mut inputs: Inputs,
     output: watch::Sender<Option<Latest>>,
     stop: &CancellationToken,
+    reporter: Option<observation::Reporter>,
 ) -> Result<(), Error> {
     let mut timer = ticker(PUBLISH);
     let mut seq: i64 = 0;
     let mut since_publish = HEARTBEAT_TICKS;
+    let mut failed = false;
+    let mut published = false;
     while tick(&mut timer, stop).await {
         since_publish = since_publish.saturating_add(1);
         if inputs.dirty() || since_publish >= HEARTBEAT_TICKS {
             seq = seq.saturating_add(1);
+            let started = Instant::now();
             match inputs.assemble(seq, Utc::now()) {
                 Ok(latest) => {
                     output.send_replace(Some(latest));
-                    since_publish = 0;
+                    if failed || !published {
+                        report(
+                            &reporter,
+                            if failed {
+                                observation::Reason::Recovered
+                            } else {
+                                observation::Reason::Published
+                            },
+                            started,
+                        );
+                    }
+                    failed = false;
+                    published = true;
                 }
-                Err(error) => {
+                Err(_) => {
                     output.send_replace(None);
-                    stop.cancel();
-                    return Err(error);
+                    // Withdraw invalid data, but keep the bounded source workers
+                    // alive so their next refresh can recover without a restart.
+                    if !failed {
+                        report(&reporter, observation::Reason::Encoding, started);
+                    }
+                    failed = true;
                 }
             }
+            since_publish = 0;
         }
     }
     Ok(())

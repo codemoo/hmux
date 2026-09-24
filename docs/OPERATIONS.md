@@ -185,6 +185,13 @@ terminal on a live connection, Home sends `view-cleanup-failed` in its exit. Dia
 command failure and inspect disposable-view ownership before a controlled Home
 restart; restarting alone does not remove leftover views. Never remove original
 tmux/provider sessions to recover view capacity.
+Usage collection runs inside Home, not a separate helper daemon. Its bounded
+diagnostics use `stage=usage`: `published` means the first valid snapshot pair
+was assembled (not that both providers supplied quota), `encoding` withdraws
+invalid data while collection continues, and `recovered` marks the next valid
+pair. `unavailable` marks a collector startup/run failure. These records contain
+no account names, tokens, raw provider errors or usage values. Inspect provider
+status in the usage panel separately from collector health.
 One connector can hold each state directory's private process-lifetime lock; stop
 an older manual connector before starting a service, or use the verified adoption
 command. Do not delete an active lock file to bypass the singleton.

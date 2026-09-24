@@ -51,6 +51,71 @@ fn inputs() -> (
     )
 }
 #[test]
+fn publication_survives_retry_deadline_without_refreshing_quota_age() {
+    for source in ["claude", "codex", "codex-lb"] {
+        for state in ["rateLimited", "ok"] {
+            let (mut input, codex, lb, _) = inputs();
+            let mut snapshot = degraded(
+                if source == "claude" {
+                    Provider::Claude
+                } else {
+                    Provider::Codex
+                },
+                now(),
+            );
+            snapshot.status.state = state.into();
+            snapshot.status.stale = true;
+            snapshot.status.quota_source = if source == "codex-lb" {
+                "codex_lb"
+            } else {
+                "oauth_api"
+            }
+            .into();
+            snapshot.status.quota_observed_at = Some(format_time(now()));
+            snapshot.status.retry_at = Some(format_time(now() + chrono::Duration::seconds(5)));
+            snapshot.weekly_observed = true;
+            snapshot.weekly.used_pct = 0.4;
+            transport::validate(&snapshot).unwrap();
+            let (claude_tx, claude) = watch::channel(snapshot.clone());
+            match source {
+                "claude" => input.claude = claude,
+                "codex" => {
+                    codex.send_replace(snapshot);
+                }
+                _ => {
+                    lb.send_replace(Lb {
+                        selected: true,
+                        snapshot,
+                    });
+                }
+            }
+            let before = input.assemble(1, now()).unwrap();
+            let prior = if source == "claude" {
+                before.claude
+            } else {
+                before.codex
+            };
+            assert!(prior.status.retry_at.is_some());
+            for seconds in [5, 6, 61] {
+                let latest = input
+                    .assemble(2, now() + chrono::Duration::seconds(seconds))
+                    .unwrap();
+                let current = if source == "claude" {
+                    latest.claude
+                } else {
+                    latest.codex
+                };
+                assert!(current.status.retry_at.is_none());
+                assert_eq!(current.status.quota_observed_at, Some(format_time(now())));
+                assert_eq!(current.weekly.used_pct, 0.4);
+                transport::validate(&current).unwrap();
+            }
+            drop(claude_tx);
+        }
+    }
+}
+
+#[test]
 fn late_quota_results_merge_latest_activity_for_all_sources() {
     let (mut input, codex, lb, activity) = inputs();
     activity.send_replace(Some(sample(500)));
@@ -99,6 +164,54 @@ fn late_quota_results_merge_latest_activity_for_all_sources() {
 }
 
 #[tokio::test(start_paused = true)]
+async fn invalid_publication_withdraws_data_and_recovers_without_stopping_sources() {
+    let (input, codex, _lb, _activity) = inputs();
+    let (output, mut latest) = watch::channel(None);
+    let stop = CancellationToken::new();
+    let task_stop = stop.clone();
+    let events = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let observed = events.clone();
+    let reporter: observation::Reporter =
+        Arc::new(move |event| observed.lock().unwrap().push(event.reason));
+    let task =
+        tokio::spawn(async move { publish(input, output, &task_stop, Some(reporter)).await });
+    latest.changed().await.unwrap();
+    assert!(latest.borrow_and_update().is_some());
+    let mut invalid = degraded(Provider::Codex, now());
+    invalid.status.state.clear();
+    codex.send_replace(invalid);
+    latest.changed().await.unwrap();
+    assert!(latest.borrow_and_update().is_none());
+    for _ in 0..25 {
+        tokio::time::advance(Duration::from_secs(1)).await;
+        tokio::task::yield_now().await;
+    }
+    assert!(!stop.is_cancelled());
+    assert!(!task.is_finished());
+    assert_eq!(
+        *events.lock().unwrap(),
+        [
+            observation::Reason::Published,
+            observation::Reason::Encoding
+        ]
+    );
+    latest.borrow_and_update();
+    codex.send_replace(degraded(Provider::Codex, now()));
+    latest.changed().await.unwrap();
+    assert!(latest.borrow_and_update().is_some());
+    assert_eq!(
+        *events.lock().unwrap(),
+        [
+            observation::Reason::Published,
+            observation::Reason::Encoding,
+            observation::Reason::Recovered
+        ]
+    );
+    stop.cancel();
+    assert_eq!(task.await.unwrap(), Ok(()));
+}
+
+#[tokio::test(start_paused = true)]
 async fn publication_coalesces_and_heartbeats_without_refreshing_observation_age() {
     let (input, _codex, lb, activity) = inputs();
     let mut snapshot = usage_lb::unavailable(1, now(), "ok");
@@ -110,7 +223,7 @@ async fn publication_coalesces_and_heartbeats_without_refreshing_observation_age
     let (output, mut latest) = watch::channel(None);
     let stop = CancellationToken::new();
     let task_stop = stop.clone();
-    let task = tokio::spawn(async move { publish(input, output, &task_stop).await });
+    let task = tokio::spawn(async move { publish(input, output, &task_stop, None).await });
     latest.changed().await.unwrap();
     latest.borrow_and_update();
     for count in 1..=100 {
