@@ -1,7 +1,7 @@
 # Home WebSocket Protobuf v2
 
-The Rust candidate uses [home.proto](hmux/v2/home.proto) over the existing
-Home–gateway WebSocket. Production remains Go until verified cutover.
+The Rust runtime uses [home.proto](hmux/v2/home.proto) over the existing
+Home–gateway WebSocket. Rust is the default native build; release/device acceptance is recorded separately.
 [Migration status](../docs/RUST_MIGRATION.md) owns acceptance and next work;
 [historical protocol checkpoints](../docs/archive/RUST_PROTOCOL_CHECKPOINTS_2026-09-24.md)
 preserve earlier implementation and test reports.

@@ -6,32 +6,38 @@ Detailed gateway/authentication settings are in [WEB.md](WEB.md).
 
 ## Build and install Home
 
-Install Go 1.24+, Node.js 22+, tmux and the desired provider CLIs. Authenticate the
-providers as the Home user, then build:
+Install the pinned Rust toolchain, Node.js 22+, tmux and the desired provider CLIs.
+Authenticate the providers as the Home user, then build:
 
 ```sh
 make build
 ```
 
-Outputs are `dist/web-linux-amd64/` (gateway/assets) and
-`dist/web-darwin-arm64/` (Home connector/admin helper). Build does not deploy.
-Install the Home binaries explicitly:
+The host bundle is `dist/web-<platform>/`, such as `dist/web-linux-amd64/` or
+`dist/web-darwin-arm64/`; it contains the Gateway, Home connector, helper, web assets,
+notices and a SHA-256 manifest. Build does not deploy. To build a non-host supported
+target, set `HMUX_RUST_TARGETS` only after installing its Rust target, linker and any
+required platform SDK. The target's binary is not portable across platforms.
+
+Install the Home pair explicitly from its built bundle:
 
 ```sh
-python3 deploy/web/install-home.py
+./dist/web-darwin-arm64/hmux-web install-home
 ```
 
-The installer requires Python 3, preflights both source/target binaries, rejects
-symlinks and unsafe ownership/permissions, and creates private timestamped backups.
-Each binary is staged and atomically replaced. It then calls `hmux-agent setup-home`
-to initialize Home configuration and Codex/Claude/shell profiles.
+The native installer preflights both source/target binaries, rejects symlinks and
+unsafe ownership/permissions, configures Home through `hmux-agent setup-home`, and
+uses a recoverable atomic replacement transaction with private timestamped backups.
+The optional Python
+compatibility wrapper accepts an explicit `--source-dir`; its default selects the
+host bundle and is not required for new installations.
 
 On a new interactive installation, it asks for the new-session base directory;
 press Enter for `~/.hmux`. Noninteractive new installations use that default.
 To choose a path explicitly:
 
 ```sh
-python3 deploy/web/install-home.py --workspace-dir "$HOME/projects"
+./dist/web-darwin-arm64/hmux-web install-home --workspace-dir "$HOME/projects"
 ```
 
 Reinstalling without `--workspace-dir` preserves every existing profile directory,
@@ -43,8 +49,8 @@ with `--enable-service`; without it, running connectors are untouched.
 `--binaries-only` skips configuration entirely and cannot enable a service.
 `--source-dir`, `--bin-dir` and `--config-dir` select alternative locations.
 Coordinate connector restart separately; restore binary backup bytes with executable
-mode if rolling back. Configuration errors stop the installer, but already installed
-binaries remain; fix the configuration error and rerun.
+mode if rolling back. Configuration errors stop before normal binary activation; fix
+the configuration error and rerun.
 
 Each inventory profile's `default_directory` is the **base**, not the session CWD.
 A new session creates a private child directory derived from the entered name:
@@ -92,7 +98,7 @@ After building the Home binaries, an existing foreground connector can be migrat
 with one installation command:
 
 ```sh
-python3 deploy/web/install-home.py --enable-service
+./dist/web-darwin-arm64/hmux-web install-home --enable-service
 ```
 
 It installs the binaries, preserves existing Home/workspace configuration, then
@@ -115,9 +121,9 @@ For a new Home with configured profiles and an existing private connector token:
 
 `--config /PRIVATE/home.toml` selects an explicit existing Home config. Otherwise
 installation pins the existing `home.toml`, falling back to `client.toml`; missing
-configuration is an error. The installer also accepts `--enable-service --url ...
---token-file ...` for this setup. A Linux host can build its native binary with
-`go build -o dist/hmux-web ./cmd/hmux-web`, then use `dist/hmux-web service install`.
+configuration is an error. The installer also accepts `--enable-service --url ...`
+`--token-file ...` for this setup. A Linux host uses the `hmux-web` binary in its
+built `dist/web-linux-<arch>/` bundle for `service install`.
 The service command installs its executable at `~/.local/bin/hmux-web` by default
 (`--binary /ABSOLUTE/bin/hmux-web` overrides it; the installer preserves `--bin-dir`) and backs up
 previous binary/service files before replacement. It does not regenerate credentials
@@ -242,18 +248,16 @@ allowlisted; identifiers, paths, payloads and raw error messages are excluded.
 ## Build and local provisioning
 
 ```sh
-npm ci --prefix web
-npm run check --prefix web
-npm test --prefix web
-npm run build --prefix web
-go test ./internal/webgateway ./internal/home ./cmd/hmux-web
-go build -o dist/hmux-web ./cmd/hmux-web
+make check
+make integration
+make build
 ```
 
-`deploy/web/build.sh` builds Linux amd64 gateway assets and an Apple Silicon Home
-connector. Build dependencies are lockfile-pinned; the deployed server needs only
-its binary, built assets and private configuration. `npm audit --prefix web`
-checks the frontend dependencies; it is not a full security guarantee.
+`make build` packages web assets and the native host bundle. The deployed server
+needs only its bundle binary, assets, notices, manifest and private configuration;
+it does not need a Rust toolchain. `HMUX_RUST_TARGETS` requires the selected targets'
+linkers and SDKs. `npm audit --prefix web` checks frontend dependencies; it is not a
+full security guarantee.
 
 On the trusted Linux host, run the interactive initializer with private paths:
 
@@ -287,7 +291,7 @@ sudo certbot certonly --webroot -w /var/www/hmux-acme -d YOUR_HOST
 Enable the HTTPS site only after successful issuance and `nginx -t`; reload Nginx,
 not unrelated applications. Retain the HTTP ACME location for renewals. A Certbot
 deploy hook should run `nginx -t` and reload Nginx when this certificate renews.
-The Go server refuses public bind addresses and cleartext public origins.
+The native gateway refuses public bind addresses and cleartext public origins.
 
 Systemd restricts writable paths, capabilities, devices and Home-directory access,
 with a 256 MiB gateway memory limit. Do not run the gateway as root. Gateway logs

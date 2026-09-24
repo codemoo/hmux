@@ -15,12 +15,10 @@ queues and caches keep HMux overhead controlled as browsers and tabs increase.
 Memory claims need measurements that distinguish gateway/Home overhead, browser
 memory and the agent/tmux workloads; no numerical memory budget is established here.
 
-Both Go and Rust implement the native runtime during migration; the web/PWA
-remains TypeScript. The maintained Gateway/Home/helper installation runs Rust
-trials, while default build commands still produce Go. The
-[Rust migration control](RUST_MIGRATION.md) owns remaining acceptance and Go
-retirement; [validation](VALIDATION.md) records actual deployments. The boundaries
-below apply to both implementations.
+The native runtime is Rust; the web/PWA remains TypeScript. The
+[Rust runtime status](RUST_MIGRATION.md) records current limits and follow-up
+acceptance work, while [validation](VALIDATION.md) preserves dated deployment evidence.
+The boundaries below apply to the shipped runtime.
 
 ```text
 Browser/PWA ── HTTPS/WSS ── Nginx ── loopback hmux-web serve
@@ -38,19 +36,15 @@ Browser/PWA ── HTTPS/WSS ── Nginx ── loopback hmux-web serve
 | Component | Responsibility |
 | --- | --- |
 | `web/` | Tabs, terminal, conversations, settings, input, uploads and notifications |
-| `internal/webgateway/` | Authentication, account profiles, revocation, diagnostics, push and bounded transport |
-| `internal/home/` | Local catalog/recovery stream, workspace operations and terminal PTYs |
-| `internal/agent/`, `internal/catalog/` | Validated profile creation, session metadata and exact provider bindings |
-| `internal/recovery/`, `internal/sharedworkspace/` | Private checkpoints and verified tab continuity |
-| `internal/filestage/` | Bounded, private uploads with exact session checks |
-| `third_party/token-terrier-server/` | Source-separated provider usage collection on Home |
-| `cmd/hmux-agent/` | Headless administration, recovery and optional workflow hooks |
-| `deploy/web/` | Gateway service/proxy templates and web/Home build bundle |
+| `crates/hmux-gateway/` | Authentication, account profiles, revocation, diagnostics, push and bounded transport |
+| `crates/hmux-home/` | Local catalog/recovery stream, workspace operations and terminal PTYs |
+| `crates/hmux-agent/` | Validated profile creation, session metadata, recovery and optional workflow hooks |
+| `crates/hmux-core/`, `crates/hmux-model/` | Private checkpoints, verified tab continuity, shared models and bounded process/storage primitives |
+| `crates/hmux-usage/` | Source-separated bounded provider usage collection in Home |
+| `crates/hmux-service/`, `crates/hmux-install/` | Native service lifecycle and durable installation |
+| `deploy/web/` | Gateway service/proxy templates and native web/Home bundle |
 
-Rust maps these boundaries to `crates/hmux-gateway`, `hmux-home`, `hmux-usage`,
-`hmux-web` and `hmux-agent`. `hmux-model`, `hmux-core` and `hmux-platform` hold
-shared models, bounded process/storage primitives and OS access; `hmux-service`
-and `hmux-install` own native lifecycle and installation. `hmux-protocol` implements
+`hmux-protocol` implements
 the typed Home transport in [proto/README.md](../proto/README.md), with Protobuf v2
 negotiation and rolling JSON v1 compatibility. Browser HTTP/WebSocket contracts
 remain unchanged.
@@ -103,25 +97,22 @@ loader accepts an existing `client.toml` when the new file is absent, and decode
 known retired keys without using them. Unknown fields still fail. No loader edits
 existing files. See [MIGRATION.md](MIGRATION.md).
 
-## Go source boundaries
+## Rust source boundaries
 
-- `cmd/hmux-web/main.go` parses/dispatches CLI arguments; `init.go`, `serve.go`
-  and `connect.go` own credential enrollment, gateway startup and Home startup.
-- `cmd/hmux-agent/` separates create, metadata, workflow, setup and diagnostic
-  handlers from command dispatch, retaining the existing public commands.
-- `internal/webgateway/server.go` owns server lifetime and outer HTTP security
-  headers/Host checks. `http_api.go` keeps Origin/login/session/CSRF gates together;
-  `http_auth.go`, `http_action.go` and `browser_terminal.go` own their handlers.
-- `protocol.go` owns wire messages and bounded peer I/O; `hub.go` owns shared Home
-  state, pending requests and fan-out. `home.go` owns connector request/view lifetime;
-  `home_collectors.go`, `home_upload.go` and `home_action.go` isolate the shared
-  collectors, file transfer and allowlisted local operations.
-- `internal/homeservice/` separates OS manager operations (`service.go`), command
-  dispatch (`command.go`), installation/adoption (`install.go`) and environment
-  validation (`environment.go`).
-- `internal/workflow/` separates bounded persistence (`store.go`), hook/report
-  intake (`hooks.go`), catalog projection (`catalog.go`) and state validation/pruning
-  (`state.go`). File splits do not introduce services or change persistence formats.
+- `crates/hmux-web/` owns `hmux-web` command dispatch, enrollment, Gateway startup,
+  Home startup and the built-bundle `install-home` command.
+- `crates/hmux-gateway/` owns HTTP/static serving, authentication, account state,
+  Home transport, bounded browser flow, uploads, push and diagnostics.
+- `crates/hmux-home/` owns connector lifetime, catalog/usage collection, session and
+  provider binding, recovery, workspace operations and disposable terminal PTYs.
+- `crates/hmux-agent/` owns headless create, metadata, setup, recovery, workflow and
+  diagnostic commands; `crates/hmux-service/` owns OS manager operations and verified
+  adoption; `crates/hmux-install/` owns private atomic binary replacement.
+- `crates/hmux-core/`, `crates/hmux-model/` and `crates/hmux-protocol/` hold bounded
+  storage/process primitives, validated contracts and versioned peer I/O.
+
+These source boundaries do not introduce extra resident services or change persistent
+configuration, session identity or protocol contracts.
 
 Security gates, transactional recovery and private-file validators remain local
 to their owners. Avoid introducing a generic storage or CLI framework merely to

@@ -510,7 +510,7 @@ async fn browser_upload_socket(server: &Server, cookie: &str) -> Socket {
 }
 
 #[tokio::test]
-#[ignore = "make rust-compat supplies the actual Go Home upload test executable"]
+#[ignore = "the optional external baseline suite (tests/RUST.md) supplies the actual Go Home upload test executable"]
 async fn upload_actual_go_home_commits_binary_files_and_three_hour_expiry() {
     use std::process::Stdio;
     let fixture = Fixture::new();
@@ -521,8 +521,8 @@ async fn upload_actual_go_home_commits_binary_files_and_three_hour_expiry() {
         .as_str()
         .unwrap()
         .to_owned();
-    let helper =
-        std::env::var_os("HMUX_GO_UPLOAD_HELPER").expect("make rust-compat provides helper");
+    let helper = std::env::var_os("HMUX_GO_UPLOAD_HELPER")
+        .expect("tests/RUST.md describes the external legacy helper");
     let log = fs::File::create(fixture.root.join("go-upload.log")).unwrap();
     let mut child = tokio::process::Command::new(helper)
         .arg("-test.run=^TestRustGatewayActualGoUploadHome$")

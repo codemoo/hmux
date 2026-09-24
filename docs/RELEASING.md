@@ -22,17 +22,19 @@ an assertion that a matching GitHub binary release exists.
 ## Web deployments
 
 Follow [WEB.md](WEB.md), using your own domain, HTTPS gateway, credentials and Home
-connector. `deploy/web/build.sh` builds the web assets and Go binaries. Keep account
-and session stores outside the release directory. Stage and verify a new release,
-retain the previous release, then switch the service. Check authentication, CSP,
-static assets and Home connectivity after activation. Publishing source does not
-update running installations automatically.
+connector. `make build` packages web assets and the Rust Gateway/Home/helper into
+`dist/web-<platform>/` and `dist/hmux-web-<platform>.tar.gz`. Build a supported
+non-host target only with an explicitly configured Rust target, linker and SDK.
+Keep account and session stores outside the release directory. Stage and verify a
+new release, retain the previous release, then switch the service. Check the SHA-256
+manifest, authentication, CSP, static assets and Home connectivity after activation.
+Publishing source does not update running installations automatically.
 
-The native Rust runtime has separate `make rust-package` bundles. Follow
-[Rust verification](../tests/RUST.md#test-entry-point) before using a new artifact;
-[migration status](RUST_MIGRATION.md) and [validation](VALIDATION.md#rust-transition)
-distinguish maintained trials from full release acceptance. Publishing the Rust
-source does not switch default builds, retire Go or complete device/soak gates.
+Run [Rust verification](../tests/RUST.md#test-entry-point), including `make bundle-check`
+with the selected `HMUX_RUST_BUNDLE`, before using a new artifact. The project is
+Rust-only, but dated trial evidence and the outstanding device/soak limitations in
+[migration status](RUST_MIGRATION.md) remain limitations; retirement does not make
+them passed release gates.
 
 ## Source license
 

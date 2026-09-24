@@ -1,25 +1,20 @@
 # Wire v1 synthetic compatibility corpus
 
-`messages.json` is produced by the actual Go gateway decoder and Go JSON encoder
-in `internal/webgateway/wire_compatibility_test.go`. It contains no runtime state.
-`make rust-compat` verifies Go → Rust → Go against these fixtures. Semantic
-operation validation and authentication are not performed by this framing codec.
+`messages.json` is frozen output of the prior Go gateway decoder and encoder,
+preserved at checkpoint `c061f28fe7ea8e865578ac1189240447d0ebaa6f` in
+`internal/webgateway/wire_compatibility_test.go`. Rust checks it without a Go
+executable. Semantic operation validation and authentication belong to higher
+layers. Regenerating this baseline requires a separate historical checkout and
+review; do not rewrite it from the new implementation under test.
 
-Regenerate only after reviewing a contract change:
-
-```sh
-HMUX_REGENERATE_WIRE_FIXTURES=1 go test ./internal/webgateway -run TestWireV1CompatibilityCorpus -count=1
-```
-
-The initial Rust codec deliberately rejects a null envelope, noncanonical field
+The Rust compatibility decoder deliberately rejects a null envelope, noncanonical field
 spelling and repeated typed fields that Go accepts. These deltas are recorded per
 fixture; they are **not evidence of complete wire parity**. Existing HMux encoders
 use canonical objects. Before release, each delta must be implemented compatibly
 or accepted as a documented protocol hardening with all mixed-version tests.
 Invalid UTF-8 and unpaired Unicode escapes also require explicit corpus coverage;
-Go and Serde differ. No production endpoint uses this candidate codec yet.
+Go and Serde differ. The deployed Rust transport retains the canonical v1 fallback.
 
 The pure Rust output credit state machine enforces the existing 32-frame/512-KiB
-window, exact FIFO ACK sizes and oldest-frame stall deadline. Async wakeups,
-transport cancellation, connection generation and end-to-end rendering remain
-integration work, not covered merely by these unit tests.
+window, exact FIFO ACK sizes and oldest-frame stall deadline. Async transport, cancellation and peer generations have separate integration
+tests; these codec fixtures alone do not prove browser/device acceptance.

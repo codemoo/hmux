@@ -52,6 +52,31 @@ records fresh isolated Go/Rust measurements and separate live Rust readings.
 Rust used less PSS in the measured Linux fixture; no matched live Go sample or
 whole-product memory-budget acceptance is claimed.
 
+## Rust-only source retirement (2026-09-25)
+
+The user authorized removing the Go source after the maintained Rust trials.
+Default build/check/install paths and Linux/macOS CI now use Rust; no `.go`,
+`go.mod` or `go.sum` remains in the active source tree. Prior Go sources and
+migration oracles remain at checkpoint `c061f28fe7ea8e865578ac1189240447d0ebaa6f`;
+frozen synthetic compatibility vectors and required attribution are retained.
+
+- A complete local `make check` passed: Rust formatting/strict Clippy, 635 passing
+  Rust tests with 20 opt-in skips, ShellCheck, TypeScript and 171 frontend tests.
+- `make integration` passed the production Rust Gateway/Home pair, both-codec
+  Home WSS, native CLI, workflow hooks and isolated real-tmux lifecycle tests.
+  The new pair fixture initially omitted required pane/recovery data; completing
+  that synthetic fixture fixed startup, and the final runs passed.
+- `make build` produced the macOS ARM64 native bundle; `make bundle-check` passed
+  all five manifest/notices/install/upgrade/rollback checks in temporary Homes.
+  Native notices cover 158 locked crates and the Rust standard library.
+- Shell formatting, local documentation links, contract-owner paths and the
+  independent retirement review passed. Normal contributor/CI commands need no
+  Go toolchain; optional historical comparisons require explicit external artifacts.
+- No service was installed, restarted or deployed during this cleanup. This source
+  decision does not complete physical-device, real-account service, 24h/72h soak
+  or whole-product resource acceptance. Those limits remain in
+  [Rust runtime status](RUST_MIGRATION.md).
+
 ## Source publication checks (2026-09-25)
 
 - `make check`, `make integration`, `make build`, `make shfmt-check` and the final

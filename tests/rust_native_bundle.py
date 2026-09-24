@@ -72,7 +72,7 @@ class NativeBundle(unittest.TestCase):
         self.assertTrue({Path(p) for p in (
             "hmux-web", "hmux-agent", "install-home.py", "web/index.html",
             "THIRD_PARTY_NOTICES.md", "RELEASE")} <= listed)
-        self.assertIn("runtime=rust-candidate", (BUNDLE / "RELEASE").read_text())
+        self.assertIn("runtime=rust", (BUNDLE / "RELEASE").read_text())
 
     def test_installed_commands_upgrade_and_compatibility_wrapper(self):
         workspace = self.root / "Work base ; literal"

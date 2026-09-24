@@ -216,7 +216,7 @@ fn malformed_inputs_and_mismatched_signing_pair() {
 }
 
 #[tokio::test]
-#[ignore = "make rust-compat provides the actual Go Web Push sender/validator"]
+#[ignore = "the optional external baseline suite (tests/RUST.md) provides the actual Go Web Push sender/validator"]
 async fn actual_go_and_rust_push_crypto_interoperate() {
     use hmux_core::command::{CommandRunner, CommandSpec};
     use serde::{Deserialize, Serialize};
@@ -308,8 +308,8 @@ async fn actual_go_and_rust_push_crypto_interoperate() {
         .unwrap()
         .write_all(&serde_json::to_vec(&requests).unwrap())
         .unwrap();
-    let helper =
-        std::env::var_os("HMUX_GO_PUSH_CRYPTO_HELPER").expect("make rust-compat provides helper");
+    let helper = std::env::var_os("HMUX_GO_PUSH_CRYPTO_HELPER")
+        .expect("tests/RUST.md describes the external legacy helper");
     let result = CommandRunner::new(1)
         .unwrap()
         .run(

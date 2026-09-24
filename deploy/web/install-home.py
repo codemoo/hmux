@@ -1,152 +1,41 @@
 #!/usr/bin/env python3
-"""Install Home binaries and configure the base directory for new sessions."""
+"""Compatibility launcher for a Rust Home bundle; installation lives in hmux-web."""
 import argparse
-from datetime import datetime, timezone
 import os
+import platform
 from pathlib import Path
 import stat
-import subprocess
 import sys
-import tempfile
-
-BINARIES = ("hmux-web", "hmux-agent")
 
 
-def read_regular(path):
-    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
-    with os.fdopen(fd, "rb") as source:
-        info = os.fstat(source.fileno())
-        if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid()
-                or info.st_mode & 0o022 or not 0 < info.st_size <= 256 * 1024 * 1024):
-            raise ValueError("binary must be a nonempty owner-controlled regular file")
-        return source.read(), info
-
-
-def fingerprint(info):
-    return (info.st_dev, info.st_ino, info.st_mode, info.st_size,
-            info.st_mtime_ns, info.st_ctime_ns)
-
-
-def current(path):
-    try:
-        return fingerprint(path.lstat())
-    except FileNotFoundError:
-        return None
-
-
-def check_directory(path, create=False, mode=0o755):
-    path = Path(os.path.abspath(path))
-    for directory in (path, *path.parents):
-        try:
-            info = directory.lstat()
-        except FileNotFoundError:
-            if create:
-                continue
-            raise
+def main():
+    parser = argparse.ArgumentParser(add_help=False)
+    here = Path(__file__).resolve().parent
+    default_source = here
+    if not (here / "hmux-web").is_file() and (here.parent.parent / "Cargo.toml").is_file():
+        system = {"Darwin": "darwin", "Linux": "linux"}.get(platform.system())
+        architecture = {"arm64": "arm64", "aarch64": "arm64", "x86_64": "amd64"}.get(platform.machine())
+        if system and architecture:
+            default_source = here.parent.parent / "dist" / f"web-{system}-{architecture}"
+    parser.add_argument("--source-dir", type=Path, default=default_source)
+    options, _ = parser.parse_known_args()
+    source = Path(os.path.abspath(options.source_dir.expanduser()))
+    for directory in (source, *source.parents):
+        info = directory.lstat()
         sticky_root = info.st_uid == 0 and info.st_mode & stat.S_ISVTX
         if (not stat.S_ISDIR(info.st_mode) or info.st_uid not in (0, os.getuid())
                 or (info.st_mode & 0o022 and not sticky_root)):
-            raise ValueError("directory path must be trusted and must not traverse symlinks")
-    if create:
-        path.mkdir(mode=mode, parents=True, exist_ok=True)
-    info = path.lstat()
-    if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o022:
-        raise ValueError("source and installation directories must be owner-controlled")
-    return path
-
-
-def install(source_dir, bin_dir):
-    source_dir = check_directory(source_dir)
-    bin_dir = check_directory(bin_dir, create=True)
-    planned = []
-    for name in BINARIES:
-        data, source_info = read_regular(source_dir / name)
-        if not source_info.st_mode & 0o111:
-            raise ValueError("source binary must be executable")
-        target = bin_dir / name
-        old_data, old_info = (None, None)
-        if current(target) is not None:
-            old_data, old_info = read_regular(target)
-        planned.append((target, data, old_data, old_info))
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
-    for target, data, old_data, old_info in planned:
-        expected = fingerprint(old_info) if old_info else None
-        if current(target) != expected:
-            raise ValueError("installed binary changed; retry after reviewing it")
-        if old_data is not None:
-            backup = target.with_name(target.name + ".backup-" + stamp)
-            fd = os.open(backup, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-            with os.fdopen(fd, "wb") as output:
-                output.write(old_data)
-                output.flush()
-                os.fsync(output.fileno())
-        fd, staged = tempfile.mkstemp(prefix="." + target.name + "-", dir=bin_dir)
-        try:
-            with os.fdopen(fd, "wb") as output:
-                output.write(data)
-                os.fchmod(output.fileno(), 0o755)
-                output.flush()
-                os.fsync(output.fileno())
-            if current(target) != expected:
-                raise ValueError("installed binary changed before activation")
-            os.replace(staged, target)
-            directory_fd = os.open(bin_dir, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
-            try:
-                os.fsync(directory_fd)
-            finally:
-                os.close(directory_fd)
-        finally:
-            if os.path.exists(staged):
-                os.unlink(staged)
-        print("Installed " + target.name)
+            raise ValueError("bundle directory must be owner-controlled without symlink components")
+    binary = source / "hmux-web"
+    info = binary.lstat()
+    if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid()
+            or info.st_mode & 0o022 or not info.st_mode & 0o111):
+        raise ValueError("bundle hmux-web must be an owner-controlled executable")
+    os.execv(binary, [str(binary), "install-home", "--source-dir", str(source), *sys.argv[1:]])
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--source-dir", type=Path, default=Path("dist/web-darwin-arm64"))
-    parser.add_argument("--bin-dir", type=Path, default=Path.home() / ".local/bin")
-    parser.add_argument("--config-dir", type=Path, default=Path.home() / ".config/hmux")
-    parser.add_argument("--workspace-dir", help="session base; new installs default to ~/.hmux")
-    parser.add_argument("--binaries-only", action="store_true", help="leave configuration untouched")
-    parser.add_argument("--enable-service", action="store_true",
-                        help="enable a macOS LaunchAgent or Linux user service; adopt an existing connector if no URL is supplied")
-    parser.add_argument("--url", help="service gateway URL: wss://YOUR_HOST/connect")
-    parser.add_argument("--token-file", type=Path, help="existing private connector token for the service")
-    args = parser.parse_args()
-    if args.binaries_only and args.enable_service:
-        parser.error("--binaries-only cannot be combined with --enable-service")
-    if (args.url or args.token_file) and not args.enable_service:
-        parser.error("--url and --token-file require --enable-service")
-    if bool(args.url) != bool(args.token_file):
-        parser.error("--url and --token-file must be supplied together")
     try:
-        workspace = args.workspace_dir
-        if not args.binaries_only:
-            config_dir = check_directory(args.config_dir.expanduser(), create=True, mode=0o700)
-            existing = any(os.path.lexists(config_dir / name)
-                           for name in ("home.toml", "client.toml", "inventory.toml"))
-            if workspace is None and not existing and sys.stdin.isatty():
-                workspace = input("New-session base directory [~/.hmux]: ").strip() or "~/.hmux"
-        install(args.source_dir, args.bin_dir)
-        if not args.binaries_only:
-            command = [str(check_directory(args.bin_dir) / "hmux-agent"),
-                       "setup-home", "--config-dir", str(config_dir)]
-            if workspace is not None:
-                command.extend(["--workspace-dir", workspace])
-            subprocess.run(command, check=True)
-            print("Home configured; existing paths are preserved unless --workspace-dir is supplied.")
-            if args.enable_service:
-                binary_path = str(check_directory(args.bin_dir) / "hmux-web")
-                command = [binary_path, "service", "install", "--binary", binary_path]
-                if args.url:
-                    config_path = config_dir / "home.toml"
-                    if not config_path.exists():
-                        config_path = config_dir / "client.toml"
-                    command.extend(["--url", args.url, "--token-file",
-                                    str(args.token_file.expanduser().absolute()),
-                                    "--config", str(config_path)])
-                else:
-                    command.append("--from-running")
-                subprocess.run(command, check=True)
-    except (OSError, ValueError, subprocess.CalledProcessError, EOFError) as error:
-        parser.exit(1, "Home installation refused: " + str(error) + "\n")
+        main()
+    except (OSError, ValueError) as error:
+        sys.exit("Home installation refused: " + str(error))

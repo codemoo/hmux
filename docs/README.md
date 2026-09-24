@@ -7,7 +7,7 @@ Claude and shells on one host, accessed exclusively through web/PWA.
 | --- | --- |
 | [Product/security specification](../CODEX_HMUX_IMPLEMENTATION_PROMPT_KO.md) | Requirements and boundaries |
 | [Architecture](ARCHITECTURE.md) | Gateway, Home services and session lifecycle |
-| [Rust migration](RUST_MIGRATION.md) | Candidate acceptance status, remaining release work and test entry point |
+| [Rust runtime status](RUST_MIGRATION.md) | Rust-only runtime scope, remaining device/soak limits and test entry point |
 | [Web HMux](WEB.md) | Web/PWA behavior, authentication and continuity |
 | [Browser input](BROWSER_INPUT.md) / [iOS input](IOS_INPUT.md) | Input/Paste contracts and device limitations |
 | [Providers](PROVIDERS.md) / [Push](PUSH.md) | CLI setup, usage sources and notifications |
@@ -29,7 +29,7 @@ browser experiments; it is not current operational instruction or permission to 
 
 Start at the root README, then choose a reference here. Contributors read
 `AGENTS.md` and `CONTRIBUTING.md`; browser changes additionally read `web/AGENTS.md`.
-`RUST_MIGRATION.md` alone controls the active Rust transition and its next block.
+`RUST_MIGRATION.md` controls current Rust runtime limitations and its next acceptance block.
 `RUST_CONTRACTS.md` holds durable acceptance gates; `tests/RUST.md` holds runnable
 checks and the physical-device checklist; dated implementation evidence stays in
 `docs/archive/`. To try Rust, follow the [test entry point](../tests/RUST.md#test-entry-point).

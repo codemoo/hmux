@@ -152,9 +152,9 @@ for build/deployment details.
 | `shared-workspace.ts`, `preferences.ts` | Validated workspace shape and guarded local storage |
 | `usage.ts`, `types.ts`, `theme.ts` | Usage formatting, data types and selectable terminal palettes |
 | `style.css` → `ios-native-input.css` → `chrome.css` → `dialogs.css` | Base/viewport → iOS input → workspace UI → dialog overrides |
-| `internal/webgateway` | Auth, bounded gateway/Home protocol, PTYs and account profiles |
-| `internal/hostmetrics` | Home platform resource collection, including disk allocation |
-| `provider-settings.ts`, `internal/providers` | Settings → AI 연결: provider CLI status, connect/update jobs and API keys |
+| `crates/hmux-gateway` | Auth, bounded gateway/Home protocol, PTYs and account profiles |
+| `crates/hmux-home/src/metrics.rs` | Home platform resource collection, including disk allocation |
+| `provider-settings.ts`, `crates/hmux-home/src/providers.rs` | Settings → AI 연결: provider CLI status, connect/update jobs and API keys |
 
 See [web maintenance instructions](../web/AGENTS.md). Preserve CSS order and edit
 owning rules rather than appending a new conflicting override.

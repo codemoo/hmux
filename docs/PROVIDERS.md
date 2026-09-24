@@ -27,7 +27,7 @@ already launches the CLI. Status comes from each CLI's own files and commands
 `~/.gemini/.env`, `~/.gemini/oauth_creds.json`), each bounded by a five-second
 timeout.
 
-- **연결하기** runs `internal/providers/setup.sh connect` for that provider in a
+- **연결하기** runs `crates/hmux-home/src/provider_setup.sh connect` for that provider in a
   private tmux server (`tmux -L hmux-setup`, session `connect-<provider>`), so it
   never appears in the session list. It installs the CLI when missing and then
   starts the CLI's own login flow: `codex login --device-auth`, `claude auth login`

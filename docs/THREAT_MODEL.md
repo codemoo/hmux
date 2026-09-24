@@ -7,7 +7,7 @@ that user's terminal authority. HMux is not a sandbox for untrusted tenants.
 
 ## Boundaries and defenses
 
-- Public browser traffic uses HTTPS/WSS through a trusted reverse proxy. The Go
+- Public browser traffic uses HTTPS/WSS through a trusted reverse proxy. The Rust
   gateway binds loopback and enforces exact Host/origin, CSRF and WebSocket origins.
   Home connects outbound using a private token and normal TLS certificate checks.
 - Password hashes, optional per-account TOTP, replay protection, rate limits and

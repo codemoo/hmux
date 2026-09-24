@@ -23,11 +23,11 @@ web/PWA. macOS remains a supported Home host; browser-native input is part of th
 - Assess memory impact for new resident services and dependencies. Substantiate
   memory claims with measurements, separating HMux gateway/Home, browser and
   agent/tmux usage; do not present an unmeasured target as an achieved result.
-- Go remains the default build; maintained Gateway/Home/helper Rust trials are recorded
-  in `docs/VALIDATION.md`. Full native-runtime migration to Rust is the
-  chosen direction. Follow `docs/RUST_MIGRATION.md`, preserving CLI, configuration,
-  protocol, security and session lifecycle. Web/PWA remains TypeScript; measure
-  resource use and regressions throughout the migration.
+- Rust is the native runtime for Gateway, Home, usage collection and helpers.
+  Preserve CLI, configuration, protocol, security and session lifecycle contracts.
+  Historical rollout evidence remains in `docs/VALIDATION.md`; current limitations
+  and follow-up acceptance work are in `docs/RUST_MIGRATION.md`. Web/PWA remains
+  TypeScript; measure resource use and regressions throughout changes.
 
 ## Change discipline
 
@@ -35,7 +35,7 @@ web/PWA. macOS remains a supported Home host; browser-native input is part of th
 - Reuse existing host contracts; authorization belongs on the server.
 - Keep `{id, created_at}` identity checks and authoritative provider bindings.
   Closing a browser/tab/view must not end original tmux or provider work.
-- `internal/home` serves the local web connector. Do not restore a desktop bridge,
+- `crates/hmux-home` serves the local web connector. Do not restore a desktop bridge,
   standalone terminal selector, SSH client transport or separate app installer.
 - Retain the existing grouped-view tmux marker/name for rolling-upgrade safety.
 - Accept retired Home configuration keys only through decode-only compatibility;
@@ -47,7 +47,7 @@ web/PWA. macOS remains a supported Home host; browser-native input is part of th
 
 - Never commit credentials, real deployment addresses, private-key paths, personal
   configuration, conversation dumps or runtime state. Use synthetic fixtures.
-- Allowlist operations and use `exec.Command` argument arrays. Validate any
+- Allowlist operations and use explicit command argument arrays. Validate any
   arguments that cross an administrative SSH remote-shell boundary.
 - Preserve SSH host-key checks; never enable agent forwarding.
 - Do not access private databases or application storage belonging to other apps.
@@ -61,9 +61,10 @@ web/PWA. macOS remains a supported Home host; browser-native input is part of th
 
 ## Verification
 
-- `make check`: Go formatting/tests/race/vet, vendored collector, ShellCheck and web checks.
-- `make integration`: hook installer and isolated session-create/web-PTY tests.
-- `make build`: web assets, gateway and Home host binaries; no deployment.
+- `make check`: Rust formatting, Clippy, locked Rust tests, ShellCheck and web checks.
+- `make integration`: native pair/runtime/CLI/hooks and isolated tmux tests.
+- `make build`: web assets plus the native host Gateway/Home/helper bundle; no deployment.
+- `make bundle-check`: validates a selected native bundle; set `HMUX_RUST_BUNDLE`.
 - Follow `web/AGENTS.md` for browser checks; a typecheck is not device validation.
 - Never attach to, rename, detach or kill pre-existing tmux sessions in tests.
   Live tests use disposable `hmux-e2e-*` resources and isolated sockets.

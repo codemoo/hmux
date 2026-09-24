@@ -2,11 +2,11 @@
 
 This is the current web/PWA reference. Historical experiments are archived and
 are not implementation instructions. HMux Web uses TypeScript, Vite and xterm.js
-with a Go gateway and one outbound Home connector. Web/PWA is the only HMux UI.
+with a Rust gateway and one outbound Home connector. Web/PWA is the only HMux UI.
 
 ## Runtime and security
 
-Browser → HTTPS/WSS → Linux Nginx → loopback Go gateway. Home → authenticated
+Browser → HTTPS/WSS → Linux Nginx → loopback Rust gateway. Home → authenticated
 outbound WSS → gateway. All terminal/catalog/provider operations originate on Home.
 One shared catalog/usage collector serves every web client; computer resources
 always describe Home, never the phone or Linux gateway.
@@ -102,7 +102,7 @@ an ordinary rollback because it may restore an older authentication policy.
 Authenticator recovery uses trusted administration, private timestamped backups,
 new credential paths and enrollment; it has no weaker web bypass.
 
-The primary web account uses Home's tab store. Additional accounts use the same Go
+The primary web account uses Home's tab store. Additional accounts use the native
 merge implementation at `web-profiles/<username-sha256>/shared-workspace/` beside
 the credential file. Only authenticated identity selects a profile; browser profile
 injection is rejected. Back up profile state during server migration.
@@ -398,10 +398,9 @@ reconnection uses exact tmux identity, not an old provider ID or display name.
 
 Run the build/check commands above. Optional live checks use isolated resources:
 
-```sh
-HMUX_RUN_WEB_SOCKET_TEST=1 go test ./internal/webgateway -run TestWebSocketOriginAndLogout
-HMUX_RUN_WEB_TMUX_TEST=1 go test ./internal/home -run TestWebTerminalViewWithIsolatedTmux
-```
+Run `make integration` for the native Gateway/Home runtime and isolated tmux
+lifecycle checks. It uses only disposable `hmux-e2e-*` resources and never targets
+an existing tmux server.
 
 The socket test uses fake Home/loopback. The tmux test uses a dedicated socket and
 `hmux-e2e-*` names; never attach or alter pre-existing sessions for testing.

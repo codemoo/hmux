@@ -184,7 +184,7 @@ async fn restart_scopes_and_current_workspace_handoff() {
 }
 
 #[tokio::test]
-#[ignore = "requires isolated Rust/Go workspace handoff via make rust-compat"]
+#[ignore = "requires isolated Rust/Go workspace handoff (external artifact; see tests/RUST.md)"]
 async fn reload_workspace_after_current_go_write() {
     let root = std::env::var_os("HMUX_RUST_WORKSPACE_HANDOFF").expect("handoff root");
     let store = Store::new(PrivateDir::open(&PathBuf::from(root).canonicalize().unwrap()).unwrap());

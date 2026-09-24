@@ -2,6 +2,7 @@
 """Bounded native Rust elapsed-time checks using private synthetic state only."""
 
 import argparse
+from legacy_baseline import BASELINE, baseline_digest
 import hashlib
 import json
 import os
@@ -104,7 +105,8 @@ def main():
         "started_at_unix": time.time(), "requested_seconds": args.seconds, "codec": args.codec,
         "os": platform.platform(), "machine": platform.machine(),
         "binaries": {}, "resources": [], "progress": None,
-        "source_hashes": {name: digest(source_root / name) for name in (
+        "baseline_ref": BASELINE,
+        "source_hashes": {name: (baseline_digest(name) if name.startswith("internal/") else digest(source_root / name)) for name in (
             "tests/rust_native_soak.py", "internal/webgateway/rust_full_gateway_test.go",
             "internal/webgateway/rust_native_soak_test.go",
             "internal/webgateway/rust_native_stress_test.go")},

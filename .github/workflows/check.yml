@@ -24,25 +24,6 @@ jobs:
           unzip -q "$hmux_protoc_zip" -d "$hmux_protoc_dir"
           printf '%s\n' "$hmux_protoc_dir/bin" >> "$GITHUB_PATH"
       - run: make rust-proto-check
-  go:
-    runs-on: macos-14
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-      - name: Install macOS verification tools
-        run: |
-          brew install tmux jq shellcheck
-      - run: make fmt-check
-      - run: go test ./...
-      - run: go vet ./...
-      - run: go test -race ./...
-      - run: go test ./...
-        working-directory: third_party/token-terrier-server
-      - run: make shellcheck
-      - run: make shfmt-check
-      - run: make integration
   web:
     runs-on: ubuntu-latest
     steps:
@@ -56,39 +37,43 @@ jobs:
       - run: npm run check --prefix web
       - run: npm test --prefix web
       - run: npm run build --prefix web
-  home-service-linux:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-      - run: go test -race ./internal/homeservice
-      - run: go build ./cmd/hmux-web
-
-  rust-candidate:
+  native:
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-14]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-node@v4
         with:
-          go-version-file: go.mod
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
       - name: Install pinned Rust toolchain
         run: rustup toolchain install 1.88.0 --profile minimal --component rustfmt --component clippy
-      - run: make rust-check
-      - run: make rust-compat
-      - run: make rust-build
-      - run: make rust-notices-check
-      - run: make rust-gateway-candidate
-      - run: python3 tests/rust_auth_candidate.py
-      - run: make rust-gateway-e2e
-      - run: make rust-native-cli
-      - run: make rust-native-helper-compat
-      - run: make rust-native-e2e
-      - run: make rust-native-matrix
+      - name: Install isolated integration tools
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = macOS ]; then
+            brew install tmux jq shellcheck
+          else
+            sudo apt-get update
+            sudo apt-get install -y tmux jq shellcheck
+          fi
+      - run: make rust-check shellcheck shfmt-check
+      - run: make integration
+      - run: make build
+      - name: Verify complete native bundle
+        shell: bash
+        run: |
+          case "$(rustc -vV | sed -n 's/^host: //p')" in
+            aarch64-apple-darwin) hmux_platform=darwin-arm64 ;;
+            x86_64-apple-darwin) hmux_platform=darwin-amd64 ;;
+            x86_64-unknown-linux-gnu) hmux_platform=linux-amd64 ;;
+            *) echo 'Unsupported CI host' >&2; exit 1 ;;
+          esac
+          HMUX_RUST_BUNDLE="$PWD/dist/web-$hmux_platform" make bundle-check
       - name: Inspect only the native test process
         run: cargo test -p hmux-service --lib reads_only_self_process_metadata --locked -- --ignored
 

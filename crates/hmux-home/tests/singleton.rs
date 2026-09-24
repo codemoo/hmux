@@ -168,7 +168,7 @@ fn simultaneous_threads_admit_exactly_one_owner() {
 }
 
 #[tokio::test(flavor = "current_thread")]
-#[ignore = "requires built actual Go Home lock oracle via make rust-home-lock-compat"]
+#[ignore = "requires built actual Go Home lock oracle (external artifact; see tests/RUST.md)"]
 async fn actual_go_home_lock_is_exclusive_in_both_directions_and_releases_on_exit() {
     use std::process::Stdio;
     use tokio::{

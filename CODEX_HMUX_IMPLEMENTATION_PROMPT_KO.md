@@ -23,27 +23,25 @@ HMux는 하나의 Home 호스트에서 Codex, Claude Code, 일반 셸을 계속 
 - 네이티브 바이너리 배포를 기본으로 하고 Docker나 VM을 필수로 요구하지 않는다.
   제공자 CLI·tmux·인증정보·작업 폴더는 호스트에서 사용한다.
 - 설치 절차와 런타임 의존성을 최소화한다. 사전 빌드된 바이너리를 설치하는 사용자가
-  Go·Rust·Node.js 빌드 도구까지 설치할 필요가 없도록 배포를 설계한다.
-  간단한 단일 명령 설치는 목표이며, 현재 완료된 기능으로 안내하지 않는다.
+  Rust·Node.js 빌드 도구까지 설치할 필요가 없도록 배포를 설계한다.
+  설치는 빌드된 네이티브 번들의 `hmux-web install-home` 명령으로 제공한다.
 - 버퍼·큐·캐시·보관 상태에는 상한을 두고 수집기와 연결을 공유한다.
   브라우저나 탭마다 상주 프로세스·중복 폴링을 늘리지 않는다.
 - 메모리 주장은 측정 근거를 남긴다. HMux gateway·Home, 브라우저, 제공자 CLI·tmux의
   사용량을 구분하며, 측정하지 않은 수치나 목표를 달성된 성능으로 표현하지 않는다.
-- 기본 빌드는 Go이며, 구현된 Rust 네이티브 런타임은 운영 설치에서 시험 중이다.
-  네이티브 런타임 전체를 Rust로 전환하는 것이 확정 방향이다.
-  `docs/RUST_MIGRATION.md`에 따라 gateway·Home·수집기·관리 도구를 전환하되 웹/PWA는
-  TypeScript로 유지한다. 실행 옵션·설정·통신 규약·보안·세션 수명 계약을 보존하며,
-  실제 자원 사용량과 응답성 측정으로 회귀를 방지한다.
+- Gateway·Home·수집기·관리 도구는 Rust 네이티브 런타임으로 제공한다. 웹/PWA는
+  TypeScript로 유지한다. `docs/RUST_MIGRATION.md`는 현재 제한과 후속 검증을 관리한다.
+  실행 옵션·설정·통신 규약·보안·세션 수명 계약을 보존하며 실제 자원 사용량과 응답성
+  측정으로 회귀를 방지한다.
 
 ## 구성과 책임
 
 - `web/`: TypeScript·xterm.js 기반 데스크톱·모바일 웹 및 PWA.
-- `cmd/hmux-web`, `internal/webgateway`: 인증·프로필·WebSocket gateway와 Home connector.
-- `internal/home`: 웹 connector가 직접 호출하는 로컬 tmux 뷰와 호스트 작업.
-- `internal/agent`, `internal/catalog`: 프로필 실행, 세션 메타데이터, 정확한 제공자 연결.
-- `internal/recovery`, `internal/sharedworkspace`: 검증된 복원과 탭 상태.
-- `cmd/hmux-agent`: 관리·복구·진단·워크플로 훅용 명령. 별도 사용자 UI가 아니다.
-- `deploy/web`: 웹 자산, Linux gateway, macOS Home 바이너리 빌드와 배포 템플릿.
+- `crates/hmux-gateway`, `crates/hmux-web`: 인증·프로필·WebSocket gateway와 네이티브 진입점.
+- `crates/hmux-home`: 로컬 tmux 뷰, 호스트 작업, 복구와 제공자 연결.
+- `crates/hmux-agent`: 관리·복구·진단·워크플로 훅용 명령. 별도 사용자 UI가 아니다.
+- `crates/hmux-core`, `crates/hmux-model`, `crates/hmux-usage`: 상태·계약·제한된 수집 공통 기능.
+- `deploy/web`: 웹 자산, gateway/Home 번들, 서비스·프록시 템플릿.
 
 브라우저는 HTTPS/WSS로 gateway에, Home은 인증된 outbound WSS로 gateway에 연결한다.
 Home에 인바운드 포트를 열거나 원격 장치의 SSH 클라이언트를 구성할 필요가 없다.
@@ -148,7 +146,7 @@ connector에만 적용하며 원본 tmux·제공자 작업을 종료하지 않�
 connector는 하나만 실행한다. Mac은 로그인 후 시작하며 잠자기 중 접근을 보장하지 않는다.
 Linux의 로그인 전·로그아웃 후 실행은 관리자가 선택하는 linger 설정이 필요하다.
 
-`make check`, `make integration`, `make build`로 Go·수집기·웹·셸·격리 tmux 수명주기를
+`make check`, `make integration`, `make build`로 Rust 런타임·웹·셸·격리 tmux 수명주기를
 검증한다. 테스트는 기존 tmux 세션에 attach·rename·detach·kill하지 않으며 전용 socket과
 `hmux-e2e-*` 리소스만 쓴다. 실제 기기 확인, 자동 확인, 미검증 사항을 구분하여 기록한다.
 배포는 기존 릴리스와 비공개 상태를 보존하고 웹·gateway·Home 범위를 명확히 보고한다.

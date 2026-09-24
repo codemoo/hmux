@@ -414,7 +414,7 @@ async fn account_exports_omit_private_fields_and_shutdown_hands_current_state_to
 }
 
 #[tokio::test]
-#[ignore = "run by make rust-compat after the current Go diagnostic write"]
+#[ignore = "run by the optional external baseline suite (tests/RUST.md) after the current Go diagnostic write"]
 async fn reload_current_diagnostics_after_go_append() {
     let path = PathBuf::from(std::env::var_os("HMUX_RUST_DIAGNOSTICS_HANDOFF").unwrap())
         .canonicalize()

@@ -68,44 +68,51 @@ cd hmux
 
 Follow the [web setup guide](docs/WEB.md) to configure your own host, gateway,
 domain and credentials. No hosted service, private configuration or maintainer
-infrastructure access is included. Build prerequisites are Go 1.24+, Node.js 22+
-and tmux on the host. HTTPS is required for remote web access.
+infrastructure access is included. Build prerequisites are the pinned Rust toolchain,
+Node.js 22+, Python 3 and tmux on the Home host. HTTPS is required for remote web access.
 
 ```sh
-npm ci --prefix web
-make web-build
+make build
 ```
 
-This creates the web assets and the currently supported Linux gateway/macOS host
-binaries under `dist/`. Building does not deploy or alter existing sessions.
-Install the Home connector and optional administration helper using
-[Operations](docs/OPERATIONS.md). macOS here refers to the host running tmux.
-An optional [native Home service](docs/OPERATIONS.md#automatic-home-startup-macos-and-linux)
+This packages the native host bundle under `dist/web-<platform>/`, such as
+`dist/web-darwin-arm64/` or `dist/web-linux-amd64/`. It does not deploy or alter
+existing sessions. Build another supported target only when its Rust target, linker
+and platform SDK are available, for example through `HMUX_RUST_TARGETS`; see
+[Operations](docs/OPERATIONS.md#build-and-install-home).
+
+Install the Home connector and administration helper from the built bundle:
+
+```sh
+./dist/web-darwin-arm64/hmux-web install-home
+```
+
+macOS here refers to the host running tmux. An optional
+[native Home service](docs/OPERATIONS.md#automatic-home-startup-macos-and-linux)
 starts the connector at login and restarts it after exit, so no terminal window
 needs to stay open. macOS uses launchd; Linux uses a systemd user service.
 
-The native Rust runtime is implemented and runs the maintained Gateway/Home/helper
-trials. The default setup above still builds Go while release acceptance continues.
-For current status and the isolated Rust build/test entry point, start with
-[Rust migration](docs/RUST_MIGRATION.md).
+HMux now ships a Rust Gateway, Home connector and helper. Historical Go/Rust trial
+results remain evidence with their stated limits; they do not establish outstanding
+soak or physical-device acceptance. See [Rust runtime status](docs/RUST_MIGRATION.md).
 
 ## Repository map
 
 | Location | Responsibility |
 | --- | --- |
 | `web/` | Desktop/mobile web and PWA interface |
-| `cmd/hmux-web/`, `internal/webgateway/`, `deploy/web/` | Gateway, host connector and deployment templates |
-| `internal/home/`, `internal/agent/`, `cmd/hmux-agent/` | Local tmux services, administration and workflow hooks |
-| `internal/catalog/`, `internal/recovery/` | Session identity, provider binding and reboot recovery |
-| `third_party/` | Licensed in-tree usage collector |
-| `crates/`, `proto/`, `tests/RUST.md` | Rust native runtime, versioned Home protocol and isolated verification |
+| `crates/hmux-gateway/`, `crates/hmux-home/`, `crates/hmux-web/` | Gateway, Home connector and native entrypoints |
+| `crates/hmux-agent/`, `crates/hmux-service/`, `crates/hmux-install/` | Administration, service lifecycle and durable installation |
+| `crates/hmux-core/`, `crates/hmux-model/`, `crates/hmux-usage/` | Shared contracts, bounded native primitives and Home usage collection |
+| `proto/`, `tests/RUST.md` | Versioned Home protocol and native verification |
+| `third_party/` | Retained third-party attribution and licenses |
 | `docs/` | Architecture, setup, security and validation references |
 
 ## Development and releases
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) for checks and [AGENTS.md](AGENTS.md) for
-change rules. CI checks Go/Rust runtimes and compatibility, native lifecycle fixtures,
-the web client, generated protocol types and Rust dependency policy.
+change rules. CI checks the Rust runtime, native lifecycle fixtures, the web client,
+generated protocol types and Rust dependency policy.
 Source and deployment procedures are tracked in [RELEASING.md](docs/RELEASING.md).
 Third-party notices are preserved in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 

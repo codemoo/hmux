@@ -715,7 +715,7 @@ async fn queued_delivery_preparation_observes_revocation() {
 }
 
 #[tokio::test]
-#[ignore = "make rust-compat provides the actual Go gateway test helper"]
+#[ignore = "the optional external baseline suite (tests/RUST.md) provides the actual Go gateway test helper"]
 async fn current_push_state_survives_go_handoff_and_lock_conflict() {
     use hmux_core::command::{CommandRunner, CommandSpec};
     let _exclusive = exclusive().await;
@@ -740,7 +740,8 @@ async fn current_push_state_survives_go_handoff_and_lock_conflict() {
     let public = store.public_config(&first).await.unwrap().public_key;
     fs::write(fixture.path.join("expected-public.txt"), &public).unwrap();
     let before = fs::read(fixture.file()).unwrap();
-    let helper = std::env::var_os("HMUX_GO_PUSH_HELPER").expect("make rust-compat provides helper");
+    let helper = std::env::var_os("HMUX_GO_PUSH_HELPER")
+        .expect("tests/RUST.md describes the external legacy helper");
     let runner = CommandRunner::new(1).unwrap();
     let command = || {
         CommandSpec::new(helper.clone(), 8192, Duration::from_secs(10))

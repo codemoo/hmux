@@ -723,7 +723,7 @@ async fn auth_http_restart_revocation_cookie_and_csrf_contracts() {
 }
 
 #[tokio::test]
-#[ignore = "run by make rust-compat after the Go current-state rollback writer"]
+#[ignore = "run by the optional external baseline suite (tests/RUST.md) after the Go current-state rollback writer"]
 async fn reload_current_state_after_go_logout() {
     let output = PathBuf::from(
         std::env::var_os("HMUX_RUST_AUTH_HANDOFF").expect("synthetic handoff directory required"),

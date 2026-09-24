@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Native Home activity backfill, polling and terminal echo acceptance."""
 import argparse
+from legacy_baseline import BASELINE, baseline_digest
 import hashlib
 import json
 import math
@@ -46,7 +47,8 @@ def main():
         "schema": 1, "status": "failed", "scenario": "native-activity-echo",
         "os": platform.system(), "machine": platform.machine(),
         "binaries": {path: sha(path) for path in (rust, oracle)},
-        "sources": {name: sha(repo / name) for name in SOURCES},
+        "baseline_ref": BASELINE,
+        "sources": {name: (baseline_digest(name) if name.startswith("internal/") else sha(repo / name)) for name in SOURCES},
         "limits": [
             "synthetic JSONL and tmux fixtures; native gateway and Home executables",
             "socket receipt RTT excludes browser rendering",

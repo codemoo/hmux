@@ -1,10 +1,10 @@
 # Embedded usage primitives
 
 This crate implements the embedded Rust usage primitives, preserving the reachable
-HMux `stream.RunWithSources` contracts from the in-tree
+HMux `stream.RunWithSources` contracts from the retired
 [Token Terrier collector](../../third_party/token-terrier-server/UPSTREAM.md).
 Its source attribution and MIT license remain in that directory's `LICENSE` and
-`NOTICE`; retain them when retiring the Go implementation.
+`NOTICE`; they remain after Go source retirement.
 
 The crate adds no service, process, credential writer or provider request.
 `hmux-home` owns bounded read-only credential I/O, OAuth/LB HTTP, `cswap list --json`,
@@ -34,8 +34,8 @@ to [the migration control](../../docs/RUST_MIGRATION.md).
   helpers. The Home owner calls them with the current activity state
   after I/O, under its publication ownership.
 
-Only synthetic fixtures are used. Go tests regenerate and verify golden outputs;
-Rust compares against those outputs. Duplicate typed JSON fields and malformed
+Only synthetic fixtures are used. Frozen prior-version Go outputs remain
+compatibility data; current Rust tests require no Go executable. Duplicate typed JSON fields and malformed
 scalar values may reject more strictly than Go. Missing windows remain absent;
 no zero-valued observed window is fabricated. Body limits must also be enforced
 by each I/O owner before a complete body is allocated; the Home OAuth

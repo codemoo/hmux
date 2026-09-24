@@ -1,5 +1,5 @@
-//! Opt-in Go↔Rust session-state oracle. The Go helper is a test binary built
-//! from the current Go package with `go test -race -c`; no live tmux is used.
+//! Opt-in Go↔Rust session-state oracle using a retained external test binary.
+//! Historical source/provenance is documented in tests/RUST.md; no live tmux is used.
 use hmux_core::PrivateDir;
 use hmux_home::sessionstate::{Error, Store};
 use hmux_model::{Catalog, Session, SessionIdentity};

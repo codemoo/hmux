@@ -148,7 +148,7 @@ async fn settings_survive_restart_and_remain_account_and_profile_scoped() {
 }
 
 #[tokio::test]
-#[ignore = "requires isolated Rust/Go handoff via make rust-compat"]
+#[ignore = "requires isolated Rust/Go handoff (external artifact; see tests/RUST.md)"]
 async fn reload_current_preferences_after_go_update() {
     let path =
         std::env::var_os("HMUX_RUST_PREFERENCES_HANDOFF").expect("handoff directory required");

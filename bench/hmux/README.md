@@ -49,11 +49,11 @@ synthetic Home. It does not access tmux or provider state. The only network endp
 is a freshly allocated loopback port; `hmux.example` is a Host/Origin value, not a
 remote destination. TOTP and the real password KDF remain enabled during warm-up.
 
-```sh
-go build -o /tmp/hmux-go-baseline ./cmd/hmux-web
-go run ./bench/hmux/go-driver --binary /tmp/hmux-go-baseline \
-  --output /tmp/hmux-s01.json --catalog 100 --duration 10s --warmup 1s
-```
+The initial Go driver and its generation commands remain at source checkpoint
+`c061f28fe7ea8e865578ac1189240447d0ebaa6f` (`bench/hmux/go-driver`).
+They are historical evidence, not part of the current build. Native comparisons
+use explicit retained baseline/oracle executables; see
+[optional historical comparisons](../../tests/RUST.md#optional-historical-comparisons).
 
 Use `--catalog 0` for S00, or `--views 1|2|4|8` for S02. `--gogc` and
 `--gomemlimit` are explicit Go-child-only tuning options; inherited values are
@@ -79,7 +79,7 @@ values as null and does not label RSS as footprint/PSS. Sampling is every 250ms
 plus collection time, not continuous peak measurement. Driver overhead is outside
 the measured PID but can affect timing; it is not a production configuration.
 
-The harness currently implements cold HTTP readiness and warmed quiet S00/S01/S02
+The historical harness implements cold HTTP readiness and warmed quiet S00/S01/S02
 memory samples only. No CPU, latency, active-output, fault, cgroup, 24h/72h or real
 browser results are claimed. Full product assets, usage/push warm-up, paired runs,
 result aggregation, hardware/revision provenance and S03–S14 remain required for

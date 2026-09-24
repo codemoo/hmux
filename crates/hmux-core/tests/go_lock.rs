@@ -1,4 +1,4 @@
-//! Invoked by make rust-compat with the current Go flock helper. Never touches
+//! Invoked by the optional external baseline suite (tests/RUST.md) with the current Go flock helper. Never touches
 //! live Home locks; both processes use this test's exclusive temporary directory.
 use hmux_core::PrivateDir;
 use std::{
@@ -57,7 +57,7 @@ impl OwnedChild {
 }
 
 #[test]
-#[ignore = "requires HMUX_GO_FLOCK_HELPER; make rust-compat builds and runs it"]
+#[ignore = "requires HMUX_GO_FLOCK_HELPER; see tests/RUST.md for retained external artifacts"]
 fn go_and_rust_exclude_each_other_on_the_same_persistent_inode() {
     let helper = std::env::var_os("HMUX_GO_FLOCK_HELPER").expect("Go helper path required");
     let root = std::env::temp_dir().canonicalize().unwrap();

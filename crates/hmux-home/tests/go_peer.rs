@@ -43,7 +43,7 @@ impl Drop for Fixture {
 }
 
 #[tokio::test]
-#[ignore = "requires the isolated Go gateway test executable through make rust-compat"]
+#[ignore = "requires the isolated Go gateway test executable through the optional external baseline suite (tests/RUST.md)"]
 async fn actual_go_gateway_accepts_rust_home_catalog_upload_terminal_and_disconnect() {
     let helper =
         PathBuf::from(std::env::var_os("HMUX_GO_HOME_PEER_HELPER").expect("Go helper required"));

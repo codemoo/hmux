@@ -57,7 +57,7 @@ impl Fixture {
         fs::set_permissions(path, fs::Permissions::from_mode(mode)).unwrap();
     }
     fn command(&self, address: std::net::SocketAddr) -> Command {
-        let binary = std::env::var_os("HMUX_RUST_HOME_BIN").expect("make rust-home-candidate-e2e");
+        let binary = std::env::var_os("HMUX_RUST_HOME_BIN").expect("make rust-native-e2e");
         assert!(PathBuf::from(&binary).is_absolute());
         let mut command = Command::new(binary);
         if std::env::var_os("HMUX_RUST_HOME_PRODUCTION").is_some() {
@@ -246,7 +246,7 @@ async fn ready(socket: &mut Socket, protocol: Negotiated) {
 }
 
 #[tokio::test]
-#[ignore = "requires separately built candidate through make rust-home-candidate-e2e"]
+#[ignore = "requires separately built candidate through make rust-native-e2e"]
 async fn candidate_wss_both_codecs_reconnect_signal_cleanup_and_private_inputs() {
     let fixture = Fixture::new();
     fixture.file("connector.token", TOKEN, 0o600);

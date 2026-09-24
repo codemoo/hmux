@@ -1,24 +1,25 @@
 {
   "schema": 1,
   "baseline": "245d4e6839939839fd56b7632600d7398726e359",
-  "purpose": "Contract and test-owner inventory; current migration status lives in docs/RUST_MIGRATION.md",
+  "purpose": "Current Rust contract owners/tests; baseline_* and historical_migration_tests refer only to the recorded Git revisions",
   "contracts": [
     {
       "id": "package:agent",
-      "owner": "internal/agent",
+      "owner": "crates/hmux-home",
       "scope": "Validated session creation and profile metadata",
       "baseline_tests": [
         "internal/agent/agent_live_test.go",
         "internal/agent/agent_test.go"
       ],
-      "candidate_tests": [
+      "baseline_owner": "internal/agent",
+      "tests": [
         "crates/hmux-home/src/create_plan_tests.rs",
         "crates/hmux-home/tests/session_peer.rs"
       ]
     },
     {
       "id": "package:catalog",
-      "owner": "internal/catalog",
+      "owner": "crates/hmux-home",
       "scope": "tmux/process/provider binding and conversations",
       "baseline_tests": [
         "internal/catalog/catalog_test.go",
@@ -32,66 +33,84 @@
         "internal/catalog/session_binding_live_test.go",
         "internal/catalog/session_binding_test.go"
       ],
-      "candidate_tests": [
-        "crates/hmux-home/tests/catalog.rs",
+      "baseline_owner": "internal/catalog",
+      "historical_migration_tests": [
         "internal/catalog/rust_compatibility_test.go",
+        "internal/catalog/rust_process_compatibility_test.go",
+        "internal/catalog/rust_transcript_compatibility_test.go",
+        "internal/catalog/rust_completion_compatibility_test.go"
+      ],
+      "tests": [
+        "crates/hmux-home/src/completion_tracker_tests.rs",
         "crates/hmux-home/src/process_tests.rs",
         "crates/hmux-home/src/records_tests.rs",
         "crates/hmux-home/src/transcript_tests.rs",
+        "crates/hmux-home/tests/catalog.rs",
         "crates/hmux-home/tests/conversation_peer.rs",
         "crates/hmux-home/tests/process_compat.rs",
-        "crates/hmux-home/tests/transcript_compat.rs",
-        "internal/catalog/rust_process_compatibility_test.go",
-        "internal/catalog/rust_transcript_compatibility_test.go",
-        "crates/hmux-home/src/completion_tracker_tests.rs",
-        "internal/catalog/rust_completion_compatibility_test.go"
+        "crates/hmux-home/tests/transcript_compat.rs"
       ]
     },
     {
       "id": "package:catalogstream",
-      "owner": "internal/catalogstream",
+      "owner": "crates/hmux-home",
       "scope": "Shared sequenced catalog snapshots and freshness",
       "baseline_tests": [
         "internal/catalogstream/source_test.go"
       ],
-      "candidate_tests": [
-        "crates/hmux-home/tests/peer.rs",
-        "crates/hmux-home/tests/conversation_peer.rs"
+      "baseline_owner": "internal/catalogstream",
+      "tests": [
+        "crates/hmux-home/tests/conversation_peer.rs",
+        "crates/hmux-home/tests/peer.rs"
       ]
     },
     {
       "id": "package:config",
-      "owner": "internal/config",
+      "owner": "crates/hmux-model",
       "scope": "Private Home/inventory configuration and setup",
       "baseline_tests": [
         "internal/config/config_test.go",
         "internal/config/setup_test.go"
+      ],
+      "baseline_owner": "internal/config",
+      "tests": [
+        "crates/hmux-model/src/workspace_tests.rs",
+        "crates/hmux-model/tests/go_oracle.rs"
       ]
     },
     {
       "id": "package:filelock",
-      "owner": "internal/filelock",
+      "owner": "crates/hmux-core",
       "scope": "Bounded cross-process flock",
       "baseline_tests": [
         "internal/filelock/filelock_test.go"
+      ],
+      "baseline_owner": "internal/filelock",
+      "tests": [
+        "crates/hmux-core/src/workspace_tests.rs",
+        "crates/hmux-core/tests/command.rs",
+        "crates/hmux-core/tests/go_lock.rs",
+        "crates/hmux-core/tests/spawn_gate.rs",
+        "crates/hmux-core/tests/token.rs"
       ]
     },
     {
       "id": "package:filestage",
-      "owner": "internal/filestage",
+      "owner": "crates/hmux-home",
       "scope": "Upload stream, private staging, limits and expiry",
       "baseline_tests": [
         "internal/filestage/filestage_test.go"
       ],
-      "candidate_tests": [
+      "baseline_owner": "internal/filestage",
+      "tests": [
         "crates/hmux-home/src/filestage_tests.rs",
-        "crates/hmux-home/tests/upload_peer.rs",
-        "crates/hmux-home/tests/runtime_wss.rs"
+        "crates/hmux-home/tests/runtime_wss.rs",
+        "crates/hmux-home/tests/upload_peer.rs"
       ]
     },
     {
       "id": "package:home",
-      "owner": "internal/home",
+      "owner": "crates/hmux-home",
       "scope": "Local connector operations, disposable PTYs and sampling",
       "baseline_tests": [
         "internal/home/catalog_stream_test.go",
@@ -100,27 +119,30 @@
         "internal/home/terminal_view_pty_test.go",
         "internal/home/terminal_view_test.go"
       ],
-      "candidate_tests": [
-        "crates/hmux-home/tests/peer.rs",
-        "crates/hmux-home/tests/go_peer.rs",
-        "internal/webgateway/rust_home_peer_test.go",
-        "crates/hmux-home/src/dial_tests.rs",
-        "crates/hmux-home/src/connector_tests.rs",
-        "crates/hmux-home/src/pty_tests.rs",
-        "crates/hmux-home/src/view_tests.rs",
-        "crates/hmux-home/tests/terminal_view.rs",
-        "crates/hmux-home/tests/home_terminal.rs",
-        "crates/hmux-home/src/refresh_tests.rs",
+      "baseline_owner": "internal/home",
+      "historical_migration_tests": [
+        "internal/webgateway/rust_home_peer_test.go"
+      ],
+      "tests": [
         "crates/hmux-gateway/tests/home_peer.rs",
+        "crates/hmux-home/src/connector_tests.rs",
+        "crates/hmux-home/src/dial_tests.rs",
+        "crates/hmux-home/src/proxy_tests.rs",
+        "crates/hmux-home/src/pty_tests.rs",
+        "crates/hmux-home/src/refresh_tests.rs",
+        "crates/hmux-home/src/view_tests.rs",
+        "crates/hmux-home/tests/go_peer.rs",
+        "crates/hmux-home/tests/home_terminal.rs",
+        "crates/hmux-home/tests/peer.rs",
         "crates/hmux-home/tests/runtime.rs",
         "crates/hmux-home/tests/runtime_wss.rs",
-        "crates/hmux-home/src/proxy_tests.rs",
-        "crates/hmux-home/tests/session_peer.rs"
+        "crates/hmux-home/tests/session_peer.rs",
+        "crates/hmux-home/tests/terminal_view.rs"
       ]
     },
     {
       "id": "package:homeservice",
-      "owner": "internal/homeservice",
+      "owner": "crates/hmux-service",
       "scope": "Opt-in native service installation/adoption/process identity",
       "baseline_tests": [
         "internal/homeservice/lifecycle_test.go",
@@ -128,14 +150,17 @@
         "internal/homeservice/process_darwin_test.go",
         "internal/homeservice/service_test.go"
       ],
-      "candidate_tests": [
-        "crates/hmux-home/tests/singleton.rs",
+      "baseline_owner": "internal/homeservice",
+      "historical_migration_tests": [
         "tools/hmux-home-lock-oracle/main.go"
+      ],
+      "tests": [
+        "crates/hmux-home/tests/singleton.rs"
       ]
     },
     {
       "id": "package:hostmetrics",
-      "owner": "internal/hostmetrics",
+      "owner": "crates/hmux-home",
       "scope": "macOS/Linux observations",
       "baseline_tests": [
         "internal/hostmetrics/collector_darwin_test.go",
@@ -144,37 +169,46 @@
         "internal/hostmetrics/parse_test.go",
         "internal/hostmetrics/procfs_test.go"
       ],
-      "candidate_tests": [
-        "crates/hmux-home/src/metrics_tests.rs",
-        "crates/hmux-home/src/metrics_parsers_tests.rs",
-        "crates/hmux-home/tests/metrics_compat.rs",
+      "baseline_owner": "internal/hostmetrics",
+      "historical_migration_tests": [
         "internal/hostmetrics/rust_compatibility_test.go"
+      ],
+      "tests": [
+        "crates/hmux-home/src/metrics_parsers_tests.rs",
+        "crates/hmux-home/src/metrics_tests.rs",
+        "crates/hmux-home/tests/metrics_compat.rs"
       ]
     },
     {
       "id": "package:model",
-      "owner": "internal/model",
+      "owner": "crates/hmux-model",
       "scope": "Wire model and validation",
       "baseline_tests": [
         "internal/model/model_test.go"
+      ],
+      "baseline_owner": "internal/model",
+      "tests": [
+        "crates/hmux-model/src/workspace_tests.rs",
+        "crates/hmux-model/tests/go_oracle.rs"
       ]
     },
     {
       "id": "package:providers",
-      "owner": "internal/providers",
+      "owner": "crates/hmux-home",
       "scope": "Provider status, credential writes and setup jobs",
       "baseline_tests": [
         "internal/providers/job_test.go",
         "internal/providers/providers_test.go"
       ],
-      "rust_tests": [
+      "baseline_owner": "internal/providers",
+      "tests": [
         "crates/hmux-home/src/providers.rs",
         "crates/hmux-home/tests/session_peer.rs"
       ]
     },
     {
       "id": "package:recovery",
-      "owner": "internal/recovery",
+      "owner": "crates/hmux-home",
       "scope": "Transactional checkpoint/boot restore and tab remap",
       "baseline_tests": [
         "internal/recovery/catalog_test.go",
@@ -183,73 +217,90 @@
         "internal/recovery/store_test.go",
         "internal/recovery/validation_test.go"
       ],
-      "rust_tests": [
+      "baseline_owner": "internal/recovery",
+      "historical_migration_tests": [
+        "internal/recovery/rust_compatibility_test.go"
+      ],
+      "tests": [
+        "crates/hmux-home/src/connector_tests.rs",
         "crates/hmux-home/src/recovery.rs",
         "crates/hmux-home/src/recovery/restore.rs",
-        "crates/hmux-home/src/connector_tests.rs",
-        "internal/recovery/rust_compatibility_test.go",
         "crates/hmux-home/tests/runtime_wss.rs"
       ]
     },
     {
       "id": "package:safeexec",
-      "owner": "internal/safeexec",
+      "owner": "crates/hmux-core",
       "scope": "Bounded subprocess output",
       "baseline_tests": [
         "internal/safeexec/output_test.go"
       ],
-      "candidate_tests": [
+      "baseline_owner": "internal/safeexec",
+      "tests": [
         "crates/hmux-core/tests/command.rs",
         "crates/hmux-core/tests/spawn_gate.rs"
       ]
     },
     {
       "id": "package:sessionlaunch",
-      "owner": "internal/sessionlaunch",
+      "owner": "crates/hmux-home",
       "scope": "Provider exit and signal-to-shell lifecycle",
       "baseline_tests": [],
-      "candidate_tests": [
+      "baseline_owner": "internal/sessionlaunch",
+      "tests": [
         "crates/hmux-home/src/create_plan_tests.rs",
         "crates/hmux-home/tests/session_peer.rs"
       ]
     },
     {
       "id": "package:sessionstate",
-      "owner": "internal/sessionstate",
+      "owner": "crates/hmux-home",
       "scope": "Metadata and visibility persistence",
       "baseline_tests": [
         "internal/sessionstate/store_test.go"
       ],
-      "candidate_tests": [
+      "baseline_owner": "internal/sessionstate",
+      "historical_migration_tests": [
+        "internal/sessionstate/rust_compatibility_test.go"
+      ],
+      "tests": [
         "crates/hmux-home/src/sessionstate_tests.rs",
         "crates/hmux-home/tests/go_sessionstate.rs",
-        "internal/sessionstate/rust_compatibility_test.go",
         "crates/hmux-home/tests/session_peer.rs"
       ]
     },
     {
       "id": "package:sharedworkspace",
-      "owner": "internal/sharedworkspace",
+      "owner": "crates/hmux-core",
       "scope": "Merge/replay/identity tab state",
       "baseline_tests": [
         "internal/sharedworkspace/store_test.go"
       ],
-      "rust_tests": [
+      "baseline_owner": "internal/sharedworkspace",
+      "tests": [
         "crates/hmux-home/src/workspace.rs",
         "crates/hmux-home/tests/session_peer.rs"
       ]
     },
     {
       "id": "package:timing",
-      "owner": "internal/timing",
+      "owner": "crates/hmux-core",
       "scope": "Privacy-safe bounded operation timings",
       "baseline_tests": [
         "internal/timing/timing_test.go"
+      ],
+      "baseline_owner": "internal/timing",
+      "tests": [
+        "crates/hmux-core/src/workspace_tests.rs",
+        "crates/hmux-core/tests/command.rs",
+        "crates/hmux-core/tests/go_lock.rs",
+        "crates/hmux-core/tests/spawn_gate.rs",
+        "crates/hmux-core/tests/token.rs"
       ]
     },
     {
       "id": "package:webgateway",
-      "owner": "internal/webgateway",
+      "owner": "crates/hmux-gateway",
       "scope": "HTTP/WS auth, hub, flow, uploads, push and diagnostics",
       "baseline_tests": [
         "internal/webgateway/account_security_test.go",
@@ -271,351 +322,945 @@
         "internal/webgateway/usage_preferences_test.go",
         "internal/webgateway/wire_compatibility_test.go"
       ],
-      "candidate_tests": [
+      "baseline_owner": "internal/webgateway",
+      "historical_migration_tests": [
+        "internal/webgateway/rust_full_gateway_test.go"
+      ],
+      "tests": [
         "crates/hmux-gateway/src/runtime.rs",
-        "internal/webgateway/rust_full_gateway_test.go",
-        "crates/hmux-gateway/src/session_location_tests.rs",
-        "crates/hmux-gateway/src/session_location_http_tests.rs"
+        "crates/hmux-gateway/src/session_location_http_tests.rs",
+        "crates/hmux-gateway/src/session_location_tests.rs"
       ]
     },
     {
       "id": "package:workflow",
-      "owner": "internal/workflow",
+      "owner": "crates/hmux-home",
       "scope": "Sanitized hooks, workflow state and retention",
       "baseline_tests": [
         "internal/workflow/store_test.go"
       ],
-      "rust_tests": [
-        "crates/hmux-home/src/workflow.rs",
-        "crates/hmux-home/src/workflow_tests.rs",
-        "crates/hmux-home/src/workflow_commands.rs",
+      "baseline_owner": "internal/workflow",
+      "historical_migration_tests": [
         "internal/workflow/rust_compatibility_test.go"
+      ],
+      "tests": [
+        "crates/hmux-home/src/workflow.rs",
+        "crates/hmux-home/src/workflow_commands.rs",
+        "crates/hmux-home/src/workflow_tests.rs"
       ]
     },
     {
       "id": "cli:hmux-web init",
-      "owner": "cmd/hmux-web",
-      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries"
+      "owner": "crates/hmux-web",
+      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries",
+      "baseline_owner": "cmd/hmux-web",
+      "tests": [
+        "crates/hmux-web/tests/install.rs"
+      ]
     },
     {
       "id": "cli:hmux-web serve",
-      "owner": "cmd/hmux-web",
-      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries"
+      "owner": "crates/hmux-web",
+      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries",
+      "baseline_owner": "cmd/hmux-web",
+      "tests": [
+        "crates/hmux-web/tests/install.rs"
+      ]
     },
     {
       "id": "cli:hmux-web connect",
-      "owner": "cmd/hmux-web",
+      "owner": "crates/hmux-web",
       "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries",
-      "candidate_tests": [
+      "baseline_owner": "cmd/hmux-web",
+      "tests": [
+        "crates/hmux-core/tests/token.rs",
         "crates/hmux-home/tests/runtime.rs",
-        "crates/hmux-home/tests/runtime_wss.rs",
-        "crates/hmux-core/tests/token.rs"
+        "crates/hmux-home/tests/runtime_wss.rs"
       ]
     },
     {
       "id": "cli:hmux-web service install",
-      "owner": "cmd/hmux-web",
-      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries"
+      "owner": "crates/hmux-web",
+      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries",
+      "baseline_owner": "cmd/hmux-web",
+      "tests": [
+        "crates/hmux-web/tests/install.rs"
+      ]
     },
     {
       "id": "cli:hmux-web service status",
-      "owner": "cmd/hmux-web",
-      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries"
+      "owner": "crates/hmux-web",
+      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries",
+      "baseline_owner": "cmd/hmux-web",
+      "tests": [
+        "crates/hmux-web/tests/install.rs"
+      ]
     },
     {
       "id": "cli:hmux-web service start",
-      "owner": "cmd/hmux-web",
-      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries"
+      "owner": "crates/hmux-web",
+      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries",
+      "baseline_owner": "cmd/hmux-web",
+      "tests": [
+        "crates/hmux-web/tests/install.rs"
+      ]
     },
     {
       "id": "cli:hmux-web service stop",
-      "owner": "cmd/hmux-web",
-      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries"
+      "owner": "crates/hmux-web",
+      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries",
+      "baseline_owner": "cmd/hmux-web",
+      "tests": [
+        "crates/hmux-web/tests/install.rs"
+      ]
     },
     {
       "id": "cli:hmux-web service restart",
-      "owner": "cmd/hmux-web",
-      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries"
+      "owner": "crates/hmux-web",
+      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries",
+      "baseline_owner": "cmd/hmux-web",
+      "tests": [
+        "crates/hmux-web/tests/install.rs"
+      ]
     },
     {
       "id": "cli:hmux-web service uninstall",
-      "owner": "cmd/hmux-web",
-      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries"
+      "owner": "crates/hmux-web",
+      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries",
+      "baseline_owner": "cmd/hmux-web",
+      "tests": [
+        "crates/hmux-web/tests/install.rs"
+      ]
     },
     {
       "id": "cli:hmux-agent setup-home",
-      "owner": "cmd/hmux-agent",
-      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries"
+      "owner": "crates/hmux-agent",
+      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries",
+      "baseline_owner": "cmd/hmux-agent",
+      "tests": [
+        "crates/hmux-agent/tests/cli.rs"
+      ]
     },
     {
       "id": "cli:hmux-agent workspace",
-      "owner": "cmd/hmux-agent",
-      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries"
+      "owner": "crates/hmux-agent",
+      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries",
+      "baseline_owner": "cmd/hmux-agent",
+      "tests": [
+        "crates/hmux-agent/tests/cli.rs"
+      ]
     },
     {
       "id": "cli:hmux-agent recovery save",
-      "owner": "cmd/hmux-agent",
-      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries"
+      "owner": "crates/hmux-agent",
+      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries",
+      "baseline_owner": "cmd/hmux-agent",
+      "tests": [
+        "crates/hmux-agent/tests/cli.rs"
+      ]
     },
     {
       "id": "cli:hmux-agent recovery restore",
-      "owner": "cmd/hmux-agent",
-      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries"
+      "owner": "crates/hmux-agent",
+      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries",
+      "baseline_owner": "cmd/hmux-agent",
+      "tests": [
+        "crates/hmux-agent/tests/cli.rs"
+      ]
     },
     {
       "id": "cli:hmux-agent recovery sync",
-      "owner": "cmd/hmux-agent",
-      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries"
+      "owner": "crates/hmux-agent",
+      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries",
+      "baseline_owner": "cmd/hmux-agent",
+      "tests": [
+        "crates/hmux-agent/tests/cli.rs"
+      ]
     },
     {
       "id": "cli:hmux-agent conversation",
-      "owner": "cmd/hmux-agent",
-      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries"
+      "owner": "crates/hmux-agent",
+      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries",
+      "baseline_owner": "cmd/hmux-agent",
+      "tests": [
+        "crates/hmux-agent/tests/cli.rs"
+      ]
     },
     {
       "id": "cli:hmux-agent workflow-hook",
-      "owner": "cmd/hmux-agent",
-      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries"
+      "owner": "crates/hmux-agent",
+      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries",
+      "baseline_owner": "cmd/hmux-agent",
+      "tests": [
+        "crates/hmux-agent/tests/cli.rs"
+      ]
     },
     {
       "id": "cli:hmux-agent workflow-report",
-      "owner": "cmd/hmux-agent",
-      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries"
+      "owner": "crates/hmux-agent",
+      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries",
+      "baseline_owner": "cmd/hmux-agent",
+      "tests": [
+        "crates/hmux-agent/tests/cli.rs"
+      ]
     },
     {
       "id": "cli:hmux-agent workflow",
-      "owner": "cmd/hmux-agent",
-      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries"
+      "owner": "crates/hmux-agent",
+      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries",
+      "baseline_owner": "cmd/hmux-agent",
+      "tests": [
+        "crates/hmux-agent/tests/cli.rs"
+      ]
     },
     {
       "id": "cli:hmux-agent catalog",
-      "owner": "cmd/hmux-agent",
-      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries"
+      "owner": "crates/hmux-agent",
+      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries",
+      "baseline_owner": "cmd/hmux-agent",
+      "tests": [
+        "crates/hmux-agent/tests/cli.rs"
+      ]
     },
     {
       "id": "cli:hmux-agent metadata-migrate",
-      "owner": "cmd/hmux-agent",
-      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries"
+      "owner": "crates/hmux-agent",
+      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries",
+      "baseline_owner": "cmd/hmux-agent",
+      "tests": [
+        "crates/hmux-agent/tests/cli.rs"
+      ]
     },
     {
       "id": "cli:hmux-agent create",
-      "owner": "cmd/hmux-agent",
-      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries"
+      "owner": "crates/hmux-agent",
+      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries",
+      "baseline_owner": "cmd/hmux-agent",
+      "tests": [
+        "crates/hmux-agent/tests/cli.rs"
+      ]
     },
     {
       "id": "cli:hmux-agent doctor",
-      "owner": "cmd/hmux-agent",
-      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries"
+      "owner": "crates/hmux-agent",
+      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries",
+      "baseline_owner": "cmd/hmux-agent",
+      "tests": [
+        "crates/hmux-agent/tests/cli.rs"
+      ]
     },
     {
       "id": "cli:hmux-agent alias-set",
-      "owner": "cmd/hmux-agent",
-      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries"
+      "owner": "crates/hmux-agent",
+      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries",
+      "baseline_owner": "cmd/hmux-agent",
+      "tests": [
+        "crates/hmux-agent/tests/cli.rs"
+      ]
     },
     {
       "id": "cli:hmux-agent hidden-set",
-      "owner": "cmd/hmux-agent",
-      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries"
+      "owner": "crates/hmux-agent",
+      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries",
+      "baseline_owner": "cmd/hmux-agent",
+      "tests": [
+        "crates/hmux-agent/tests/cli.rs"
+      ]
     },
     {
       "id": "cli:hmux-agent terminate",
-      "owner": "cmd/hmux-agent",
-      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries"
+      "owner": "crates/hmux-agent",
+      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries",
+      "baseline_owner": "cmd/hmux-agent",
+      "tests": [
+        "crates/hmux-agent/tests/cli.rs"
+      ]
     },
     {
       "id": "cli:hmux-agent version",
-      "owner": "cmd/hmux-agent",
-      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries"
+      "owner": "crates/hmux-agent",
+      "scope": "Retain flags/stdout/stderr/exit and side-effect boundaries",
+      "baseline_owner": "cmd/hmux-agent",
+      "tests": [
+        "crates/hmux-agent/tests/cli.rs"
+      ]
     },
     {
       "id": "route:/connect",
-      "owner": "internal/webgateway",
-      "methods": "GET"
+      "owner": "crates/hmux-gateway",
+      "methods": "GET",
+      "baseline_owner": "internal/webgateway",
+      "tests": [
+        "crates/hmux-gateway/src/diagnostics_tests.rs",
+        "crates/hmux-gateway/src/push_crypto_tests.rs",
+        "crates/hmux-gateway/src/push_delivery_tests.rs",
+        "crates/hmux-gateway/src/push_state_tests.rs",
+        "crates/hmux-gateway/src/push_tests.rs",
+        "crates/hmux-gateway/src/push_transport_tests.rs",
+        "crates/hmux-gateway/src/session_location_http_tests.rs",
+        "crates/hmux-gateway/src/session_location_tests.rs",
+        "crates/hmux-gateway/src/static_assets_tests.rs",
+        "crates/hmux-gateway/src/usage_preferences_tests.rs",
+        "crates/hmux-gateway/tests/go_auth_v1.rs",
+        "crates/hmux-gateway/tests/home_peer.rs",
+        "crates/hmux-gateway/tests/http_auth.rs",
+        "crates/hmux-gateway/tests/http_boundary.rs",
+        "crates/hmux-gateway/tests/http_upgrade.rs",
+        "crates/hmux-gateway/tests/hub.rs",
+        "crates/hmux-gateway/tests/usage_home.rs"
+      ]
     },
     {
       "id": "route:/api/login",
-      "owner": "internal/webgateway",
-      "methods": "POST"
+      "owner": "crates/hmux-gateway",
+      "methods": "POST",
+      "baseline_owner": "internal/webgateway",
+      "tests": [
+        "crates/hmux-gateway/src/diagnostics_tests.rs",
+        "crates/hmux-gateway/src/push_crypto_tests.rs",
+        "crates/hmux-gateway/src/push_delivery_tests.rs",
+        "crates/hmux-gateway/src/push_state_tests.rs",
+        "crates/hmux-gateway/src/push_tests.rs",
+        "crates/hmux-gateway/src/push_transport_tests.rs",
+        "crates/hmux-gateway/src/session_location_http_tests.rs",
+        "crates/hmux-gateway/src/session_location_tests.rs",
+        "crates/hmux-gateway/src/static_assets_tests.rs",
+        "crates/hmux-gateway/src/usage_preferences_tests.rs",
+        "crates/hmux-gateway/tests/go_auth_v1.rs",
+        "crates/hmux-gateway/tests/home_peer.rs",
+        "crates/hmux-gateway/tests/http_auth.rs",
+        "crates/hmux-gateway/tests/http_boundary.rs",
+        "crates/hmux-gateway/tests/http_upgrade.rs",
+        "crates/hmux-gateway/tests/hub.rs",
+        "crates/hmux-gateway/tests/usage_home.rs"
+      ]
     },
     {
       "id": "route:/api/session",
-      "owner": "internal/webgateway",
-      "methods": "GET"
+      "owner": "crates/hmux-gateway",
+      "methods": "GET",
+      "baseline_owner": "internal/webgateway",
+      "tests": [
+        "crates/hmux-gateway/src/diagnostics_tests.rs",
+        "crates/hmux-gateway/src/push_crypto_tests.rs",
+        "crates/hmux-gateway/src/push_delivery_tests.rs",
+        "crates/hmux-gateway/src/push_state_tests.rs",
+        "crates/hmux-gateway/src/push_tests.rs",
+        "crates/hmux-gateway/src/push_transport_tests.rs",
+        "crates/hmux-gateway/src/session_location_http_tests.rs",
+        "crates/hmux-gateway/src/session_location_tests.rs",
+        "crates/hmux-gateway/src/static_assets_tests.rs",
+        "crates/hmux-gateway/src/usage_preferences_tests.rs",
+        "crates/hmux-gateway/tests/go_auth_v1.rs",
+        "crates/hmux-gateway/tests/home_peer.rs",
+        "crates/hmux-gateway/tests/http_auth.rs",
+        "crates/hmux-gateway/tests/http_boundary.rs",
+        "crates/hmux-gateway/tests/http_upgrade.rs",
+        "crates/hmux-gateway/tests/hub.rs",
+        "crates/hmux-gateway/tests/usage_home.rs"
+      ]
     },
     {
       "id": "route:/api/logout",
-      "owner": "internal/webgateway",
-      "methods": "POST"
+      "owner": "crates/hmux-gateway",
+      "methods": "POST",
+      "baseline_owner": "internal/webgateway",
+      "tests": [
+        "crates/hmux-gateway/src/diagnostics_tests.rs",
+        "crates/hmux-gateway/src/push_crypto_tests.rs",
+        "crates/hmux-gateway/src/push_delivery_tests.rs",
+        "crates/hmux-gateway/src/push_state_tests.rs",
+        "crates/hmux-gateway/src/push_tests.rs",
+        "crates/hmux-gateway/src/push_transport_tests.rs",
+        "crates/hmux-gateway/src/session_location_http_tests.rs",
+        "crates/hmux-gateway/src/session_location_tests.rs",
+        "crates/hmux-gateway/src/static_assets_tests.rs",
+        "crates/hmux-gateway/src/usage_preferences_tests.rs",
+        "crates/hmux-gateway/tests/go_auth_v1.rs",
+        "crates/hmux-gateway/tests/home_peer.rs",
+        "crates/hmux-gateway/tests/http_auth.rs",
+        "crates/hmux-gateway/tests/http_boundary.rs",
+        "crates/hmux-gateway/tests/http_upgrade.rs",
+        "crates/hmux-gateway/tests/hub.rs",
+        "crates/hmux-gateway/tests/usage_home.rs"
+      ]
     },
     {
       "id": "route:/api/sessions",
-      "owner": "internal/webgateway",
-      "methods": "GET"
+      "owner": "crates/hmux-gateway",
+      "methods": "GET",
+      "baseline_owner": "internal/webgateway",
+      "tests": [
+        "crates/hmux-gateway/src/diagnostics_tests.rs",
+        "crates/hmux-gateway/src/push_crypto_tests.rs",
+        "crates/hmux-gateway/src/push_delivery_tests.rs",
+        "crates/hmux-gateway/src/push_state_tests.rs",
+        "crates/hmux-gateway/src/push_tests.rs",
+        "crates/hmux-gateway/src/push_transport_tests.rs",
+        "crates/hmux-gateway/src/session_location_http_tests.rs",
+        "crates/hmux-gateway/src/session_location_tests.rs",
+        "crates/hmux-gateway/src/static_assets_tests.rs",
+        "crates/hmux-gateway/src/usage_preferences_tests.rs",
+        "crates/hmux-gateway/tests/go_auth_v1.rs",
+        "crates/hmux-gateway/tests/home_peer.rs",
+        "crates/hmux-gateway/tests/http_auth.rs",
+        "crates/hmux-gateway/tests/http_boundary.rs",
+        "crates/hmux-gateway/tests/http_upgrade.rs",
+        "crates/hmux-gateway/tests/hub.rs",
+        "crates/hmux-gateway/tests/usage_home.rs"
+      ]
     },
     {
       "id": "route:/api/sessions/revoke",
-      "owner": "internal/webgateway",
-      "methods": "POST"
+      "owner": "crates/hmux-gateway",
+      "methods": "POST",
+      "baseline_owner": "internal/webgateway",
+      "tests": [
+        "crates/hmux-gateway/src/diagnostics_tests.rs",
+        "crates/hmux-gateway/src/push_crypto_tests.rs",
+        "crates/hmux-gateway/src/push_delivery_tests.rs",
+        "crates/hmux-gateway/src/push_state_tests.rs",
+        "crates/hmux-gateway/src/push_tests.rs",
+        "crates/hmux-gateway/src/push_transport_tests.rs",
+        "crates/hmux-gateway/src/session_location_http_tests.rs",
+        "crates/hmux-gateway/src/session_location_tests.rs",
+        "crates/hmux-gateway/src/static_assets_tests.rs",
+        "crates/hmux-gateway/src/usage_preferences_tests.rs",
+        "crates/hmux-gateway/tests/go_auth_v1.rs",
+        "crates/hmux-gateway/tests/home_peer.rs",
+        "crates/hmux-gateway/tests/http_auth.rs",
+        "crates/hmux-gateway/tests/http_boundary.rs",
+        "crates/hmux-gateway/tests/http_upgrade.rs",
+        "crates/hmux-gateway/tests/hub.rs",
+        "crates/hmux-gateway/tests/usage_home.rs"
+      ]
     },
     {
       "id": "route:/api/account/security",
-      "owner": "internal/webgateway",
-      "methods": "GET POST"
+      "owner": "crates/hmux-gateway",
+      "methods": "GET POST",
+      "baseline_owner": "internal/webgateway",
+      "tests": [
+        "crates/hmux-gateway/src/diagnostics_tests.rs",
+        "crates/hmux-gateway/src/push_crypto_tests.rs",
+        "crates/hmux-gateway/src/push_delivery_tests.rs",
+        "crates/hmux-gateway/src/push_state_tests.rs",
+        "crates/hmux-gateway/src/push_tests.rs",
+        "crates/hmux-gateway/src/push_transport_tests.rs",
+        "crates/hmux-gateway/src/session_location_http_tests.rs",
+        "crates/hmux-gateway/src/session_location_tests.rs",
+        "crates/hmux-gateway/src/static_assets_tests.rs",
+        "crates/hmux-gateway/src/usage_preferences_tests.rs",
+        "crates/hmux-gateway/tests/go_auth_v1.rs",
+        "crates/hmux-gateway/tests/home_peer.rs",
+        "crates/hmux-gateway/tests/http_auth.rs",
+        "crates/hmux-gateway/tests/http_boundary.rs",
+        "crates/hmux-gateway/tests/http_upgrade.rs",
+        "crates/hmux-gateway/tests/hub.rs",
+        "crates/hmux-gateway/tests/usage_home.rs"
+      ]
     },
     {
       "id": "route:/api/account/usage",
-      "owner": "internal/webgateway",
-      "methods": "GET POST"
+      "owner": "crates/hmux-gateway",
+      "methods": "GET POST",
+      "baseline_owner": "internal/webgateway",
+      "tests": [
+        "crates/hmux-gateway/src/diagnostics_tests.rs",
+        "crates/hmux-gateway/src/push_crypto_tests.rs",
+        "crates/hmux-gateway/src/push_delivery_tests.rs",
+        "crates/hmux-gateway/src/push_state_tests.rs",
+        "crates/hmux-gateway/src/push_tests.rs",
+        "crates/hmux-gateway/src/push_transport_tests.rs",
+        "crates/hmux-gateway/src/session_location_http_tests.rs",
+        "crates/hmux-gateway/src/session_location_tests.rs",
+        "crates/hmux-gateway/src/static_assets_tests.rs",
+        "crates/hmux-gateway/src/usage_preferences_tests.rs",
+        "crates/hmux-gateway/tests/go_auth_v1.rs",
+        "crates/hmux-gateway/tests/home_peer.rs",
+        "crates/hmux-gateway/tests/http_auth.rs",
+        "crates/hmux-gateway/tests/http_boundary.rs",
+        "crates/hmux-gateway/tests/http_upgrade.rs",
+        "crates/hmux-gateway/tests/hub.rs",
+        "crates/hmux-gateway/tests/usage_home.rs"
+      ]
     },
     {
       "id": "route:/api/state",
-      "owner": "internal/webgateway",
-      "methods": "GET"
+      "owner": "crates/hmux-gateway",
+      "methods": "GET",
+      "baseline_owner": "internal/webgateway",
+      "tests": [
+        "crates/hmux-gateway/src/diagnostics_tests.rs",
+        "crates/hmux-gateway/src/push_crypto_tests.rs",
+        "crates/hmux-gateway/src/push_delivery_tests.rs",
+        "crates/hmux-gateway/src/push_state_tests.rs",
+        "crates/hmux-gateway/src/push_tests.rs",
+        "crates/hmux-gateway/src/push_transport_tests.rs",
+        "crates/hmux-gateway/src/session_location_http_tests.rs",
+        "crates/hmux-gateway/src/session_location_tests.rs",
+        "crates/hmux-gateway/src/static_assets_tests.rs",
+        "crates/hmux-gateway/src/usage_preferences_tests.rs",
+        "crates/hmux-gateway/tests/go_auth_v1.rs",
+        "crates/hmux-gateway/tests/home_peer.rs",
+        "crates/hmux-gateway/tests/http_auth.rs",
+        "crates/hmux-gateway/tests/http_boundary.rs",
+        "crates/hmux-gateway/tests/http_upgrade.rs",
+        "crates/hmux-gateway/tests/hub.rs",
+        "crates/hmux-gateway/tests/usage_home.rs"
+      ]
     },
     {
       "id": "route:/api/action",
-      "owner": "internal/webgateway",
-      "methods": "POST"
+      "owner": "crates/hmux-gateway",
+      "methods": "POST",
+      "baseline_owner": "internal/webgateway",
+      "tests": [
+        "crates/hmux-gateway/src/diagnostics_tests.rs",
+        "crates/hmux-gateway/src/push_crypto_tests.rs",
+        "crates/hmux-gateway/src/push_delivery_tests.rs",
+        "crates/hmux-gateway/src/push_state_tests.rs",
+        "crates/hmux-gateway/src/push_tests.rs",
+        "crates/hmux-gateway/src/push_transport_tests.rs",
+        "crates/hmux-gateway/src/session_location_http_tests.rs",
+        "crates/hmux-gateway/src/session_location_tests.rs",
+        "crates/hmux-gateway/src/static_assets_tests.rs",
+        "crates/hmux-gateway/src/usage_preferences_tests.rs",
+        "crates/hmux-gateway/tests/go_auth_v1.rs",
+        "crates/hmux-gateway/tests/home_peer.rs",
+        "crates/hmux-gateway/tests/http_auth.rs",
+        "crates/hmux-gateway/tests/http_boundary.rs",
+        "crates/hmux-gateway/tests/http_upgrade.rs",
+        "crates/hmux-gateway/tests/hub.rs",
+        "crates/hmux-gateway/tests/usage_home.rs"
+      ]
     },
     {
       "id": "route:/api/push",
-      "owner": "internal/webgateway",
-      "methods": "GET"
+      "owner": "crates/hmux-gateway",
+      "methods": "GET",
+      "baseline_owner": "internal/webgateway",
+      "tests": [
+        "crates/hmux-gateway/src/diagnostics_tests.rs",
+        "crates/hmux-gateway/src/push_crypto_tests.rs",
+        "crates/hmux-gateway/src/push_delivery_tests.rs",
+        "crates/hmux-gateway/src/push_state_tests.rs",
+        "crates/hmux-gateway/src/push_tests.rs",
+        "crates/hmux-gateway/src/push_transport_tests.rs",
+        "crates/hmux-gateway/src/session_location_http_tests.rs",
+        "crates/hmux-gateway/src/session_location_tests.rs",
+        "crates/hmux-gateway/src/static_assets_tests.rs",
+        "crates/hmux-gateway/src/usage_preferences_tests.rs",
+        "crates/hmux-gateway/tests/go_auth_v1.rs",
+        "crates/hmux-gateway/tests/home_peer.rs",
+        "crates/hmux-gateway/tests/http_auth.rs",
+        "crates/hmux-gateway/tests/http_boundary.rs",
+        "crates/hmux-gateway/tests/http_upgrade.rs",
+        "crates/hmux-gateway/tests/hub.rs",
+        "crates/hmux-gateway/tests/usage_home.rs"
+      ]
     },
     {
       "id": "route:/api/push/subscribe",
-      "owner": "internal/webgateway",
-      "methods": "POST"
+      "owner": "crates/hmux-gateway",
+      "methods": "POST",
+      "baseline_owner": "internal/webgateway",
+      "tests": [
+        "crates/hmux-gateway/src/diagnostics_tests.rs",
+        "crates/hmux-gateway/src/push_crypto_tests.rs",
+        "crates/hmux-gateway/src/push_delivery_tests.rs",
+        "crates/hmux-gateway/src/push_state_tests.rs",
+        "crates/hmux-gateway/src/push_tests.rs",
+        "crates/hmux-gateway/src/push_transport_tests.rs",
+        "crates/hmux-gateway/src/session_location_http_tests.rs",
+        "crates/hmux-gateway/src/session_location_tests.rs",
+        "crates/hmux-gateway/src/static_assets_tests.rs",
+        "crates/hmux-gateway/src/usage_preferences_tests.rs",
+        "crates/hmux-gateway/tests/go_auth_v1.rs",
+        "crates/hmux-gateway/tests/home_peer.rs",
+        "crates/hmux-gateway/tests/http_auth.rs",
+        "crates/hmux-gateway/tests/http_boundary.rs",
+        "crates/hmux-gateway/tests/http_upgrade.rs",
+        "crates/hmux-gateway/tests/hub.rs",
+        "crates/hmux-gateway/tests/usage_home.rs"
+      ]
     },
     {
       "id": "route:/api/push/unsubscribe",
-      "owner": "internal/webgateway",
-      "methods": "POST"
+      "owner": "crates/hmux-gateway",
+      "methods": "POST",
+      "baseline_owner": "internal/webgateway",
+      "tests": [
+        "crates/hmux-gateway/src/diagnostics_tests.rs",
+        "crates/hmux-gateway/src/push_crypto_tests.rs",
+        "crates/hmux-gateway/src/push_delivery_tests.rs",
+        "crates/hmux-gateway/src/push_state_tests.rs",
+        "crates/hmux-gateway/src/push_tests.rs",
+        "crates/hmux-gateway/src/push_transport_tests.rs",
+        "crates/hmux-gateway/src/session_location_http_tests.rs",
+        "crates/hmux-gateway/src/session_location_tests.rs",
+        "crates/hmux-gateway/src/static_assets_tests.rs",
+        "crates/hmux-gateway/src/usage_preferences_tests.rs",
+        "crates/hmux-gateway/tests/go_auth_v1.rs",
+        "crates/hmux-gateway/tests/home_peer.rs",
+        "crates/hmux-gateway/tests/http_auth.rs",
+        "crates/hmux-gateway/tests/http_boundary.rs",
+        "crates/hmux-gateway/tests/http_upgrade.rs",
+        "crates/hmux-gateway/tests/hub.rs",
+        "crates/hmux-gateway/tests/usage_home.rs"
+      ]
     },
     {
       "id": "route:/api/push/presence",
-      "owner": "internal/webgateway",
-      "methods": "POST"
+      "owner": "crates/hmux-gateway",
+      "methods": "POST",
+      "baseline_owner": "internal/webgateway",
+      "tests": [
+        "crates/hmux-gateway/src/diagnostics_tests.rs",
+        "crates/hmux-gateway/src/push_crypto_tests.rs",
+        "crates/hmux-gateway/src/push_delivery_tests.rs",
+        "crates/hmux-gateway/src/push_state_tests.rs",
+        "crates/hmux-gateway/src/push_tests.rs",
+        "crates/hmux-gateway/src/push_transport_tests.rs",
+        "crates/hmux-gateway/src/session_location_http_tests.rs",
+        "crates/hmux-gateway/src/session_location_tests.rs",
+        "crates/hmux-gateway/src/static_assets_tests.rs",
+        "crates/hmux-gateway/src/usage_preferences_tests.rs",
+        "crates/hmux-gateway/tests/go_auth_v1.rs",
+        "crates/hmux-gateway/tests/home_peer.rs",
+        "crates/hmux-gateway/tests/http_auth.rs",
+        "crates/hmux-gateway/tests/http_boundary.rs",
+        "crates/hmux-gateway/tests/http_upgrade.rs",
+        "crates/hmux-gateway/tests/hub.rs",
+        "crates/hmux-gateway/tests/usage_home.rs"
+      ]
     },
     {
       "id": "route:/api/push/test",
-      "owner": "internal/webgateway",
-      "methods": "POST"
+      "owner": "crates/hmux-gateway",
+      "methods": "POST",
+      "baseline_owner": "internal/webgateway",
+      "tests": [
+        "crates/hmux-gateway/src/diagnostics_tests.rs",
+        "crates/hmux-gateway/src/push_crypto_tests.rs",
+        "crates/hmux-gateway/src/push_delivery_tests.rs",
+        "crates/hmux-gateway/src/push_state_tests.rs",
+        "crates/hmux-gateway/src/push_tests.rs",
+        "crates/hmux-gateway/src/push_transport_tests.rs",
+        "crates/hmux-gateway/src/session_location_http_tests.rs",
+        "crates/hmux-gateway/src/session_location_tests.rs",
+        "crates/hmux-gateway/src/static_assets_tests.rs",
+        "crates/hmux-gateway/src/usage_preferences_tests.rs",
+        "crates/hmux-gateway/tests/go_auth_v1.rs",
+        "crates/hmux-gateway/tests/home_peer.rs",
+        "crates/hmux-gateway/tests/http_auth.rs",
+        "crates/hmux-gateway/tests/http_boundary.rs",
+        "crates/hmux-gateway/tests/http_upgrade.rs",
+        "crates/hmux-gateway/tests/hub.rs",
+        "crates/hmux-gateway/tests/usage_home.rs"
+      ]
     },
     {
       "id": "route:/api/diagnostics",
-      "owner": "internal/webgateway",
+      "owner": "crates/hmux-gateway",
       "methods": "GET POST",
-      "candidate_tests": [
-        "crates/hmux-gateway/tests/support/diagnostics.rs",
-        "crates/hmux-gateway/src/diagnostics_tests.rs",
+      "baseline_owner": "internal/webgateway",
+      "historical_migration_tests": [
         "internal/webgateway/rust_diagnostics_compatibility_test.go"
+      ],
+      "tests": [
+        "crates/hmux-gateway/src/diagnostics_tests.rs",
+        "crates/hmux-gateway/tests/support/diagnostics.rs"
       ]
     },
     {
       "id": "route:/api/terminal",
-      "owner": "internal/webgateway",
+      "owner": "crates/hmux-gateway",
       "methods": "GET",
-      "candidate_tests": [
+      "baseline_owner": "internal/webgateway",
+      "tests": [
         "crates/hmux-gateway/tests/support/browser_terminal.rs"
       ]
     },
     {
       "id": "route:/api/upload",
-      "owner": "internal/webgateway",
+      "owner": "crates/hmux-gateway",
       "methods": "GET",
-      "candidate_tests": [
-        "crates/hmux-gateway/tests/support/browser_upload.rs",
-        "crates/hmux-gateway/src/upload_contract.rs",
+      "baseline_owner": "internal/webgateway",
+      "historical_migration_tests": [
         "internal/webgateway/rust_upload_compatibility_test.go",
         "internal/webgateway/rust_upload_gateway_test.go"
+      ],
+      "tests": [
+        "crates/hmux-gateway/src/upload_contract.rs",
+        "crates/hmux-gateway/tests/support/browser_upload.rs"
       ]
     },
     {
       "id": "route:static assets",
-      "owner": "internal/webgateway",
+      "owner": "crates/hmux-gateway",
       "methods": "GET HEAD",
-      "candidate_tests": [
+      "baseline_owner": "internal/webgateway",
+      "historical_migration_tests": [
+        "internal/webgateway/rust_static_compatibility_test.go"
+      ],
+      "tests": [
         "crates/hmux-gateway/src/static_assets_tests.rs",
         "crates/hmux-gateway/src/static_io.rs",
-        "crates/hmux-gateway/tests/support/static_assets.rs",
-        "internal/webgateway/rust_static_compatibility_test.go"
+        "crates/hmux-gateway/tests/support/static_assets.rs"
       ]
     },
     {
       "id": "state:credentials",
-      "owner": "internal/webgateway"
+      "owner": "crates/hmux-gateway",
+      "baseline_owner": "internal/webgateway",
+      "tests": [
+        "crates/hmux-gateway/src/diagnostics_tests.rs",
+        "crates/hmux-gateway/src/push_crypto_tests.rs",
+        "crates/hmux-gateway/src/push_delivery_tests.rs",
+        "crates/hmux-gateway/src/push_state_tests.rs",
+        "crates/hmux-gateway/src/push_tests.rs",
+        "crates/hmux-gateway/src/push_transport_tests.rs",
+        "crates/hmux-gateway/src/session_location_http_tests.rs",
+        "crates/hmux-gateway/src/session_location_tests.rs",
+        "crates/hmux-gateway/src/static_assets_tests.rs",
+        "crates/hmux-gateway/src/usage_preferences_tests.rs",
+        "crates/hmux-gateway/tests/go_auth_v1.rs",
+        "crates/hmux-gateway/tests/home_peer.rs",
+        "crates/hmux-gateway/tests/http_auth.rs",
+        "crates/hmux-gateway/tests/http_boundary.rs",
+        "crates/hmux-gateway/tests/http_upgrade.rs",
+        "crates/hmux-gateway/tests/hub.rs",
+        "crates/hmux-gateway/tests/usage_home.rs"
+      ]
     },
     {
       "id": "state:sessions",
-      "owner": "internal/webgateway"
+      "owner": "crates/hmux-gateway",
+      "baseline_owner": "internal/webgateway",
+      "tests": [
+        "crates/hmux-gateway/src/diagnostics_tests.rs",
+        "crates/hmux-gateway/src/push_crypto_tests.rs",
+        "crates/hmux-gateway/src/push_delivery_tests.rs",
+        "crates/hmux-gateway/src/push_state_tests.rs",
+        "crates/hmux-gateway/src/push_tests.rs",
+        "crates/hmux-gateway/src/push_transport_tests.rs",
+        "crates/hmux-gateway/src/session_location_http_tests.rs",
+        "crates/hmux-gateway/src/session_location_tests.rs",
+        "crates/hmux-gateway/src/static_assets_tests.rs",
+        "crates/hmux-gateway/src/usage_preferences_tests.rs",
+        "crates/hmux-gateway/tests/go_auth_v1.rs",
+        "crates/hmux-gateway/tests/home_peer.rs",
+        "crates/hmux-gateway/tests/http_auth.rs",
+        "crates/hmux-gateway/tests/http_boundary.rs",
+        "crates/hmux-gateway/tests/http_upgrade.rs",
+        "crates/hmux-gateway/tests/hub.rs",
+        "crates/hmux-gateway/tests/usage_home.rs"
+      ]
     },
     {
       "id": "state:push",
-      "owner": "internal/webgateway"
+      "owner": "crates/hmux-gateway",
+      "baseline_owner": "internal/webgateway",
+      "tests": [
+        "crates/hmux-gateway/src/diagnostics_tests.rs",
+        "crates/hmux-gateway/src/push_crypto_tests.rs",
+        "crates/hmux-gateway/src/push_delivery_tests.rs",
+        "crates/hmux-gateway/src/push_state_tests.rs",
+        "crates/hmux-gateway/src/push_tests.rs",
+        "crates/hmux-gateway/src/push_transport_tests.rs",
+        "crates/hmux-gateway/src/session_location_http_tests.rs",
+        "crates/hmux-gateway/src/session_location_tests.rs",
+        "crates/hmux-gateway/src/static_assets_tests.rs",
+        "crates/hmux-gateway/src/usage_preferences_tests.rs",
+        "crates/hmux-gateway/tests/go_auth_v1.rs",
+        "crates/hmux-gateway/tests/home_peer.rs",
+        "crates/hmux-gateway/tests/http_auth.rs",
+        "crates/hmux-gateway/tests/http_boundary.rs",
+        "crates/hmux-gateway/tests/http_upgrade.rs",
+        "crates/hmux-gateway/tests/hub.rs",
+        "crates/hmux-gateway/tests/usage_home.rs"
+      ]
     },
     {
       "id": "state:diagnostics",
-      "owner": "internal/webgateway"
+      "owner": "crates/hmux-gateway",
+      "baseline_owner": "internal/webgateway",
+      "tests": [
+        "crates/hmux-gateway/src/diagnostics_tests.rs",
+        "crates/hmux-gateway/src/push_crypto_tests.rs",
+        "crates/hmux-gateway/src/push_delivery_tests.rs",
+        "crates/hmux-gateway/src/push_state_tests.rs",
+        "crates/hmux-gateway/src/push_tests.rs",
+        "crates/hmux-gateway/src/push_transport_tests.rs",
+        "crates/hmux-gateway/src/session_location_http_tests.rs",
+        "crates/hmux-gateway/src/session_location_tests.rs",
+        "crates/hmux-gateway/src/static_assets_tests.rs",
+        "crates/hmux-gateway/src/usage_preferences_tests.rs",
+        "crates/hmux-gateway/tests/go_auth_v1.rs",
+        "crates/hmux-gateway/tests/home_peer.rs",
+        "crates/hmux-gateway/tests/http_auth.rs",
+        "crates/hmux-gateway/tests/http_boundary.rs",
+        "crates/hmux-gateway/tests/http_upgrade.rs",
+        "crates/hmux-gateway/tests/hub.rs",
+        "crates/hmux-gateway/tests/usage_home.rs"
+      ]
     },
     {
       "id": "state:usage-preferences",
-      "owner": "internal/webgateway"
+      "owner": "crates/hmux-gateway",
+      "baseline_owner": "internal/webgateway",
+      "tests": [
+        "crates/hmux-gateway/src/diagnostics_tests.rs",
+        "crates/hmux-gateway/src/push_crypto_tests.rs",
+        "crates/hmux-gateway/src/push_delivery_tests.rs",
+        "crates/hmux-gateway/src/push_state_tests.rs",
+        "crates/hmux-gateway/src/push_tests.rs",
+        "crates/hmux-gateway/src/push_transport_tests.rs",
+        "crates/hmux-gateway/src/session_location_http_tests.rs",
+        "crates/hmux-gateway/src/session_location_tests.rs",
+        "crates/hmux-gateway/src/static_assets_tests.rs",
+        "crates/hmux-gateway/src/usage_preferences_tests.rs",
+        "crates/hmux-gateway/tests/go_auth_v1.rs",
+        "crates/hmux-gateway/tests/home_peer.rs",
+        "crates/hmux-gateway/tests/http_auth.rs",
+        "crates/hmux-gateway/tests/http_boundary.rs",
+        "crates/hmux-gateway/tests/http_upgrade.rs",
+        "crates/hmux-gateway/tests/hub.rs",
+        "crates/hmux-gateway/tests/usage_home.rs"
+      ]
     },
     {
       "id": "state:account-workspace",
-      "owner": "internal/webgateway"
+      "owner": "crates/hmux-gateway",
+      "baseline_owner": "internal/webgateway",
+      "tests": [
+        "crates/hmux-gateway/src/diagnostics_tests.rs",
+        "crates/hmux-gateway/src/push_crypto_tests.rs",
+        "crates/hmux-gateway/src/push_delivery_tests.rs",
+        "crates/hmux-gateway/src/push_state_tests.rs",
+        "crates/hmux-gateway/src/push_tests.rs",
+        "crates/hmux-gateway/src/push_transport_tests.rs",
+        "crates/hmux-gateway/src/session_location_http_tests.rs",
+        "crates/hmux-gateway/src/session_location_tests.rs",
+        "crates/hmux-gateway/src/static_assets_tests.rs",
+        "crates/hmux-gateway/src/usage_preferences_tests.rs",
+        "crates/hmux-gateway/tests/go_auth_v1.rs",
+        "crates/hmux-gateway/tests/home_peer.rs",
+        "crates/hmux-gateway/tests/http_auth.rs",
+        "crates/hmux-gateway/tests/http_boundary.rs",
+        "crates/hmux-gateway/tests/http_upgrade.rs",
+        "crates/hmux-gateway/tests/hub.rs",
+        "crates/hmux-gateway/tests/usage_home.rs"
+      ]
     },
     {
       "id": "state:session-metadata",
-      "owner": "internal/sessionstate",
-      "candidate_tests": [
+      "owner": "crates/hmux-home",
+      "baseline_owner": "internal/sessionstate",
+      "historical_migration_tests": [
+        "internal/sessionstate/rust_compatibility_test.go"
+      ],
+      "tests": [
         "crates/hmux-home/src/sessionstate_tests.rs",
         "crates/hmux-home/tests/go_sessionstate.rs",
-        "internal/sessionstate/rust_compatibility_test.go",
         "crates/hmux-home/tests/session_peer.rs"
       ]
     },
     {
       "id": "state:visibility",
-      "owner": "internal/sessionstate",
-      "candidate_tests": [
+      "owner": "crates/hmux-home",
+      "baseline_owner": "internal/sessionstate",
+      "historical_migration_tests": [
+        "internal/sessionstate/rust_compatibility_test.go"
+      ],
+      "tests": [
         "crates/hmux-home/src/sessionstate_tests.rs",
         "crates/hmux-home/tests/go_sessionstate.rs",
-        "internal/sessionstate/rust_compatibility_test.go",
         "crates/hmux-home/tests/session_peer.rs"
       ]
     },
     {
       "id": "state:shared-workspace",
-      "owner": "internal/sharedworkspace",
-      "rust_tests": [
+      "owner": "crates/hmux-core",
+      "baseline_owner": "internal/sharedworkspace",
+      "tests": [
         "crates/hmux-home/src/workspace.rs",
         "crates/hmux-home/tests/session_peer.rs"
       ]
     },
     {
       "id": "state:recovery-checkpoint",
-      "owner": "internal/recovery",
-      "rust_tests": [
+      "owner": "crates/hmux-home",
+      "baseline_owner": "internal/recovery",
+      "historical_migration_tests": [
+        "internal/recovery/rust_compatibility_test.go"
+      ],
+      "tests": [
+        "crates/hmux-home/src/connector_tests.rs",
         "crates/hmux-home/src/recovery.rs",
         "crates/hmux-home/src/recovery/restore.rs",
-        "crates/hmux-home/src/connector_tests.rs",
-        "internal/recovery/rust_compatibility_test.go",
         "crates/hmux-home/tests/runtime_wss.rs"
       ]
     },
     {
       "id": "state:workflows",
-      "owner": "internal/workflow",
-      "rust_tests": [
-        "crates/hmux-home/src/workflow_tests.rs",
+      "owner": "crates/hmux-home",
+      "baseline_owner": "internal/workflow",
+      "historical_migration_tests": [
         "internal/workflow/rust_compatibility_test.go"
+      ],
+      "tests": [
+        "crates/hmux-home/src/workflow_tests.rs"
       ]
     },
     {
       "id": "state:upload-manifest",
-      "owner": "internal/filestage"
+      "owner": "crates/hmux-home",
+      "baseline_owner": "internal/filestage",
+      "tests": [
+        "crates/hmux-home/src/completion_tracker_tests.rs",
+        "crates/hmux-home/src/connector_tests.rs",
+        "crates/hmux-home/src/create_plan_tests.rs",
+        "crates/hmux-home/src/dial_tests.rs",
+        "crates/hmux-home/src/filestage_tests.rs",
+        "crates/hmux-home/src/metrics_parsers_tests.rs",
+        "crates/hmux-home/src/metrics_tests.rs",
+        "crates/hmux-home/src/process_tests.rs",
+        "crates/hmux-home/src/proxy_tests.rs",
+        "crates/hmux-home/src/pty_tests.rs",
+        "crates/hmux-home/src/records_tests.rs",
+        "crates/hmux-home/src/refresh_tests.rs",
+        "crates/hmux-home/src/sessionstate_tests.rs",
+        "crates/hmux-home/src/transcript_tests.rs",
+        "crates/hmux-home/src/usage_activity_tests.rs",
+        "crates/hmux-home/src/usage_config_tests.rs",
+        "crates/hmux-home/src/usage_credentials_tests.rs",
+        "crates/hmux-home/src/usage_http_tests.rs",
+        "crates/hmux-home/src/usage_lb_tests.rs",
+        "crates/hmux-home/src/usage_oauth_tests.rs",
+        "crates/hmux-home/src/usage_sources_tests.rs",
+        "crates/hmux-home/src/usage_tests.rs",
+        "crates/hmux-home/src/view_tests.rs",
+        "crates/hmux-home/src/workflow_tests.rs",
+        "crates/hmux-home/tests/catalog.rs",
+        "crates/hmux-home/tests/config_compat.rs",
+        "crates/hmux-home/tests/conversation_peer.rs",
+        "crates/hmux-home/tests/go_peer.rs",
+        "crates/hmux-home/tests/go_sessionstate.rs",
+        "crates/hmux-home/tests/home_terminal.rs",
+        "crates/hmux-home/tests/metrics_compat.rs",
+        "crates/hmux-home/tests/peer.rs",
+        "crates/hmux-home/tests/process_compat.rs",
+        "crates/hmux-home/tests/runtime.rs",
+        "crates/hmux-home/tests/runtime_wss.rs",
+        "crates/hmux-home/tests/session_peer.rs",
+        "crates/hmux-home/tests/singleton.rs",
+        "crates/hmux-home/tests/terminal_view.rs",
+        "crates/hmux-home/tests/transcript_compat.rs",
+        "crates/hmux-home/tests/upgrade.rs",
+        "crates/hmux-home/tests/upload_peer.rs"
+      ]
     },
     {
       "id": "platform:darwin-service"
@@ -637,38 +1282,42 @@
     },
     {
       "id": "platform:darwin-hostmetrics",
-      "candidate_tests": [
-        "crates/hmux-home/src/metrics_tests.rs",
-        "crates/hmux-home/src/metrics_parsers_tests.rs",
-        "crates/hmux-home/tests/metrics_compat.rs",
+      "historical_migration_tests": [
         "internal/hostmetrics/rust_compatibility_test.go"
+      ],
+      "tests": [
+        "crates/hmux-home/src/metrics_parsers_tests.rs",
+        "crates/hmux-home/src/metrics_tests.rs",
+        "crates/hmux-home/tests/metrics_compat.rs"
       ]
     },
     {
       "id": "platform:linux-hostmetrics",
-      "candidate_tests": [
-        "crates/hmux-home/src/metrics_tests.rs",
-        "crates/hmux-home/src/metrics_parsers_tests.rs",
-        "crates/hmux-home/tests/metrics_compat.rs",
+      "historical_migration_tests": [
         "internal/hostmetrics/rust_compatibility_test.go"
+      ],
+      "tests": [
+        "crates/hmux-home/src/metrics_parsers_tests.rs",
+        "crates/hmux-home/src/metrics_tests.rs",
+        "crates/hmux-home/tests/metrics_compat.rs"
       ]
     },
     {
       "id": "platform:embedded-usage-collector",
-      "candidate_tests": [
-        "crates/hmux-usage/src/transport_tests.rs",
-        "crates/hmux-usage/src/oauth_tests.rs",
-        "crates/hmux-usage/src/codex_lb_tests.rs",
-        "crates/hmux-usage/src/codex_accounts_tests.rs",
-        "crates/hmux-usage/src/cswap_tests.rs",
-        "crates/hmux-usage/src/sources.rs",
+      "tests": [
         "crates/hmux-gateway/tests/hub.rs",
-        "crates/hmux-usage/src/quota_state_tests.rs",
-        "crates/hmux-usage/src/credentials_tests.rs",
-        "crates/hmux-usage/src/activity_tests.rs",
         "crates/hmux-home/src/usage_credentials_tests.rs",
         "crates/hmux-home/src/usage_http_tests.rs",
-        "crates/hmux-home/src/usage_oauth_tests.rs"
+        "crates/hmux-home/src/usage_oauth_tests.rs",
+        "crates/hmux-usage/src/activity_tests.rs",
+        "crates/hmux-usage/src/codex_accounts_tests.rs",
+        "crates/hmux-usage/src/codex_lb_tests.rs",
+        "crates/hmux-usage/src/credentials_tests.rs",
+        "crates/hmux-usage/src/cswap_tests.rs",
+        "crates/hmux-usage/src/oauth_tests.rs",
+        "crates/hmux-usage/src/quota_state_tests.rs",
+        "crates/hmux-usage/src/sources.rs",
+        "crates/hmux-usage/src/transport_tests.rs"
       ]
     },
     {
@@ -680,33 +1329,83 @@
     {
       "id": "wire:protobuf-v2",
       "owner": "crates/hmux-protocol",
-      "scope": "v2 schema, bounded preflight, supported v1 JSON adapter and provider/output boundary validation"
+      "scope": "v2 schema, bounded preflight, supported v1 JSON adapter and provider/output boundary validation",
+      "baseline_owner": "crates/hmux-protocol",
+      "tests": [
+        "crates/hmux-protocol/tests/actions.rs",
+        "crates/hmux-protocol/tests/go_wire.rs",
+        "crates/hmux-protocol/tests/legacy.rs",
+        "crates/hmux-protocol/tests/protobuf.rs",
+        "crates/hmux-protocol/tests/snapshots.rs",
+        "crates/hmux-protocol/tests/transport.rs"
+      ]
     },
     {
       "id": "runtime:shared-websocket",
       "owner": "crates/hmux-protocol",
-      "scope": "bounded writer admission, cancellation-independent in-flight write and whole-socket teardown"
+      "scope": "bounded writer admission, cancellation-independent in-flight write and whole-socket teardown",
+      "baseline_owner": "crates/hmux-protocol",
+      "tests": [
+        "crates/hmux-protocol/tests/actions.rs",
+        "crates/hmux-protocol/tests/go_wire.rs",
+        "crates/hmux-protocol/tests/legacy.rs",
+        "crates/hmux-protocol/tests/protobuf.rs",
+        "crates/hmux-protocol/tests/snapshots.rs",
+        "crates/hmux-protocol/tests/transport.rs"
+      ]
     },
     {
       "id": "security:password-admission",
       "owner": "crates/hmux-gateway",
-      "scope": "two blocking password slots held until actual completion and bounded source rate limiter"
+      "scope": "two blocking password slots held until actual completion and bounded source rate limiter",
+      "baseline_owner": "crates/hmux-gateway",
+      "tests": [
+        "crates/hmux-gateway/src/diagnostics_tests.rs",
+        "crates/hmux-gateway/src/push_crypto_tests.rs",
+        "crates/hmux-gateway/src/push_delivery_tests.rs",
+        "crates/hmux-gateway/src/push_state_tests.rs",
+        "crates/hmux-gateway/src/push_tests.rs",
+        "crates/hmux-gateway/src/push_transport_tests.rs",
+        "crates/hmux-gateway/src/session_location_http_tests.rs",
+        "crates/hmux-gateway/src/session_location_tests.rs",
+        "crates/hmux-gateway/src/static_assets_tests.rs",
+        "crates/hmux-gateway/src/usage_preferences_tests.rs",
+        "crates/hmux-gateway/tests/go_auth_v1.rs",
+        "crates/hmux-gateway/tests/home_peer.rs",
+        "crates/hmux-gateway/tests/http_auth.rs",
+        "crates/hmux-gateway/tests/http_boundary.rs",
+        "crates/hmux-gateway/tests/http_upgrade.rs",
+        "crates/hmux-gateway/tests/hub.rs",
+        "crates/hmux-gateway/tests/usage_home.rs"
+      ]
     },
     {
       "id": "state:private-io",
       "owner": "crates/hmux-core",
-      "scope": "private bounded reads, atomic 0600 writes with commit-stage errors, directory-relative operations"
+      "scope": "private bounded reads, atomic 0600 writes with commit-stage errors, directory-relative operations",
+      "baseline_owner": "crates/hmux-core",
+      "tests": [
+        "crates/hmux-core/src/workspace_tests.rs",
+        "crates/hmux-core/tests/command.rs",
+        "crates/hmux-core/tests/go_lock.rs",
+        "crates/hmux-core/tests/spawn_gate.rs",
+        "crates/hmux-core/tests/token.rs"
+      ]
     },
     {
       "id": "runtime:home-hub",
       "owner": "crates/hmux-gateway",
       "scope": "one current Home generation, bounded requests/views/uploads, best-effort 64-event completion queue, FIFO ACK and shared 8 MiB retained-payload backing budget",
-      "candidate_tests": [
-        "crates/hmux-gateway/tests/hub.rs",
-        "crates/hmux-gateway/tests/http_auth.rs"
+      "baseline_owner": "crates/hmux-gateway",
+      "tests": [
+        "crates/hmux-gateway/tests/http_auth.rs",
+        "crates/hmux-gateway/tests/hub.rs"
       ]
     }
   ],
   "current_control": "../../docs/RUST_MIGRATION.md",
-  "historical_checkpoints": "../../docs/archive/RUST_CONTRACT_CHECKPOINTS_2026-09-24.json"
+  "historical_checkpoints": "../../docs/archive/RUST_CONTRACT_CHECKPOINTS_2026-09-24.json",
+  "migration_checkpoint": "c061f28fe7ea8e865578ac1189240447d0ebaa6f",
+  "baseline_tests_revision": "245d4e6839939839fd56b7632600d7398726e359",
+  "historical_migration_tests_revision": "c061f28fe7ea8e865578ac1189240447d0ebaa6f"
 }

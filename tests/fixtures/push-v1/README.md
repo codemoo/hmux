@@ -1,16 +1,18 @@
 # Push compatibility
 
+Baseline source: `c061f28fe7ea8e865578ac1189240447d0ebaa6f`. Current Rust tests
+consume frozen vectors; process handoffs need explicit external binaries as
+described in [native verification](../../RUST.md#optional-historical-comparisons).
+
 All keys, login IDs and endpoints in this directory are synthetic. No push
 provider is contacted by these tests.
 
-The Go owner generates and checks [go-oracle.json](go-oracle.json) through
+The retired Go owner generated [go-oracle.json](go-oracle.json) through
 `TestRustPushStateOracle`: 26 endpoint, 13 subscription-key, 8 login-ID and
 26 stored-state cases. Rust checks the same inputs through
 `push_state::tests::actual_go_push_state_oracle`. Regeneration:
 
-```sh
-UPDATE_HMUX_RUST_PUSH_FIXTURE=1 go test ./internal/webgateway -run '^TestRustPushStateOracle$' -count=1
-```
+The generation command is retained in the historical source checkpoint.
 
 `go_valid` is the actual Go result. `rust_valid` includes deliberately stricter
 candidate policy; `delta` explains each such case. Rust requires objects, unique
@@ -20,7 +22,7 @@ escapes. It does not normalize URLs. Valid escaped JSON login keys and a missing
 or null subscription map remain compatible. New Rust state uses the original
 Go v1 format and `<credentials>.push.json` filename.
 
-`make rust-compat` also runs an actual Go process against a Rust-created private
+The historical compatibility suite also ran an actual Go process against a Rust-created private
 file. Go must respect Rust's lifetime lock, then accept the generated VAPID key
 and remove one of two subscriptions after Rust shuts down. Rust then reads that
 same current file and must preserve the removal and key. The check restores no
@@ -35,7 +37,7 @@ single-owner contract; it is not atomic CAS against noncooperating writers.
 The crypto tests also check the exact ciphertext in [RFC 8291 section 5](https://www.rfc-editor.org/rfc/rfc8291.html#section-5)
 and VAPID's ES256/claims contract from [RFC 8292](https://www.rfc-editor.org/rfc/rfc8292.html).
 `TestRustPushCryptoRFCAndGoSender` validates an independent Go decryptor against
-the published vector and the existing Go sender. `make rust-compat` then runs
+the published vector and the existing Go sender. The historical compatibility suite ran
 `actual_go_and_rust_push_crypto_interoperate`: Go decrypts and verifies Rust
 requests, and Rust decrypts and verifies requests captured from the actual Go
 Web Push dependency before network I/O. It covers empty content, Korean tab/session
@@ -53,14 +55,12 @@ The transport uses an authoritative send-time validation callback for current
 workspace/subscription/login/catalog/presence checks; a contended final lookup
 fails closed without waiting after workspace authorization.
 
-The Go owner also checks [go-addresses.json](go-addresses.json) through
+The retired Go owner also checked [go-addresses.json](go-addresses.json) through
 `TestRustPushAddressOracle`: 217 synthetic IP cases include every denied CIDR's
 first/last addresses and their neighbors, mapped IPv4, and invalid inputs.
 Rust compares the same cases against its actual outbound validator. Regeneration:
 
-```sh
-UPDATE_HMUX_RUST_PUSH_ADDRESS_FIXTURE=1 go test ./internal/webgateway -run '^TestRustPushAddressOracle$' -count=1
-```
+The generation command is retained in the historical source checkpoint.
 
 Transport tests use generated synthetic certificates and disposable loopback
 listeners. Only `cfg(test)` redirects a validated public address to that listener;
@@ -77,9 +77,7 @@ and numeric `expirationTime` remain accepted. Duplicate fields and non-object
 unsubscribe bodies deliberately receive 400; `delta` identifies Go differences.
 Regeneration:
 
-```sh
-UPDATE_HMUX_RUST_PUSH_API_FIXTURE=1 go test ./internal/webgateway -run '^TestRustPushAPIOracle$' -count=1
-```
+The generation command is retained in the historical source checkpoint.
 
 The real Rust HTTP/Hub/verified-TLS test checks subscription registration,
 account membership, exact birth timestamps, visible-tab suppression, endpoint
@@ -87,7 +85,7 @@ transfer, CSRF, login revocation, test throttling and 410 cleanup. Pausing TLS
 before completion lets presence and account workspace change before the final
 authorization check. Only a test-private address mapping directs this traffic to
 a disposable loopback listener; certificate and hostname validation stay active.
-`make rust-compat` captures one delivered request and runs
+The historical compatibility suite captures one delivered request and runs
 `TestRustPushDeliveredRequest`: independent Go decryption, VAPID ES256/claims,
 headers/topic and tab/deep-link payload checks. No push provider is contacted.
 

@@ -2,6 +2,7 @@
 """Opt-in paired native gateway/Home socket and process measurements."""
 
 import argparse
+from legacy_baseline import BASELINE, baseline_digest
 import hashlib
 import json
 import math
@@ -215,16 +216,17 @@ def main():
     report = {"schema": 2, "status": "running", "metric": "socket receipt RTT; excludes xterm rendering",
               "os": platform.platform(), "kernel": platform.release(), "machine": platform.machine(),
               "cpu_count": os.cpu_count(), "machine_limits": linux_limits(),
-              "toolchain": {"go": version(["go", "version"]),
+              "toolchain": {"go": "retained external artifact; see binary hash",
               "rustc": version(["rustc", "--version"])},
               "revision": version(["git", "rev-parse", "HEAD"], source_root),
-              "source_files": {name: digest(source_root / name) for name in (
+              "baseline_ref": BASELINE,
+              "source_files": {name: (baseline_digest(name) if name.startswith("internal/") else digest(source_root / name)) for name in (
                   "internal/webgateway/rust_full_gateway_test.go",
                   "internal/webgateway/rust_native_stress_test.go",
                   "internal/webgateway/rust_native_soak_test.go",
                   "tests/rust_native_perf.py")},
-              "dependency_locks": {name: digest(source_root / name) for name in ("go.sum", "Cargo.lock")
-                                   if (source_root / name).is_file()},
+              "dependency_locks": {name: (baseline_digest(name) if name == "go.sum" else digest(source_root / name)) for name in ("go.sum", "Cargo.lock")
+                                   if name == "go.sum" or (source_root / name).is_file()},
               "binaries": {label: {"path": str(path), "sha256": digest(path)}
                            for label, path in (("go", go), ("rust", rust), ("oracle", oracle))},
               "workload": workload, "pairs": args.pairs, "rust_protobuf": args.rust_protobuf,

@@ -1,2 +1,0 @@
-{"test_expected_fresh_tokens":16687,"timestamp":"2026-07-16T00:00:00.000Z","type":"event_msg","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":16074,"cached_input_tokens":0,"output_tokens":613,"reasoning_output_tokens":516,"total_tokens":16687}}}}
-{"test_expected_fresh_tokens":1143,"timestamp":"2026-07-16T00:00:01.000Z","type":"event_msg","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":104055,"cached_input_tokens":103296,"output_tokens":384,"reasoning_output_tokens":223,"total_tokens":104439}}}}
