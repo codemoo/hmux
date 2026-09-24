@@ -1,6 +1,7 @@
 //! Home shared tabs. One bounded store survives reconnects; catalog/recovery
 //! reads complete before acquiring the Go-compatible workspace transaction lock.
 use crate::catalog::TmuxCatalogReader;
+use crate::observation;
 use bytes::Bytes;
 use hmux_core::{command::CommandRunner, workspace::Store, PrivateDir};
 use hmux_model::workspace::{Change, SessionLineage, Snapshot};
@@ -46,6 +47,17 @@ impl Workspace {
         runner: CommandRunner,
         cancel: &CancellationToken,
     ) -> Result<Snapshot, Error> {
+        self.request_typed_reported(change, reader, runner, cancel, None)
+            .await
+    }
+    pub(crate) async fn request_typed_reported(
+        &self,
+        change: Option<Change>,
+        reader: TmuxCatalogReader,
+        runner: CommandRunner,
+        cancel: &CancellationToken,
+        reporter: Option<observation::Reporter>,
+    ) -> Result<Snapshot, Error> {
         if change.as_ref().is_some_and(|v| !v.valid()) {
             return Err(Error::Invalid);
         }
@@ -53,6 +65,7 @@ impl Workspace {
         let _cancel_on_drop = stop.clone().drop_guard();
         let deadline = tokio::time::Instant::now() + Duration::from_secs(10);
         let runtime = tokio::runtime::Handle::current();
+        let started = std::time::Instant::now();
         let fetch_stop = stop.clone();
         let recovery = self.recovery.clone();
         let allowed_stop = stop.clone();
@@ -60,9 +73,24 @@ impl Workspace {
             None,
             change,
             move || {
-                let mut catalog = runtime
-                    .block_on(reader.read_basic_cancelable(&runner, &fetch_stop, deadline))
-                    .map_err(|_| Error::Unavailable)?;
+                let mut catalog = match runtime.block_on(reader.read_basic_cancelable(
+                    &runner,
+                    &fetch_stop,
+                    deadline,
+                )) {
+                    Ok(catalog) => catalog,
+                    Err(error) => {
+                        if let Some(report) = &reporter {
+                            report(observation::Event::new(
+                                observation::Stage::Action,
+                                Some(hmux_protocol::protobuf::types::Operation::Workspace),
+                                observation::Reason::catalog(&error),
+                                started,
+                            ));
+                        }
+                        return Err(Error::Unavailable);
+                    }
+                };
                 if let Some(recovery) = recovery {
                     let _ = recovery.apply(&mut catalog);
                 }

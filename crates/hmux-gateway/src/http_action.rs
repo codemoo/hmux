@@ -1,6 +1,7 @@
 //! Browser action authorization and forwarding. Home owns operation validation
 //! and exact session binding; account workspace state stays at this gateway.
 use super::*;
+use crate::observation::ActionFailure;
 use hmux_core::workspace::Error as WorkspaceError;
 use hmux_model::workspace::Change;
 use hmux_protocol::{actions, legacy, protobuf::types as p, wire};
@@ -54,7 +55,19 @@ impl Gateway {
         let Some(home) = self.home.as_ref() else {
             return boundary::error(StatusCode::SERVICE_UNAVAILABLE);
         };
-        let deadline = Instant::now() + ACTION_TIMEOUT;
+        let started = Instant::now();
+        let initial_generation = home.snapshot().generation;
+        let failed = |failure: ActionFailure| {
+            home.report_action_failure(
+                operation,
+                initial_generation,
+                failure,
+                502,
+                started.elapsed(),
+            );
+            boundary::error(StatusCode::BAD_GATEWAY)
+        };
+        let deadline = started + ACTION_TIMEOUT;
         let mut cancellation = access.clone();
         let expiry = access
             .expires_at
@@ -98,12 +111,12 @@ impl Gateway {
                         Err(WorkspaceError::Busy) => {
                             boundary::error(StatusCode::SERVICE_UNAVAILABLE)
                         }
-                        Err(_) => boundary::error(StatusCode::BAD_GATEWAY),
+                        Err(_) => failed(ActionFailure::WorkspaceUnavailable),
                     };
                 }
             }
             let Some(generation) = home.snapshot().generation else {
-                return boundary::error(StatusCode::BAD_GATEWAY);
+                return failed(ActionFailure::HomeOffline);
             };
             // Construct only the allowlisted request fields. Browser-supplied
             // type/ID, data, geometry, errors and transport controls cannot escape.
@@ -133,25 +146,29 @@ impl Gateway {
                 return boundary::error(status);
             }
             let Ok(reply) = result else {
-                return boundary::error(StatusCode::BAD_GATEWAY);
+                return failed(ActionFailure::HomeRequest);
             };
             if !reply.error.is_empty() {
-                return boundary::error(StatusCode::BAD_GATEWAY);
+                return failed(if reply.error == "Home is busy" {
+                    ActionFailure::HomeBusy
+                } else {
+                    ActionFailure::HomeOperation
+                });
             }
             let raw = match actions::response_payload(&reply) {
                 Ok(raw) => raw,
-                Err(_) => return boundary::error(StatusCode::BAD_GATEWAY),
+                Err(_) => return failed(ActionFailure::ResponseInvalid),
             };
             match serde_json::from_slice::<&RawValue>(&raw) {
                 Ok(raw) => boundary::json(&raw),
-                Err(_) => boundary::error(StatusCode::BAD_GATEWAY),
+                Err(_) => failed(ActionFailure::ResponseInvalid),
             }
         };
         tokio::select! {
             biased;
             _=cancellation.wait_cancelled()=>boundary::error(StatusCode::UNAUTHORIZED),
             _=tokio::time::sleep(expiry)=>boundary::error(StatusCode::UNAUTHORIZED),
-            _=tokio::time::sleep(ACTION_TIMEOUT)=>boundary::error(StatusCode::BAD_GATEWAY),
+            _=tokio::time::sleep(ACTION_TIMEOUT)=>failed(ActionFailure::Deadline),
             reply=work=>reply,
         }
     }

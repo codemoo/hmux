@@ -17,10 +17,10 @@ export HMUX_VERSION
 hmux_host=$(rustc -vV | sed -n 's/^host: //p')
 hmux_targets=${HMUX_RUST_TARGETS:-$hmux_host}
 hmux_target_dir=${CARGO_TARGET_DIR:-target}
-test -n "$hmux_host" && test -n "$hmux_targets" || {
+if [ -z "$hmux_host" ] || [ -z "$hmux_targets" ]; then
 	echo 'No native Rust host/target selected.' >&2
 	exit 1
-}
+fi
 
 for hmux_target in $hmux_targets; do
 	case "$hmux_target" in

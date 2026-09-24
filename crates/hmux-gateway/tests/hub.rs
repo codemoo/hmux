@@ -204,7 +204,10 @@ async fn transport_observation_reports_failure_and_cancel_without_remote_data() 
     assert!(!task.await.unwrap().unwrap().error.is_empty());
     let event = observed.recv().await.unwrap();
     assert!(matches!(event.stage, Stage::RequestComplete));
-    assert_eq!(event.reason, Some(hmux_gateway::hub::Error::Invalid));
+    assert_eq!(
+        event.reason,
+        Some(hmux_gateway::hub::Error::RemoteOperation)
+    );
     assert!(!event.to_string().contains("private-remote"));
     let request_hub = hub.clone();
     let task = tokio::spawn(async move { request_hub.request(generation, request()).await });

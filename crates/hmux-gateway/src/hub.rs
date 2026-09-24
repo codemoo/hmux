@@ -1,7 +1,7 @@
 //! One authenticated Home generation and bounded fan-out to HTTP owners.
 //! Authorization, browser sockets, heartbeat and account revocation remain with
 //! the gateway server. This owner never starts a Home replacement while active.
-use crate::observation::{Event, Reporter, Span, Stage};
+use crate::observation::{ActionFailure, Event, Reporter, Span, Stage};
 use bytes::Bytes;
 use hmux_protocol::{
     actions::{self, ResponseContext},
@@ -60,6 +60,7 @@ pub enum Error {
     Cancelled,
     Transport,
     OutputFull,
+    RemoteOperation,
 }
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -72,6 +73,7 @@ impl fmt::Display for Error {
             Self::Invalid => "invalid Home message",
             Self::Cancelled => "Home request cancelled",
             Self::Transport => "Home transport failed",
+            Self::RemoteOperation => "Home operation failed",
             Self::OutputFull => "terminal output full",
         })
     }
@@ -617,6 +619,8 @@ impl Hub {
                 reason: None,
                 duration_ms: 0,
                 send_ms: 0,
+                action_failure: None,
+                http_status: None,
             });
         }
         let task = tokio::spawn(async move {
@@ -889,6 +893,27 @@ impl Hub {
         self.peer(generation)?;
         Ok(())
     }
+    pub(crate) fn report_action_failure(
+        &self,
+        operation: p::Operation,
+        generation: Option<Generation>,
+        failure: ActionFailure,
+        status: u16,
+        duration: std::time::Duration,
+    ) {
+        if let Some(report) = &self.inner.reporter {
+            report(Event {
+                stage: Stage::ActionFailed,
+                operation: Some(operation),
+                connection: generation.map_or(0, |v| v.0),
+                reason: None,
+                duration_ms: duration.as_millis().min(u64::MAX as u128) as u64,
+                send_ms: 0,
+                action_failure: Some(failure),
+                http_status: Some(status),
+            });
+        }
+    }
     pub async fn request(
         &self,
         generation: Generation,
@@ -902,11 +927,15 @@ impl Hub {
         );
         let result = self.request_observed(generation, request, &mut span).await;
         span.finish(&result);
-        if result
-            .as_ref()
-            .is_ok_and(|response| !response.error.is_empty())
-        {
-            span.finish::<()>(&Err(Error::Invalid));
+        if let Ok(response) = &result {
+            if !response.error.is_empty() {
+                let reason = if response.error == "Home is busy" {
+                    Error::Busy
+                } else {
+                    Error::RemoteOperation
+                };
+                span.finish::<()>(&Err(reason));
+            }
         }
         result
     }

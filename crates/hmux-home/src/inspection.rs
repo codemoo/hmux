@@ -22,6 +22,7 @@ const MAX_PANES: usize = 4096;
 const FILE_LIMIT: usize = 16384;
 const FILE_BYTES: usize = 4 << 20;
 static SLOTS: OnceLock<Arc<Semaphore>> = OnceLock::new();
+static BACKGROUND: OnceLock<Arc<Semaphore>> = OnceLock::new();
 static COMMANDS: OnceLock<CommandRunner> = OnceLock::new();
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
@@ -75,6 +76,59 @@ pub(crate) fn admit() -> Option<OwnedSemaphorePermit> {
         .try_acquire_owned()
         .ok()
 }
+/// Catalog and completion share at most one of the two scan permits, leaving
+/// one available for an interactive conversation even during background work.
+pub(crate) struct BackgroundPermit {
+    _background: OwnedSemaphorePermit,
+    _slot: OwnedSemaphorePermit,
+}
+pub(crate) fn admit_background() -> Option<BackgroundPermit> {
+    let slots = SLOTS.get_or_init(|| Arc::new(Semaphore::new(2)));
+    let background = BACKGROUND.get_or_init(|| Arc::new(Semaphore::new(1)));
+    admit_background_from(slots, background)
+}
+pub(crate) async fn wait_background(stop: &CancellationToken) -> Option<BackgroundPermit> {
+    wait_background_inner(stop, None).await
+}
+pub(crate) async fn wait_background_for(
+    stop: &CancellationToken,
+    limit: Duration,
+) -> Option<BackgroundPermit> {
+    wait_background_inner(stop, Some(tokio::time::Instant::now() + limit)).await
+}
+async fn wait_background_inner(
+    stop: &CancellationToken,
+    deadline: Option<tokio::time::Instant>,
+) -> Option<BackgroundPermit> {
+    let slots = SLOTS.get_or_init(|| Arc::new(Semaphore::new(2)));
+    let background = BACKGROUND.get_or_init(|| Arc::new(Semaphore::new(1)));
+    let background = tokio::select! {
+        _ = stop.cancelled() => return None,
+        _ = async { if let Some(deadline) = deadline { tokio::time::sleep_until(deadline).await } else { std::future::pending().await } } => return None,
+        permit = background.clone().acquire_owned() => permit.ok()?,
+    };
+    let slot = tokio::select! {
+        _ = stop.cancelled() => return None,
+        _ = async { if let Some(deadline) = deadline { tokio::time::sleep_until(deadline).await } else { std::future::pending().await } } => return None,
+        permit = slots.clone().acquire_owned() => permit.ok()?,
+    };
+    Some(BackgroundPermit {
+        _background: background,
+        _slot: slot,
+    })
+}
+fn admit_background_from(
+    slots: &Arc<Semaphore>,
+    background: &Arc<Semaphore>,
+) -> Option<BackgroundPermit> {
+    let background = background.clone().try_acquire_owned().ok()?;
+    let slot = slots.clone().try_acquire_owned().ok()?;
+    Some(BackgroundPermit {
+        _background: background,
+        _slot: slot,
+    })
+}
+
 pub(crate) fn commands() -> &'static CommandRunner {
     COMMANDS.get_or_init(|| CommandRunner::new(2).expect("nonzero inspection command limit"))
 }
@@ -377,7 +431,7 @@ impl Inspector {
         if panes.is_empty() {
             return Ok(catalog);
         }
-        let Some(permit) = admit() else {
+        let Some(permit) = wait_background_for(stop, Duration::from_secs(2)).await else {
             return Ok(catalog);
         };
         let child = stop.child_token();
@@ -415,5 +469,25 @@ impl Inspector {
         })
         .await
         .map_err(|_| Error::Worker)?
+    }
+}
+
+#[cfg(test)]
+mod admission_tests {
+    use super::*;
+    #[test]
+    fn background_scan_reserves_interactive_capacity_and_releases_both_permits() {
+        let slots = Arc::new(Semaphore::new(2));
+        let background = Arc::new(Semaphore::new(1));
+        let catalog = admit_background_from(&slots, &background).unwrap();
+        assert!(admit_background_from(&slots, &background).is_none());
+        let conversation = slots.clone().try_acquire_owned().unwrap();
+        assert!(slots.clone().try_acquire_owned().is_err());
+        drop(catalog);
+        let completion = admit_background_from(&slots, &background).unwrap();
+        drop(conversation);
+        drop(completion);
+        assert_eq!(slots.available_permits(), 2);
+        assert_eq!(background.available_permits(), 1);
     }
 }

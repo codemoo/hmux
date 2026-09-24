@@ -7,7 +7,9 @@ use crate::{
     conversation,
     filestage::Store,
     inspection::{self, Inspector},
-    metrics, sessions, terminal, upload, usage,
+    metrics,
+    observation::{self, Reason, Stage},
+    sessions, terminal, upload, usage,
 };
 use hmux_core::command::CommandRunner;
 use hmux_protocol::{
@@ -161,6 +163,47 @@ fn provider_operation(operation: i32) -> Option<&'static str> {
 fn unsupported(id: String) -> p::envelope::Body {
     response(id, None, UNAVAILABLE)
 }
+fn report_action(
+    reporter: &Option<observation::Reporter>,
+    operation: Option<p::Operation>,
+    reason: Reason,
+    started: std::time::Instant,
+) {
+    if let Some(report) = reporter {
+        report(observation::Event::new(
+            Stage::Action,
+            operation,
+            reason,
+            started,
+        ));
+    }
+}
+fn report_slow_action(
+    reporter: &Option<observation::Reporter>,
+    operation: Option<p::Operation>,
+    started: std::time::Instant,
+) {
+    if started.elapsed() >= Duration::from_millis(500) {
+        report_action(reporter, operation, Reason::Slow, started);
+    }
+}
+fn workspace_reason(error: crate::workspace::Error) -> Reason {
+    match error {
+        crate::workspace::Error::Busy => Reason::Busy,
+        crate::workspace::Error::Cancelled => Reason::Cancelled,
+        crate::workspace::Error::Invalid => Reason::Parse,
+        crate::workspace::Error::Unavailable => Reason::Unavailable,
+    }
+}
+fn inspection_reason(error: inspection::Error) -> Reason {
+    match error {
+        inspection::Error::Busy => Reason::Busy,
+        inspection::Error::Cancelled => Reason::Cancelled,
+        inspection::Error::Invalid => Reason::Parse,
+        inspection::Error::Worker => Reason::Worker,
+        inspection::Error::Unavailable => Reason::Unavailable,
+    }
+}
 fn recoverable_legacy_action(value: &wire::Message, duplicate: bool) -> bool {
     value.kind == "request"
         && !value.id.is_empty()
@@ -218,6 +261,7 @@ fn profiles(path: PathBuf) -> Result<p::ProfilesResult, Error> {
 }
 
 struct Enrichment {
+    reporter: Option<observation::Reporter>,
     metadata: Option<PathBuf>,
     recovery: Option<crate::recovery::Store>,
     inspector: Option<Arc<Inspector>>,
@@ -289,6 +333,7 @@ async fn publish_catalog(
     changed: Arc<tokio::sync::Notify>,
 ) -> Result<(), Error> {
     let Enrichment {
+        reporter,
         metadata,
         recovery,
         inspector,
@@ -297,12 +342,15 @@ async fn publish_catalog(
     } = enrichment;
     let mut first = true;
     let mut previous = None;
+    let mut failed = None;
+    let mut slow_active = false;
     loop {
         if stop.is_cancelled() {
             return Ok(());
         }
         // Do not drop an in-flight command future on cancellation: CommandRunner
         // owns and reaps the direct child before it returns.
+        let started = std::time::Instant::now();
         let catalog = reader
             .read_basic_cancelable(
                 &runner,
@@ -313,36 +361,150 @@ async fn publish_catalog(
         if stop.is_cancelled() {
             return Ok(());
         }
-        let mut catalog = catalog.map_err(|_| Error::Catalog)?;
+        let mut catalog = match catalog {
+            Ok(catalog) => catalog,
+            Err(error) => {
+                let reason = Reason::catalog(&error);
+                if failed != Some(reason) {
+                    if let Some(report) = &reporter {
+                        report(observation::Event::new(
+                            Stage::Catalog,
+                            None,
+                            reason,
+                            started,
+                        ));
+                    }
+                }
+                failed = Some(reason);
+                // Preserve the last successfully published timestamp. The
+                // Gateway's 40s freshness lease will expire if retries fail.
+                tokio::select! {
+                    _ = stop.cancelled() => return Ok(()),
+                    _ = tokio::time::sleep(CATALOG_INTERVAL) => continue,
+                }
+            }
+        };
         catalog.host_metrics = metrics.borrow().clone();
-        if let Some(inbox) = &completion {
-            inbox.enqueue(&catalog);
-        }
         let catalog = if let Some(path) = &metadata {
-            sessions::overlay(catalog, path.clone(), recovery.clone(), &stop)
-                .await
-                .map_err(|_| Error::Catalog)?
+            match sessions::overlay(catalog, path.clone(), recovery.clone(), &stop).await {
+                Ok(catalog) => catalog,
+                Err(_) => {
+                    if failed != Some(Reason::Metadata) {
+                        if let Some(report) = &reporter {
+                            report(observation::Event::new(
+                                Stage::Catalog,
+                                None,
+                                Reason::Metadata,
+                                started,
+                            ));
+                        }
+                    }
+                    failed = Some(Reason::Metadata);
+                    tokio::select! {
+                        _ = stop.cancelled() => return Ok(()),
+                        _ = tokio::time::sleep(CATALOG_INTERVAL) => continue,
+                    }
+                }
+            }
         } else {
             catalog
         };
         if first && inspector.is_some() && catalog.sessions.iter().flatten().any(|s| s.pane_pid > 0)
         {
             // Publish first readiness before process or transcript metadata I/O.
-            publish_snapshot(catalog.clone(), &mut previous, &sender, protocol, &stop).await?;
+            if let Err(error) =
+                publish_snapshot(catalog.clone(), &mut previous, &sender, protocol, &stop).await
+            {
+                if let Some(report) = &reporter {
+                    report(observation::Event::new(
+                        Stage::Catalog,
+                        None,
+                        match error {
+                            Error::Encoding => Reason::Encoding,
+                            _ => Reason::Transport,
+                        },
+                        started,
+                    ));
+                }
+                return Err(error);
+            }
         }
         let catalog = if let Some(inspector) = &inspector {
-            inspector
-                .clone()
-                .annotate(catalog, &stop)
-                .await
-                .map_err(|_| Error::Worker)?
+            match inspector.clone().annotate(catalog, &stop).await {
+                Ok(catalog) => catalog,
+                Err(_) => {
+                    if let Some(report) = &reporter {
+                        report(observation::Event::new(
+                            Stage::Catalog,
+                            None,
+                            Reason::Worker,
+                            started,
+                        ));
+                    }
+                    return Err(Error::Worker);
+                }
+            }
         } else {
             catalog
         };
         if stop.is_cancelled() {
             return Ok(());
         }
-        publish_snapshot(catalog, &mut previous, &sender, protocol, &stop).await?;
+        // Annotation has joined and released the one background scan permit.
+        // Completion gets a turn before the next catalog tick.
+        if let Some(inbox) = &completion {
+            inbox.enqueue(&catalog);
+        }
+        if let Err(error) = publish_snapshot(catalog, &mut previous, &sender, protocol, &stop).await
+        {
+            if let Some(report) = &reporter {
+                report(observation::Event::new(
+                    Stage::Catalog,
+                    None,
+                    match error {
+                        Error::Encoding => Reason::Encoding,
+                        _ => Reason::Transport,
+                    },
+                    started,
+                ));
+            }
+            return Err(error);
+        }
+        if first {
+            if let Some(report) = &reporter {
+                report(observation::Event::new(
+                    Stage::Catalog,
+                    None,
+                    Reason::Published,
+                    started,
+                ));
+            }
+        }
+        if started.elapsed() >= Duration::from_millis(500) {
+            if !slow_active {
+                if let Some(report) = &reporter {
+                    report(observation::Event::new(
+                        Stage::Catalog,
+                        None,
+                        Reason::Slow,
+                        started,
+                    ));
+                }
+            }
+            slow_active = true;
+        } else {
+            slow_active = false;
+        }
+        if failed.take().is_some() {
+            if let Some(report) = &reporter {
+                report(observation::Event::new(
+                    Stage::Catalog,
+                    None,
+                    Reason::Recovered,
+                    started,
+                ));
+            }
+        }
         first = false;
         tokio::select! {
             _ = stop.cancelled() => return Ok(()),
@@ -352,7 +514,7 @@ async fn publish_catalog(
     }
 }
 
-async fn serve_profiles(
+struct ProfileJob {
     id: String,
     path: PathBuf,
     sender: Sender,
@@ -363,7 +525,21 @@ async fn serve_profiles(
         tokio::sync::OwnedSemaphorePermit,
         tokio::sync::OwnedSemaphorePermit,
     ),
-) -> (String, Result<(), Error>) {
+    reporter: Option<observation::Reporter>,
+    started: std::time::Instant,
+}
+async fn serve_profiles(job: ProfileJob) -> (String, Result<(), Error>) {
+    let ProfileJob {
+        id,
+        path,
+        sender,
+        protocol,
+        stop,
+        cancelled,
+        permits,
+        reporter,
+        started,
+    } = job;
     let (slot, io_slot) = permits;
     // The blocking worker owns its permit through real completion, even if a
     // request is cancelled or its response deadline expires.
@@ -372,22 +548,42 @@ async fn serve_profiles(
         profiles(path)
     });
     let mut finished = false;
+    let mut early_reason = None;
     let result = tokio::select! {
         biased;
         _ = stop.cancelled() => None,
-        _ = cancelled.cancelled() => Some(Err(Error::Config)),
-        _ = tokio::time::sleep(ACTION_TIMEOUT) => Some(Err(Error::Config)),
+        _ = cancelled.cancelled() => { early_reason = Some(Reason::Cancelled); Some(Err(Error::Config)) },
+        _ = tokio::time::sleep(ACTION_TIMEOUT) => { early_reason = Some(Reason::QueryTimeout); Some(Err(Error::Config)) },
         value = &mut worker => { finished = true; Some(value.unwrap_or(Err(Error::Worker))) },
     };
     let sent = if let Some(result) = result {
         let body = if cancelled.is_cancelled() || stop.is_cancelled() {
+            report_action(
+                &reporter,
+                Some(p::Operation::Profiles),
+                Reason::Cancelled,
+                started,
+            );
             unsupported(id.clone())
         } else {
             match result {
                 Ok(payload) => {
+                    report_slow_action(&reporter, Some(p::Operation::Profiles), started);
                     response(id.clone(), Some(p::response::Result::Profiles(payload)), "")
                 }
-                Err(_) => unsupported(id.clone()),
+                Err(error) => {
+                    report_action(
+                        &reporter,
+                        Some(p::Operation::Profiles),
+                        early_reason.unwrap_or(match error {
+                            Error::Config => Reason::Metadata,
+                            Error::Encoding => Reason::Encoding,
+                            _ => Reason::Worker,
+                        }),
+                        started,
+                    );
+                    unsupported(id.clone())
+                }
             }
         };
         if stop.is_cancelled() {
@@ -449,6 +645,7 @@ pub async fn run_connected_with_uploads(
 
 #[derive(Default)]
 pub struct Services {
+    pub reporter: Option<observation::Reporter>,
     pub usage: Option<usage::Receiver>,
     pub usage_refresh: Option<usage::RefreshHandle>,
     pub providers: Option<Arc<crate::providers::ProviderService>>,
@@ -487,6 +684,7 @@ async fn run_owned(
     stop: CancellationToken,
 ) -> Result<(), Error> {
     let Services {
+        reporter,
         uploads: store,
         sessions: session_context,
         inspector,
@@ -562,6 +760,7 @@ async fn run_owned(
             inspector: inspector.clone(),
             completion: completion_inbox,
             metrics: metrics_latest,
+            reporter: reporter.clone(),
         },
         changed.clone(),
     ));
@@ -612,9 +811,12 @@ async fn run_owned(
                 use p::envelope::Body::*;
                 match body {
                     Request(request) => {
+                        let started = std::time::Instant::now();
+                        let operation = p::Operation::try_from(request.operation).ok();
                         if pending.contains_key(&request.id) { result = Err(Error::Protocol); break; }
                         let permit = slots.clone().try_acquire_owned();
                         if permit.is_err() {
+                            report_action(&reporter, operation, Reason::Busy, started);
                             result = send(&sender, protocol, response(request.id, None, BUSY), stop.clone()).await;
                             if result.is_err() { break; }
                             continue;
@@ -622,6 +824,7 @@ async fn run_owned(
                         let permit = permit.expect("checked");
                         if p::Operation::try_from(request.operation) == Ok(p::Operation::Profiles) {
                             let Ok(io_permit) = profile_slot.clone().try_acquire_owned() else {
+                                report_action(&reporter, operation, Reason::Busy, started);
                                 result = send(&sender, protocol, response(request.id, None, BUSY), stop.clone()).await;
                                 if result.is_err() { break; }
                                 continue;
@@ -629,7 +832,7 @@ async fn run_owned(
                             let id = request.id;
                             let cancellation = stop.child_token();
                             pending.insert(id.clone(), cancellation.clone());
-                            jobs.spawn(serve_profiles(id, config.inventory_path.clone(), sender.clone(), protocol, stop.clone(), cancellation, (permit, io_permit)));
+                            jobs.spawn(serve_profiles(ProfileJob { id, path: config.inventory_path.clone(), sender: sender.clone(), protocol, stop: stop.clone(), cancelled: cancellation, permits: (permit, io_permit), reporter: reporter.clone(), started }));
                         } else if provider_operation(request.operation).is_some() && providers.is_some() {
                             let operation = p::Operation::try_from(request.operation).expect("checked operation");
                             let Some(payload) = request.payload else { result = Err(Error::Protocol); break; };
@@ -640,14 +843,16 @@ async fn run_owned(
                             let refresh = usage_refresh.clone();
                             let sender = sender.clone();
                             let stop = stop.clone();
+                            let reporter = reporter.clone();
                             jobs.spawn(async move {
                                 let outcome = providers.action_typed(operation, payload, cancellation.clone()).await;
                                 let body = match outcome {
                                     Ok(result) => {
+                                        report_slow_action(&reporter, Some(operation), started);
                                         if result.refresh_auth { if let Some(refresh) = refresh {refresh.request();} }
                                         if cancellation.is_cancelled() { unsupported(id.clone()) } else { response(id.clone(), Some(p::response::Result::Providers(Box::new(result.result))), "") }
                                     },
-                                    _ => unsupported(id.clone()),
+                                    _ => { report_action(&reporter, Some(operation), Reason::Unavailable, started); unsupported(id.clone()) },
                                 };
                                 let sent = if stop.is_cancelled() { Ok(()) } else { send(&sender, protocol, body, stop).await };
                                 drop(permit);
@@ -664,11 +869,13 @@ async fn run_owned(
                             let runner = runner.clone();
                             let sender = sender.clone();
                             let stop = stop.clone();
+                            let reporter = reporter.clone();
                             jobs.spawn(async move {
-                                let outcome = workspace.request_typed(change, catalog, runner, &cancellation).await;
+                                let outcome = workspace.request_typed_reported(change, catalog, runner, &cancellation, reporter.clone()).await;
                                 let body = match outcome {
-                                    Ok(value) if !cancellation.is_cancelled() => response(id.clone(), Some(p::response::Result::Workspace(Box::new(actions::workspace_to_proto(value)))), ""),
-                                    _ => unsupported(id.clone()),
+                                    Ok(value) if !cancellation.is_cancelled() => { report_slow_action(&reporter, Some(p::Operation::Workspace), started); response(id.clone(), Some(p::response::Result::Workspace(Box::new(actions::workspace_to_proto(value)))), "") },
+                                    Err(error) => { report_action(&reporter, Some(p::Operation::Workspace), workspace_reason(error), started); unsupported(id.clone()) },
+                                    _ => { report_action(&reporter, Some(p::Operation::Workspace), Reason::Cancelled, started); unsupported(id.clone()) },
                                 };
                                 let sent = if stop.is_cancelled() { Ok(()) } else { send(&sender, protocol, body, stop).await };
                                 drop(permit);
@@ -677,6 +884,7 @@ async fn run_owned(
                         } else if request.operation == p::Operation::Conversation as i32 && inspector.is_some() {
                             let Some(session)=request.session else { result=Err(Error::Protocol);break; };
                             let Some(io_permit)=inspection::admit() else {
+                                report_action(&reporter, operation, Reason::Busy, started);
                                 result=send(&sender,protocol,response(request.id,None,BUSY),stop.clone()).await;
                                 if result.is_err(){break;} continue;
                             };
@@ -685,9 +893,10 @@ async fn run_owned(
                             pending.insert(id.clone(),cancellation.clone());
                             let job=conversation::Job {inspector:inspector.as_ref().expect("configured").clone(),reader:catalog.clone(),identity:hmux_model::SessionIdentity{id:session.id,created_at:session.created_at},stop:cancellation.clone()};
                             let sender=sender.clone();let stop=stop.clone();
+                            let reporter=reporter.clone();
                             jobs.spawn(async move {
                                 let outcome=job.run(io_permit).await;
-                                let body=match outcome {Ok(value) if !cancellation.is_cancelled()=>response(id.clone(),Some(p::response::Result::Conversation(Box::new(actions::conversation_to_proto(value)))),""),_=>unsupported(id.clone())};
+                                let body=match outcome {Ok(value) if !cancellation.is_cancelled()=>{report_slow_action(&reporter,Some(p::Operation::Conversation),started);response(id.clone(),Some(p::response::Result::Conversation(Box::new(actions::conversation_to_proto(value)))),"")},Err(error)=>{report_action(&reporter,Some(p::Operation::Conversation),inspection_reason(error),started);unsupported(id.clone())},_=>{report_action(&reporter,Some(p::Operation::Conversation),Reason::Cancelled,started);unsupported(id.clone())}};
                                 let sent=if stop.is_cancelled(){Ok(())}else{send(&sender,protocol,body,stop).await};
                                 drop(permit);(id,sent)
                             });

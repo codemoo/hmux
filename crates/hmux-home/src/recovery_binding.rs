@@ -15,7 +15,7 @@ pub(crate) fn resolver(inspector: Arc<Inspector>) -> recovery::Resolver {
     Arc::new(move |panes| {
         let inspector = inspector.clone();
         Box::pin(async move {
-            let permit = inspection::admit().ok_or(recovery::Error::Busy)?;
+            let permit = inspection::admit_background().ok_or(recovery::Error::Busy)?;
             let stop = CancellationToken::new();
             let _guard = stop.clone().drop_guard();
             let runtime = tokio::runtime::Handle::current();

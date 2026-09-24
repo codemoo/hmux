@@ -45,6 +45,9 @@ args=sys.argv[1:]
 cmd=args[0]
 mode=(root/'mode').read_text() if (root/'mode').exists() else ''
 sep='|:hmux-sep-v1:|'
+if cmd=='list-sessions' and (root/'catalog-fail').exists():
+ (root/'catalog-failed').touch()
+ sys.exit(7)
 if cmd=='list-sessions': print(sep.join(['$7',(root/'catalog-name').read_text() if (root/'catalog-name').exists() else 'synthetic','1700000000','1700000000','0','1','','']))
 elif cmd=='list-windows': print(sep.join(['$7','main','1','/synthetic','sh','80','24','123']))
 elif cmd=='display-message': print('1700000000')
@@ -129,6 +132,13 @@ struct Peer {
 }
 impl Peer {
     async fn start(f: &Fixture, protocol: Negotiated) -> Self {
+        Self::start_reported(f, protocol, None).await
+    }
+    async fn start_reported(
+        f: &Fixture,
+        protocol: Negotiated,
+        reporter: Option<hmux_home::observation::Reporter>,
+    ) -> Self {
         let (a, b) = tokio::io::duplex(128 * 1024);
         let home =
             WebSocketStream::from_raw_socket(a, Role::Client, Some(transport::socket_config()))
@@ -145,11 +155,15 @@ impl Peer {
         };
         let catalog =
             TmuxCatalogReader::new(f.0.join("tmux"), None, Duration::from_secs(3)).unwrap();
-        let task = tokio::spawn(peer::run_connected(
+        let task = tokio::spawn(peer::run_connected_with_services(
             transport::start(home, protocol, Direction::ToHome).unwrap(),
             config,
             catalog,
             CommandRunner::new(8).unwrap(),
+            peer::Services {
+                reporter,
+                ..peer::Services::default()
+            },
             stop.clone(),
         ));
         let mut value = Self {
@@ -303,6 +317,59 @@ impl Peer {
             Ok(())
         );
     }
+}
+
+#[tokio::test]
+async fn transient_catalog_failure_keeps_live_view_and_peer_until_recovery() {
+    let _serial = SERIAL.lock().await;
+    let f = Fixture::new();
+    let events = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let reported = events.clone();
+    let reporter = std::sync::Arc::new(move |event: hmux_home::observation::Event| {
+        reported.lock().unwrap().push(event.reason);
+    });
+    let mut peer = Peer::start_reported(&f, Negotiated::ProtobufV2, Some(reporter)).await;
+    peer.open("view", true).await;
+    fs::write(f.0.join("catalog-fail"), b"").unwrap();
+    timeout(Duration::from_secs(8), async {
+        while !f.0.join("catalog-failed").exists() {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .unwrap();
+    assert!(events
+        .lock()
+        .unwrap()
+        .contains(&hmux_home::observation::Reason::Published));
+    peer.profiles().await;
+    peer.input("view", b"DURING\n").await;
+    peer.text("view", b"ECHO:DURING\n", true).await;
+    fs::remove_file(f.0.join("catalog-fail")).unwrap();
+    fs::write(f.0.join("catalog-name"), b"recovered").unwrap();
+    timeout(Duration::from_secs(12), async {
+        while !events
+            .lock()
+            .unwrap()
+            .contains(&hmux_home::observation::Reason::Recovered)
+        {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .unwrap();
+    let p::envelope::Body::Catalog(snapshot) = timeout(Duration::from_secs(12), peer.frame())
+        .await
+        .unwrap()
+    else {
+        panic!("recovered catalog expected")
+    };
+    let catalog = hmux_protocol::snapshots::catalog_from_proto(*snapshot).unwrap();
+    assert_eq!(catalog.sessions.unwrap()[0].name, "recovered");
+    peer.input("view", b"AFTER\n").await;
+    peer.text("view", b"ECHO:AFTER\n", true).await;
+    peer.close("view").await;
+    peer.shutdown().await;
 }
 
 #[tokio::test]

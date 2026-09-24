@@ -82,7 +82,7 @@ pub(crate) async fn run(
         let Some(targets) = inbox.take() else {
             continue;
         };
-        let Some(permit) = inspection::admit() else {
+        let Some(permit) = inspection::wait_background(&stop).await else {
             // A missing scan must not leave an old armed baseline around.
             tracker.clear();
             continue;

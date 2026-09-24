@@ -19,6 +19,7 @@ pub mod filestage;
 pub mod inspection;
 pub mod metrics;
 pub mod metrics_parsers;
+pub mod observation;
 pub mod peer;
 pub mod process;
 mod proxy;

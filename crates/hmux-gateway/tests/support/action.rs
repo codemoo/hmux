@@ -408,3 +408,78 @@ async fn revoked_workspace_waiter_does_not_write_after_lock_release() {
         io::ErrorKind::NotFound
     );
 }
+
+#[tokio::test]
+async fn home_action_failures_record_safe_causes_without_raw_remote_errors() {
+    use hmux_gateway::observation::{ActionFailure, Stage};
+    let fixture = Fixture::new();
+    let events = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let captured = events.clone();
+    let (hub, _completions) = Hub::with_reporter(Some(Arc::new(move |event| {
+        captured.lock().unwrap().push(event);
+    })));
+    let server = Arc::new(
+        fixture
+            .start_with_options(Some(hub.clone()), false, true)
+            .await,
+    );
+    let cookie = server.login("primary").await;
+    let csrf = server.session(&cookie).await.json()["csrf"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let mut home = Home::new(&hub).await;
+    catalog(&mut home, &hub).await;
+    for (error, expected) in [
+        ("Home is busy", ActionFailure::HomeBusy),
+        (
+            "private-path-and-token-must-not-be-logged",
+            ActionFailure::HomeOperation,
+        ),
+    ] {
+        let pending = tokio::spawn({
+            let server = server.clone();
+            let cookie = cookie.clone();
+            let csrf = csrf.clone();
+            async move {
+                server
+                    .request(
+                        "POST",
+                        "/api/action",
+                        &[
+                            ("Cookie", cookie.as_str()),
+                            ("Origin", "https://hmux.example"),
+                            ("X-CSRF-Token", csrf.as_str()),
+                        ],
+                        Some(json!({"operation":"profiles"})),
+                    )
+                    .await
+            }
+        });
+        let p::envelope::Body::Request(request) = home.receive().await else {
+            panic!("expected request");
+        };
+        home.send(p::envelope::Body::Response(p::Response {
+            id: request.id,
+            error: error.into(),
+            result: None,
+        }))
+        .await;
+        assert_eq!(pending.await.unwrap().code, 502);
+        let events = events.lock().unwrap();
+        let event = events
+            .iter()
+            .rev()
+            .find(|event| event.stage == Stage::ActionFailed)
+            .unwrap();
+        assert_eq!(event.action_failure, Some(expected));
+        assert_eq!(event.http_status, Some(502));
+        assert!(event.operation == Some(p::Operation::Profiles));
+        assert!(event.connection > 0);
+        for event in events.iter() {
+            assert!(!event.to_string().contains("private-path-and-token"));
+        }
+    }
+    home.stop().await;
+    Arc::try_unwrap(server).ok().unwrap().stop().await;
+}

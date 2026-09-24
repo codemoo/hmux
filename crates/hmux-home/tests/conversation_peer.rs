@@ -110,7 +110,9 @@ async fn completion_discovery_cancel_joins_all_inspection_children() {
     let (stop, owner, _g) = boot_with_completions(&f, Negotiated::ProtobufV2, true).await;
     timeout(Duration::from_secs(2), async {
         loop {
-            if fs::read_to_string(f.dir.join("pids")).is_ok_and(|v| v.lines().count() == 2) {
+            // Background discovery is serialized to reserve the other scan
+            // slot for an interactive conversation.
+            if fs::read_to_string(f.dir.join("pids")).is_ok_and(|v| v.lines().count() == 1) {
                 break;
             }
             tokio::time::sleep(Duration::from_millis(10)).await;

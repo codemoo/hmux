@@ -170,8 +170,9 @@ async fn connect_logged(
         cache.as_deref(),
     )
     .map_err(io::Error::other)?;
-    let runtime =
-        HomeRuntime::prepare(options, Path::new(&home), &path).map_err(io::Error::other)?;
+    let runtime = HomeRuntime::prepare(options, Path::new(&home), &path)
+        .map_err(io::Error::other)?
+        .with_reporter(events.home_reporter());
     let mut lifecycle = runtime.lifecycle();
     println!("Home connector running; Ctrl-C disconnects web access without ending tmux work.");
     let serving = runtime.run(stop);

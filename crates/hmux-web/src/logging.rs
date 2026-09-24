@@ -2,6 +2,7 @@
 //! are serialized on the shared blocking pool; no per-tab logger or timer.
 use hmux_gateway::observation;
 use hmux_home::connector::Lifecycle;
+use hmux_home::observation as home_observation;
 use std::{
     io::{self, Write},
     sync::{
@@ -18,6 +19,7 @@ pub enum Event {
     Message(&'static str),
     Home(Lifecycle),
     Gateway(observation::Event),
+    HomeObservation(home_observation::Event),
 }
 struct Record {
     seconds: i64,
@@ -48,6 +50,10 @@ impl Sender {
     pub fn reporter(&self) -> observation::Reporter {
         let sender = self.clone();
         Arc::new(move |event| sender.send(Event::Gateway(event)))
+    }
+    pub fn home_reporter(&self) -> home_observation::Reporter {
+        let sender = self.clone();
+        Arc::new(move |event| sender.send(Event::HomeObservation(event)))
     }
 }
 pub struct Log {
@@ -94,6 +100,9 @@ impl Log {
                                     writeln!(writer, "{timestamp} Home connector: {state:?}")
                                 }
                                 Event::Gateway(event) => writeln!(writer, "{timestamp} {event}"),
+                                Event::HomeObservation(event) => {
+                                    writeln!(writer, "{timestamp} {event}")
+                                }
                             }?;
                         }
                         writer.flush()

@@ -678,7 +678,11 @@ async fn real_tmux_provider_exit_and_ctrl_c_leave_owned_interactive_shells() {
                 ]);
             }
             timeout(Duration::from_secs(4), async {
-                while !cwd.join("shell-ready").is_file() {
+                // Redirection creates the file before printf writes its data.
+                // Wait for the completed signal rather than racing that window.
+                while !fs::read(cwd.join("shell-ready"))
+                    .is_ok_and(|contents| contents == b"shell-ready")
+                {
                     tokio::time::sleep(Duration::from_millis(10)).await;
                 }
             })

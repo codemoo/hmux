@@ -9,7 +9,7 @@ use crate::{
     dial::{self, Client, Endpoint},
     filestage::Store,
     inspection::Inspector,
-    metrics, peer, sessions,
+    metrics, observation, peer, sessions,
     singleton::{self, ConnectorLock},
     upgrade, upload, usage, usage_config,
 };
@@ -80,6 +80,7 @@ pub struct Prepared {
     workspace: Option<crate::workspace::Workspace>,
     providers: Option<Arc<crate::providers::ProviderService>>,
     recovery: Option<crate::recovery::Store>,
+    reporter: Option<observation::Reporter>,
 }
 impl fmt::Debug for Prepared {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -117,6 +118,7 @@ impl Prepared {
             workspace: None,
             providers: None,
             recovery: None,
+            reporter: None,
         })
     }
 
@@ -167,6 +169,10 @@ impl Prepared {
         self.recovery = Some(recovery);
         self
     }
+    pub fn with_reporter(mut self, reporter: observation::Reporter) -> Self {
+        self.reporter = Some(reporter);
+        self
+    }
 
     /// A bounded latest-state observer; receivers never control the owner.
     pub fn lifecycle(&self) -> LifecycleObserver {
@@ -197,6 +203,7 @@ impl Prepared {
             workspace: self.workspace.clone(),
             providers: self.providers.clone(),
             recovery: self.recovery.clone(),
+            reporter: self.reporter.clone(),
             checkpoint: None,
             catalog,
             runner,
@@ -250,6 +257,7 @@ struct Production {
     workspace: Option<crate::workspace::Workspace>,
     providers: Option<Arc<crate::providers::ProviderService>>,
     recovery: Option<crate::recovery::Store>,
+    reporter: Option<observation::Reporter>,
     usage: Option<usage::Collector>,
     session_context: Option<Arc<sessions::Context>>,
     inspector: Option<Arc<Inspector>>,
@@ -334,6 +342,7 @@ impl Driver for Production {
                 workspace: self.workspace.clone(),
                 providers: self.providers.clone(),
                 recovery: self.recovery.clone(),
+                reporter: self.reporter.clone(),
                 usage_refresh: self.usage.as_ref().map(usage::Collector::refresh_handle),
             },
             stop,
@@ -368,6 +377,7 @@ async fn run_owned<D: Driver>(
         workspace: _,
         providers: _,
         recovery: _,
+        reporter: _,
     } = prepared;
     publish(&lifecycle, Lifecycle::Starting);
     let startup = tokio::select! {

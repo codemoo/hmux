@@ -248,6 +248,10 @@ impl HomeRuntime {
     pub fn lifecycle(&self) -> LifecycleObserver {
         self.prepared.lifecycle()
     }
+    pub fn with_reporter(mut self, reporter: crate::observation::Reporter) -> Self {
+        self.prepared = self.prepared.with_reporter(reporter);
+        self
+    }
     pub async fn run(self, shutdown: CancellationToken) -> Result<(), Error> {
         self.prepared
             .run(self.catalog, self.runner, shutdown)
