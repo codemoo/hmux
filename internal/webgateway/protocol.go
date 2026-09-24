@@ -110,14 +110,20 @@ func (p *peer) send(ctx context.Context, m Message) error {
 }
 
 func (p *peer) read(ctx context.Context) (Message, error) {
-	var m Message
 	_, raw, err := p.conn.Read(ctx)
 	if err != nil {
-		return m, err
+		return Message{}, err
 	}
+	return decodeMessage(raw)
+}
+
+// decodeMessage is shared with the cross-language compatibility corpus. Socket
+// read limits remain the transport owner's responsibility.
+func decodeMessage(raw []byte) (Message, error) {
+	var m Message
 	d := json.NewDecoder(bytes.NewReader(raw))
 	d.DisallowUnknownFields()
-	if err = d.Decode(&m); err != nil {
+	if err := d.Decode(&m); err != nil {
 		return m, err
 	}
 	if d.Decode(&struct{}{}) != io.EOF {

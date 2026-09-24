@@ -1,0 +1,36 @@
+schema_version = 1
+measurement_status = "proposed"
+units = "bytes"
+
+[reference]
+scenario = "S01-connected-idle-warm"
+catalog_entries = 100
+home_connections = 1
+active_views = 0
+paired_runs = 5
+
+[targets.gateway]
+pss_bytes = 16777216
+stretch_pss_bytes = 10485760
+idle_cpu_one_core_ratio = 0.001
+# Targets are not claims. Home targets need independent baseline measurements.
+
+[regression]
+# Both relative and absolute tolerances must be exceeded before flagging a regression.
+latency_p99_relative = 0.10
+latency_p99_absolute_ms = 1.0
+
+[wire_v1_limits]
+home_message_bytes = 4194304
+browser_terminal_message_bytes = 65536
+http_json_bytes = 16384
+home_data_bytes = 32768
+upload_chunk_bytes = 262144
+terminal_chunk_bytes = 16384
+terminal_credit_bytes = 524288
+terminal_credit_frames = 32
+terminal_views = 8
+terminal_queue_frames = 64
+terminal_stall_seconds = 30
+# Limits above preserve existing contracts. Whole-runtime memory budgets remain
+# unratified; the migration control records implemented admission and queue owners.
