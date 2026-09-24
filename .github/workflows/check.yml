@@ -5,6 +5,25 @@ on:
 permissions:
   contents: read
 jobs:
+  protobuf-schema:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.88.0 --profile minimal --component rustfmt
+      - name: Install verified protoc 35.1
+        shell: bash
+        run: |
+          set -eu
+          hmux_protoc_zip="$RUNNER_TEMP/hmux-protoc-35.1.zip"
+          hmux_protoc_dir="$RUNNER_TEMP/hmux-protoc-35.1"
+          curl --fail --location --proto '=https' --tlsv1.2 --max-time 60 --retry 2 \
+            https://github.com/protocolbuffers/protobuf/releases/download/v35.1/protoc-35.1-linux-x86_64.zip \
+            --output "$hmux_protoc_zip"
+          printf '%s  %s\n' '6930ebf62bd4ea607b98fff052596c6ee564b9835b4ce172c75a3f53ae9d91b7' "$hmux_protoc_zip" | sha256sum --check --status
+          unzip -q "$hmux_protoc_zip" -d "$hmux_protoc_dir"
+          printf '%s\n' "$hmux_protoc_dir/bin" >> "$GITHUB_PATH"
+      - run: make rust-proto-check
   go:
     runs-on: macos-14
     steps:
@@ -22,6 +41,7 @@ jobs:
       - run: go test ./...
         working-directory: third_party/token-terrier-server
       - run: make shellcheck
+      - run: make shfmt-check
       - run: make integration
   web:
     runs-on: ubuntu-latest
@@ -45,3 +65,47 @@ jobs:
           go-version-file: go.mod
       - run: go test -race ./internal/homeservice
       - run: go build ./cmd/hmux-web
+
+  rust-candidate:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-14]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.88.0 --profile minimal --component rustfmt --component clippy
+      - run: make rust-check
+      - run: make rust-compat
+      - run: make rust-build
+      - run: make rust-notices-check
+      - run: make rust-gateway-candidate
+      - run: python3 tests/rust_auth_candidate.py
+      - run: make rust-gateway-e2e
+      - run: make rust-native-cli
+      - run: make rust-native-helper-compat
+      - run: make rust-native-e2e
+      - run: make rust-native-matrix
+      - name: Inspect only the native test process
+        run: cargo test -p hmux-service --lib reads_only_self_process_metadata --locked -- --ignored
+
+  rust-dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Rust and dependency tools
+        run: |
+          rustup toolchain install 1.88.0 --profile minimal
+          cargo install cargo-audit --version 0.22.2 --locked
+          cargo install cargo-deny --version 0.20.2 --locked
+      - name: Fetch advisory database and check locked dependencies
+        shell: bash
+        run: |
+          set -eu
+          export HMUX_ADVISORY_DB="$RUNNER_TEMP/hmux-rustsec-db"
+          git clone --depth=1 https://github.com/RustSec/advisory-db.git "$HMUX_ADVISORY_DB"
+          git -C "$HMUX_ADVISORY_DB" rev-parse HEAD
+          make rust-dependencies
