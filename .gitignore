@@ -36,3 +36,7 @@ coverage.out
 # Python test/build intermediates
 __pycache__/
 *.py[cod]
+
+# Rust candidate builds; Cargo.lock is tracked.
+/target/
+/.tools/

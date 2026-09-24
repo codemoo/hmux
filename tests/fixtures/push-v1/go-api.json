@@ -1,0 +1,295 @@
+[
+  {
+    "name": "subscribe-valid",
+    "path": "/api/push/subscribe",
+    "body": "{\"endpoint\":\"https://web.push.apple.com/api-fixture\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}",
+    "go_status": 200,
+    "rust_status": 200
+  },
+  {
+    "name": "subscribe-expiration-null",
+    "path": "/api/push/subscribe",
+    "body": "{\"endpoint\":\"https://web.push.apple.com/api-fixture\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"},\"expirationTime\":null}",
+    "go_status": 200,
+    "rust_status": 200
+  },
+  {
+    "name": "subscribe-expiration-number",
+    "path": "/api/push/subscribe",
+    "body": "{\"endpoint\":\"https://web.push.apple.com/api-fixture\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"},\"expirationTime\":1790000000000}",
+    "go_status": 200,
+    "rust_status": 200
+  },
+  {
+    "name": "subscribe-expiration-fraction",
+    "path": "/api/push/subscribe",
+    "body": "{\"endpoint\":\"https://web.push.apple.com/api-fixture\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"},\"expirationTime\":0.5}",
+    "go_status": 200,
+    "rust_status": 200
+  },
+  {
+    "name": "subscribe-expiration-negative",
+    "path": "/api/push/subscribe",
+    "body": "{\"endpoint\":\"https://web.push.apple.com/api-fixture\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"},\"expirationTime\":-1}",
+    "go_status": 200,
+    "rust_status": 200
+  },
+  {
+    "name": "subscribe-expiration-string",
+    "path": "/api/push/subscribe",
+    "body": "{\"endpoint\":\"https://web.push.apple.com/api-fixture\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"},\"expirationTime\":\"1790000000000\"}",
+    "go_status": 400,
+    "rust_status": 400
+  },
+  {
+    "name": "subscribe-expiration-bool",
+    "path": "/api/push/subscribe",
+    "body": "{\"endpoint\":\"https://web.push.apple.com/api-fixture\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"},\"expirationTime\":false}",
+    "go_status": 400,
+    "rust_status": 400
+  },
+  {
+    "name": "subscribe-expiration-array",
+    "path": "/api/push/subscribe",
+    "body": "{\"endpoint\":\"https://web.push.apple.com/api-fixture\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"},\"expirationTime\":[]}",
+    "go_status": 400,
+    "rust_status": 400
+  },
+  {
+    "name": "subscribe-expiration-overflow",
+    "path": "/api/push/subscribe",
+    "body": "{\"endpoint\":\"https://web.push.apple.com/api-fixture\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"},\"expirationTime\":1e999}",
+    "go_status": 400,
+    "rust_status": 400
+  },
+  {
+    "name": "subscribe-expiration-duplicate-null",
+    "path": "/api/push/subscribe",
+    "body": "{\"endpoint\":\"https://web.push.apple.com/api-fixture\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"},\"expirationTime\":null,\"expirationTime\":null}",
+    "go_status": 200,
+    "rust_status": 400,
+    "delta": "duplicate fields rejected"
+  },
+  {
+    "name": "subscribe-endpoint-duplicate",
+    "path": "/api/push/subscribe",
+    "body": "{\"endpoint\":\"https://invalid.example/x\",\"endpoint\":\"https://web.push.apple.com/api-fixture\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}",
+    "go_status": 200,
+    "rust_status": 400,
+    "delta": "duplicate fields rejected"
+  },
+  {
+    "name": "subscribe-keys-duplicate",
+    "path": "/api/push/subscribe",
+    "body": "{\"endpoint\":\"https://web.push.apple.com/api-fixture\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"},\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}",
+    "go_status": 200,
+    "rust_status": 400,
+    "delta": "duplicate fields rejected"
+  },
+  {
+    "name": "subscribe-unknown",
+    "path": "/api/push/subscribe",
+    "body": "{\"endpoint\":\"https://web.push.apple.com/api-fixture\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"},\"login_id\":\"not-authority\"}",
+    "go_status": 400,
+    "rust_status": 400
+  },
+  {
+    "name": "subscribe-unknown-key",
+    "path": "/api/push/subscribe",
+    "body": "{\"endpoint\":\"https://web.push.apple.com/api-fixture\",\"keys\":{\"secret\":true,\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}",
+    "go_status": 400,
+    "rust_status": 400
+  },
+  {
+    "name": "subscribe-array",
+    "path": "/api/push/subscribe",
+    "body": "[]",
+    "go_status": 400,
+    "rust_status": 400
+  },
+  {
+    "name": "subscribe-null",
+    "path": "/api/push/subscribe",
+    "body": "null",
+    "go_status": 400,
+    "rust_status": 400
+  },
+  {
+    "name": "subscribe-empty",
+    "path": "/api/push/subscribe",
+    "body": "",
+    "go_status": 400,
+    "rust_status": 400
+  },
+  {
+    "name": "subscribe-trailing",
+    "path": "/api/push/subscribe",
+    "body": "{\"endpoint\":\"https://web.push.apple.com/api-fixture\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}{}",
+    "go_status": 400,
+    "rust_status": 400
+  },
+  {
+    "name": "presence-valid",
+    "path": "/api/push/presence",
+    "body": "{\"client_id\":\"client\",\"session\":{\"id\":\"$1\",\"created_at\":42}}",
+    "go_status": 200,
+    "rust_status": 200
+  },
+  {
+    "name": "presence-clear-null",
+    "path": "/api/push/presence",
+    "body": "{\"client_id\":\"client\",\"session\":null}",
+    "go_status": 200,
+    "rust_status": 200
+  },
+  {
+    "name": "presence-clear-omitted",
+    "path": "/api/push/presence",
+    "body": "{\"client_id\":\"client\"}",
+    "go_status": 200,
+    "rust_status": 200
+  },
+  {
+    "name": "presence-empty-client",
+    "path": "/api/push/presence",
+    "body": "{\"client_id\":\"\",\"session\":null}",
+    "go_status": 400,
+    "rust_status": 400
+  },
+  {
+    "name": "presence-null-client",
+    "path": "/api/push/presence",
+    "body": "{\"client_id\":null,\"session\":null}",
+    "go_status": 400,
+    "rust_status": 400
+  },
+  {
+    "name": "presence-long-client",
+    "path": "/api/push/presence",
+    "body": "{\"client_id\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}",
+    "go_status": 400,
+    "rust_status": 400
+  },
+  {
+    "name": "presence-control-client",
+    "path": "/api/push/presence",
+    "body": "{\"client_id\":\"a\\nb\"}",
+    "go_status": 400,
+    "rust_status": 400
+  },
+  {
+    "name": "presence-unicode-client",
+    "path": "/api/push/presence",
+    "body": "{\"client_id\":\"한글\"}",
+    "go_status": 200,
+    "rust_status": 200
+  },
+  {
+    "name": "presence-long-unicode-client",
+    "path": "/api/push/presence",
+    "body": "{\"client_id\":\"한한한한한한한한한한한한한한한한한한한한한한\"}",
+    "go_status": 400,
+    "rust_status": 400
+  },
+  {
+    "name": "presence-bad-session",
+    "path": "/api/push/presence",
+    "body": "{\"client_id\":\"client\",\"session\":{\"id\":\"bad\",\"created_at\":42}}",
+    "go_status": 400,
+    "rust_status": 400
+  },
+  {
+    "name": "presence-missing-created",
+    "path": "/api/push/presence",
+    "body": "{\"client_id\":\"client\",\"session\":{\"id\":\"$1\"}}",
+    "go_status": 400,
+    "rust_status": 400
+  },
+  {
+    "name": "presence-zero-created",
+    "path": "/api/push/presence",
+    "body": "{\"client_id\":\"client\",\"session\":{\"id\":\"$1\",\"created_at\":0}}",
+    "go_status": 400,
+    "rust_status": 400
+  },
+  {
+    "name": "presence-fraction-created",
+    "path": "/api/push/presence",
+    "body": "{\"client_id\":\"client\",\"session\":{\"id\":\"$1\",\"created_at\":1.5}}",
+    "go_status": 400,
+    "rust_status": 400
+  },
+  {
+    "name": "presence-duplicate-client",
+    "path": "/api/push/presence",
+    "body": "{\"client_id\":\"a\",\"client_id\":\"b\"}",
+    "go_status": 200,
+    "rust_status": 400,
+    "delta": "duplicate fields rejected"
+  },
+  {
+    "name": "presence-null-session-duplicate",
+    "path": "/api/push/presence",
+    "body": "{\"client_id\":\"client\",\"session\":null,\"session\":null}",
+    "go_status": 200,
+    "rust_status": 400,
+    "delta": "duplicate fields rejected"
+  },
+  {
+    "name": "presence-unknown",
+    "path": "/api/push/presence",
+    "body": "{\"client_id\":\"client\",\"user\":\"owner\"}",
+    "go_status": 400,
+    "rust_status": 400
+  },
+  {
+    "name": "presence-null",
+    "path": "/api/push/presence",
+    "body": "null",
+    "go_status": 400,
+    "rust_status": 400
+  },
+  {
+    "name": "presence-array",
+    "path": "/api/push/presence",
+    "body": "[]",
+    "go_status": 400,
+    "rust_status": 400
+  },
+  {
+    "name": "unsubscribe-empty",
+    "path": "/api/push/unsubscribe",
+    "body": "{}",
+    "go_status": 200,
+    "rust_status": 200
+  },
+  {
+    "name": "unsubscribe-null",
+    "path": "/api/push/unsubscribe",
+    "body": "null",
+    "go_status": 200,
+    "rust_status": 400,
+    "delta": "request object required"
+  },
+  {
+    "name": "unsubscribe-unknown",
+    "path": "/api/push/unsubscribe",
+    "body": "{\"login_id\":\"other\"}",
+    "go_status": 400,
+    "rust_status": 400
+  },
+  {
+    "name": "unsubscribe-array",
+    "path": "/api/push/unsubscribe",
+    "body": "[]",
+    "go_status": 400,
+    "rust_status": 400
+  },
+  {
+    "name": "unsubscribe-trailing",
+    "path": "/api/push/unsubscribe",
+    "body": "{}{}",
+    "go_status": 400,
+    "rust_status": 400
+  }
+]

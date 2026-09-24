@@ -1,0 +1,51 @@
+[
+  {
+    "name": "claude",
+    "tokens": 125,
+    "timestamp": "2026-09-24T00:00:00Z",
+    "model": "sonnet",
+    "session": "s1"
+  },
+  {
+    "name": "claude_fraction",
+    "tokens": 6,
+    "timestamp": "2026-09-23T15:00:01Z",
+    "model": "",
+    "session": "synthetic.jsonl"
+  },
+  {
+    "name": "codex",
+    "tokens": 70,
+    "timestamp": "2026-09-24T00:00:02Z",
+    "model": "",
+    "session": "synthetic.jsonl"
+  },
+  {
+    "name": "cached_only",
+    "tokens": 0,
+    "timestamp": "",
+    "model": "",
+    "session": ""
+  },
+  {
+    "name": "bad_line",
+    "tokens": 0,
+    "timestamp": "",
+    "model": "",
+    "session": ""
+  },
+  {
+    "name": "claude_irrelevant_wrong_type",
+    "tokens": 125,
+    "timestamp": "2026-09-24T00:00:00Z",
+    "model": "sonnet",
+    "session": "s1"
+  },
+  {
+    "name": "codex_irrelevant_wrong_type",
+    "tokens": 70,
+    "timestamp": "2026-09-24T00:00:02Z",
+    "model": "",
+    "session": "synthetic.jsonl"
+  }
+]

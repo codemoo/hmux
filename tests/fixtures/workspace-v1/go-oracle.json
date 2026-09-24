@@ -1,0 +1,6918 @@
+{
+  "merges": [
+    {
+      "name": "insert-before",
+      "current": {
+        "version": 1,
+        "initialized": false,
+        "revision": 0,
+        "tabs": [
+          {
+            "id": "$1",
+            "created_at": 101
+          }
+        ]
+      },
+      "change": {
+        "operation_id": "operation-00000001",
+        "revision": 0,
+        "base": [
+          {
+            "id": "$1",
+            "created_at": 101
+          }
+        ],
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          },
+          {
+            "id": "$1",
+            "created_at": 101
+          }
+        ]
+      },
+      "result": {
+        "version": 1,
+        "initialized": true,
+        "revision": 0,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          },
+          {
+            "id": "$1",
+            "created_at": 101
+          }
+        ]
+      }
+    },
+    {
+      "name": "concurrent-open",
+      "current": {
+        "version": 1,
+        "initialized": false,
+        "revision": 0,
+        "tabs": [
+          {
+            "id": "$1",
+            "created_at": 101
+          },
+          {
+            "id": "$3",
+            "created_at": 103
+          }
+        ]
+      },
+      "change": {
+        "operation_id": "operation-00000001",
+        "revision": 0,
+        "base": [
+          {
+            "id": "$1",
+            "created_at": 101
+          }
+        ],
+        "tabs": [
+          {
+            "id": "$1",
+            "created_at": 101
+          },
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      },
+      "result": {
+        "version": 1,
+        "initialized": true,
+        "revision": 0,
+        "tabs": [
+          {
+            "id": "$1",
+            "created_at": 101
+          },
+          {
+            "id": "$2",
+            "created_at": 102
+          },
+          {
+            "id": "$3",
+            "created_at": 103
+          }
+        ]
+      }
+    },
+    {
+      "name": "close-preserves-remote",
+      "current": {
+        "version": 1,
+        "initialized": false,
+        "revision": 0,
+        "tabs": [
+          {
+            "id": "$1",
+            "created_at": 101
+          },
+          {
+            "id": "$3",
+            "created_at": 103
+          }
+        ]
+      },
+      "change": {
+        "operation_id": "operation-00000001",
+        "revision": 0,
+        "base": [
+          {
+            "id": "$1",
+            "created_at": 101
+          }
+        ],
+        "tabs": []
+      },
+      "result": {
+        "version": 1,
+        "initialized": true,
+        "revision": 0,
+        "tabs": [
+          {
+            "id": "$3",
+            "created_at": 103
+          }
+        ]
+      }
+    },
+    {
+      "name": "stale-no-resurrection",
+      "current": {
+        "version": 1,
+        "initialized": false,
+        "revision": 0,
+        "tabs": [
+          {
+            "id": "$3",
+            "created_at": 103
+          }
+        ]
+      },
+      "change": {
+        "operation_id": "operation-00000001",
+        "revision": 0,
+        "base": [
+          {
+            "id": "$1",
+            "created_at": 101
+          },
+          {
+            "id": "$3",
+            "created_at": 103
+          }
+        ],
+        "tabs": [
+          {
+            "id": "$1",
+            "created_at": 101
+          },
+          {
+            "id": "$3",
+            "created_at": 103
+          }
+        ]
+      },
+      "result": {
+        "version": 1,
+        "initialized": true,
+        "revision": 0,
+        "tabs": [
+          {
+            "id": "$3",
+            "created_at": 103
+          }
+        ]
+      }
+    },
+    {
+      "name": "stale-reorder",
+      "current": {
+        "version": 1,
+        "initialized": false,
+        "revision": 0,
+        "tabs": [
+          {
+            "id": "$3",
+            "created_at": 103
+          }
+        ]
+      },
+      "change": {
+        "operation_id": "operation-00000001",
+        "revision": 0,
+        "base": [
+          {
+            "id": "$1",
+            "created_at": 101
+          },
+          {
+            "id": "$3",
+            "created_at": 103
+          }
+        ],
+        "tabs": [
+          {
+            "id": "$3",
+            "created_at": 103
+          },
+          {
+            "id": "$1",
+            "created_at": 101
+          }
+        ]
+      },
+      "result": {
+        "version": 1,
+        "initialized": true,
+        "revision": 0,
+        "tabs": [
+          {
+            "id": "$3",
+            "created_at": 103
+          }
+        ]
+      }
+    },
+    {
+      "name": "remote-order",
+      "current": {
+        "version": 1,
+        "initialized": false,
+        "revision": 0,
+        "tabs": [
+          {
+            "id": "$3",
+            "created_at": 103
+          },
+          {
+            "id": "$1",
+            "created_at": 101
+          },
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      },
+      "change": {
+        "operation_id": "operation-00000001",
+        "revision": 0,
+        "base": [
+          {
+            "id": "$1",
+            "created_at": 101
+          },
+          {
+            "id": "$2",
+            "created_at": 102
+          },
+          {
+            "id": "$3",
+            "created_at": 103
+          }
+        ],
+        "tabs": [
+          {
+            "id": "$1",
+            "created_at": 101
+          },
+          {
+            "id": "$2",
+            "created_at": 102
+          },
+          {
+            "id": "$3",
+            "created_at": 103
+          }
+        ]
+      },
+      "result": {
+        "version": 1,
+        "initialized": true,
+        "revision": 0,
+        "tabs": [
+          {
+            "id": "$3",
+            "created_at": 103
+          },
+          {
+            "id": "$1",
+            "created_at": 101
+          },
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "explicit-reorder",
+      "current": {
+        "version": 1,
+        "initialized": false,
+        "revision": 0,
+        "tabs": [
+          {
+            "id": "$1",
+            "created_at": 101
+          },
+          {
+            "id": "$2",
+            "created_at": 102
+          },
+          {
+            "id": "$3",
+            "created_at": 103
+          }
+        ]
+      },
+      "change": {
+        "operation_id": "operation-00000001",
+        "revision": 0,
+        "base": [
+          {
+            "id": "$1",
+            "created_at": 101
+          },
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ],
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          },
+          {
+            "id": "$1",
+            "created_at": 101
+          }
+        ]
+      },
+      "result": {
+        "version": 1,
+        "initialized": true,
+        "revision": 0,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          },
+          {
+            "id": "$1",
+            "created_at": 101
+          },
+          {
+            "id": "$3",
+            "created_at": 103
+          }
+        ]
+      }
+    },
+    {
+      "name": "close-all",
+      "current": {
+        "version": 1,
+        "initialized": false,
+        "revision": 0,
+        "tabs": [
+          {
+            "id": "$1",
+            "created_at": 101
+          },
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      },
+      "change": {
+        "operation_id": "operation-00000001",
+        "revision": 0,
+        "base": [
+          {
+            "id": "$1",
+            "created_at": 101
+          },
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ],
+        "tabs": []
+      },
+      "result": {
+        "version": 1,
+        "initialized": true,
+        "revision": 0,
+        "tabs": []
+      }
+    },
+    {
+      "name": "recycled-lifetime",
+      "current": {
+        "version": 1,
+        "initialized": false,
+        "revision": 0,
+        "tabs": [
+          {
+            "id": "$1",
+            "created_at": 101
+          },
+          {
+            "id": "$3",
+            "created_at": 103
+          }
+        ]
+      },
+      "change": {
+        "operation_id": "operation-00000001",
+        "revision": 0,
+        "base": [],
+        "tabs": [
+          {
+            "id": "$1",
+            "created_at": 201
+          }
+        ]
+      },
+      "result": {
+        "version": 1,
+        "initialized": true,
+        "revision": 0,
+        "tabs": [
+          {
+            "id": "$3",
+            "created_at": 103
+          },
+          {
+            "id": "$1",
+            "created_at": 201
+          }
+        ]
+      }
+    },
+    {
+      "name": "duplicate-id",
+      "current": {
+        "version": 1,
+        "initialized": false,
+        "revision": 0,
+        "tabs": [
+          {
+            "id": "$1",
+            "created_at": 101
+          }
+        ]
+      },
+      "change": {
+        "operation_id": "operation-00000001",
+        "revision": 0,
+        "base": [
+          {
+            "id": "$1",
+            "created_at": 101
+          }
+        ],
+        "tabs": [
+          {
+            "id": "$1",
+            "created_at": 101
+          },
+          {
+            "id": "$1",
+            "created_at": 201
+          }
+        ]
+      },
+      "result": null
+    }
+  ],
+  "syncs": [
+    {
+      "name": "empty-poll",
+      "change": null,
+      "sessions": [
+        {
+          "id": "$1",
+          "name": "",
+          "created_at": 101,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$3",
+          "name": "",
+          "created_at": 103,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "version": 1,
+        "initialized": false,
+        "revision": 0,
+        "tabs": []
+      }
+    },
+    {
+      "name": "first-open",
+      "change": {
+        "operation_id": "operation-00000001",
+        "revision": 0,
+        "base": [],
+        "tabs": [
+          {
+            "id": "$1",
+            "created_at": 101
+          }
+        ],
+        "selected": {
+          "id": "$1",
+          "created_at": 101
+        }
+      },
+      "sessions": [
+        {
+          "id": "$1",
+          "name": "",
+          "created_at": 101,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$3",
+          "name": "",
+          "created_at": 103,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 1,
+        "tabs": [
+          {
+            "id": "$1",
+            "created_at": 101
+          }
+        ]
+      }
+    },
+    {
+      "name": "poll-preserves-revision",
+      "change": null,
+      "sessions": [
+        {
+          "id": "$1",
+          "name": "",
+          "created_at": 101,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$3",
+          "name": "",
+          "created_at": 103,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 1,
+        "tabs": [
+          {
+            "id": "$1",
+            "created_at": 101
+          }
+        ]
+      }
+    },
+    {
+      "name": "concurrent-open",
+      "change": {
+        "operation_id": "operation-00000002",
+        "revision": 0,
+        "base": [],
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      },
+      "sessions": [
+        {
+          "id": "$1",
+          "name": "",
+          "created_at": 101,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$3",
+          "name": "",
+          "created_at": 103,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 2,
+        "tabs": [
+          {
+            "id": "$1",
+            "created_at": 101
+          },
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "replay",
+      "change": {
+        "operation_id": "operation-00000001",
+        "revision": 0,
+        "base": [],
+        "tabs": [
+          {
+            "id": "$1",
+            "created_at": 101
+          }
+        ],
+        "selected": {
+          "id": "$1",
+          "created_at": 101
+        }
+      },
+      "sessions": [
+        {
+          "id": "$1",
+          "name": "",
+          "created_at": 101,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$3",
+          "name": "",
+          "created_at": 103,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 2,
+        "tabs": [
+          {
+            "id": "$1",
+            "created_at": 101
+          },
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "missing-new-tab",
+      "change": {
+        "operation_id": "operation-missing1",
+        "revision": 2,
+        "base": [
+          {
+            "id": "$1",
+            "created_at": 101
+          },
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ],
+        "tabs": [
+          {
+            "id": "$1",
+            "created_at": 101
+          },
+          {
+            "id": "$2",
+            "created_at": 102
+          },
+          {
+            "id": "$3",
+            "created_at": 103
+          }
+        ]
+      },
+      "sessions": null,
+      "result": {
+        "conflict": "workspace_conflict",
+        "applied": [
+          "operation-00000001",
+          "operation-00000002"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 2,
+        "tabs": [
+          {
+            "id": "$1",
+            "created_at": 101
+          },
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "missing-existing-tabs-survive",
+      "change": null,
+      "sessions": null,
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 2,
+        "tabs": [
+          {
+            "id": "$1",
+            "created_at": 101
+          },
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "future-revision",
+      "change": {
+        "operation_id": "operation-future1",
+        "revision": 1000,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$1",
+          "name": "",
+          "created_at": 101,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$3",
+          "name": "",
+          "created_at": 103,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "conflict": "workspace_conflict",
+        "applied": [
+          "operation-00000001",
+          "operation-00000002"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 2,
+        "tabs": [
+          {
+            "id": "$1",
+            "created_at": 101
+          },
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "restored-identity",
+      "change": null,
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 3,
+        "tabs": [
+          {
+            "id": "$9",
+            "created_at": 201
+          },
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "old-identity-close",
+      "change": {
+        "operation_id": "operation-close01",
+        "revision": 1,
+        "base": [
+          {
+            "id": "$1",
+            "created_at": 101
+          }
+        ],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 4,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-000",
+        "revision": 4,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 5,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-001",
+        "revision": 5,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 6,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-002",
+        "revision": 6,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 7,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-003",
+        "revision": 7,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 8,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-004",
+        "revision": 8,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 9,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-005",
+        "revision": 9,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 10,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-006",
+        "revision": 10,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 11,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-007",
+        "revision": 11,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 12,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-008",
+        "revision": 12,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 13,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-009",
+        "revision": 13,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 14,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-010",
+        "revision": 14,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 15,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-011",
+        "revision": 15,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 16,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-012",
+        "revision": 16,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 17,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-013",
+        "revision": 17,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 18,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-014",
+        "revision": 18,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 19,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-015",
+        "revision": 19,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 20,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-016",
+        "revision": 20,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 21,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-017",
+        "revision": 21,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 22,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-018",
+        "revision": 22,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 23,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-019",
+        "revision": 23,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 24,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-020",
+        "revision": 24,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 25,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-021",
+        "revision": 25,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 26,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-022",
+        "revision": 26,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 27,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-023",
+        "revision": 27,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 28,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-024",
+        "revision": 28,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 29,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-025",
+        "revision": 29,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 30,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-026",
+        "revision": 30,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 31,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-027",
+        "revision": 31,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 32,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-028",
+        "revision": 32,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 33,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-029",
+        "revision": 33,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 34,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-030",
+        "revision": 34,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 35,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-031",
+        "revision": 35,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 36,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-032",
+        "revision": 36,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 37,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-033",
+        "revision": 37,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 38,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-034",
+        "revision": 38,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 39,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-035",
+        "revision": 39,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 40,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-036",
+        "revision": 40,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 41,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-037",
+        "revision": 41,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036",
+          "operation-history-037"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 42,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-038",
+        "revision": 42,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036",
+          "operation-history-037",
+          "operation-history-038"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 43,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-039",
+        "revision": 43,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036",
+          "operation-history-037",
+          "operation-history-038",
+          "operation-history-039"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 44,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-040",
+        "revision": 44,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036",
+          "operation-history-037",
+          "operation-history-038",
+          "operation-history-039",
+          "operation-history-040"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 45,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-041",
+        "revision": 45,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036",
+          "operation-history-037",
+          "operation-history-038",
+          "operation-history-039",
+          "operation-history-040",
+          "operation-history-041"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 46,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-042",
+        "revision": 46,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036",
+          "operation-history-037",
+          "operation-history-038",
+          "operation-history-039",
+          "operation-history-040",
+          "operation-history-041",
+          "operation-history-042"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 47,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-043",
+        "revision": 47,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036",
+          "operation-history-037",
+          "operation-history-038",
+          "operation-history-039",
+          "operation-history-040",
+          "operation-history-041",
+          "operation-history-042",
+          "operation-history-043"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 48,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-044",
+        "revision": 48,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036",
+          "operation-history-037",
+          "operation-history-038",
+          "operation-history-039",
+          "operation-history-040",
+          "operation-history-041",
+          "operation-history-042",
+          "operation-history-043",
+          "operation-history-044"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 49,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-045",
+        "revision": 49,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036",
+          "operation-history-037",
+          "operation-history-038",
+          "operation-history-039",
+          "operation-history-040",
+          "operation-history-041",
+          "operation-history-042",
+          "operation-history-043",
+          "operation-history-044",
+          "operation-history-045"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 50,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-046",
+        "revision": 50,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036",
+          "operation-history-037",
+          "operation-history-038",
+          "operation-history-039",
+          "operation-history-040",
+          "operation-history-041",
+          "operation-history-042",
+          "operation-history-043",
+          "operation-history-044",
+          "operation-history-045",
+          "operation-history-046"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 51,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-047",
+        "revision": 51,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036",
+          "operation-history-037",
+          "operation-history-038",
+          "operation-history-039",
+          "operation-history-040",
+          "operation-history-041",
+          "operation-history-042",
+          "operation-history-043",
+          "operation-history-044",
+          "operation-history-045",
+          "operation-history-046",
+          "operation-history-047"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 52,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-048",
+        "revision": 52,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036",
+          "operation-history-037",
+          "operation-history-038",
+          "operation-history-039",
+          "operation-history-040",
+          "operation-history-041",
+          "operation-history-042",
+          "operation-history-043",
+          "operation-history-044",
+          "operation-history-045",
+          "operation-history-046",
+          "operation-history-047",
+          "operation-history-048"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 53,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-049",
+        "revision": 53,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036",
+          "operation-history-037",
+          "operation-history-038",
+          "operation-history-039",
+          "operation-history-040",
+          "operation-history-041",
+          "operation-history-042",
+          "operation-history-043",
+          "operation-history-044",
+          "operation-history-045",
+          "operation-history-046",
+          "operation-history-047",
+          "operation-history-048",
+          "operation-history-049"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 54,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-050",
+        "revision": 54,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036",
+          "operation-history-037",
+          "operation-history-038",
+          "operation-history-039",
+          "operation-history-040",
+          "operation-history-041",
+          "operation-history-042",
+          "operation-history-043",
+          "operation-history-044",
+          "operation-history-045",
+          "operation-history-046",
+          "operation-history-047",
+          "operation-history-048",
+          "operation-history-049",
+          "operation-history-050"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 55,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-051",
+        "revision": 55,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036",
+          "operation-history-037",
+          "operation-history-038",
+          "operation-history-039",
+          "operation-history-040",
+          "operation-history-041",
+          "operation-history-042",
+          "operation-history-043",
+          "operation-history-044",
+          "operation-history-045",
+          "operation-history-046",
+          "operation-history-047",
+          "operation-history-048",
+          "operation-history-049",
+          "operation-history-050",
+          "operation-history-051"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 56,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-052",
+        "revision": 56,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036",
+          "operation-history-037",
+          "operation-history-038",
+          "operation-history-039",
+          "operation-history-040",
+          "operation-history-041",
+          "operation-history-042",
+          "operation-history-043",
+          "operation-history-044",
+          "operation-history-045",
+          "operation-history-046",
+          "operation-history-047",
+          "operation-history-048",
+          "operation-history-049",
+          "operation-history-050",
+          "operation-history-051",
+          "operation-history-052"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 57,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-053",
+        "revision": 57,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036",
+          "operation-history-037",
+          "operation-history-038",
+          "operation-history-039",
+          "operation-history-040",
+          "operation-history-041",
+          "operation-history-042",
+          "operation-history-043",
+          "operation-history-044",
+          "operation-history-045",
+          "operation-history-046",
+          "operation-history-047",
+          "operation-history-048",
+          "operation-history-049",
+          "operation-history-050",
+          "operation-history-051",
+          "operation-history-052",
+          "operation-history-053"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 58,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-054",
+        "revision": 58,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036",
+          "operation-history-037",
+          "operation-history-038",
+          "operation-history-039",
+          "operation-history-040",
+          "operation-history-041",
+          "operation-history-042",
+          "operation-history-043",
+          "operation-history-044",
+          "operation-history-045",
+          "operation-history-046",
+          "operation-history-047",
+          "operation-history-048",
+          "operation-history-049",
+          "operation-history-050",
+          "operation-history-051",
+          "operation-history-052",
+          "operation-history-053",
+          "operation-history-054"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 59,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-055",
+        "revision": 59,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036",
+          "operation-history-037",
+          "operation-history-038",
+          "operation-history-039",
+          "operation-history-040",
+          "operation-history-041",
+          "operation-history-042",
+          "operation-history-043",
+          "operation-history-044",
+          "operation-history-045",
+          "operation-history-046",
+          "operation-history-047",
+          "operation-history-048",
+          "operation-history-049",
+          "operation-history-050",
+          "operation-history-051",
+          "operation-history-052",
+          "operation-history-053",
+          "operation-history-054",
+          "operation-history-055"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 60,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-056",
+        "revision": 60,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036",
+          "operation-history-037",
+          "operation-history-038",
+          "operation-history-039",
+          "operation-history-040",
+          "operation-history-041",
+          "operation-history-042",
+          "operation-history-043",
+          "operation-history-044",
+          "operation-history-045",
+          "operation-history-046",
+          "operation-history-047",
+          "operation-history-048",
+          "operation-history-049",
+          "operation-history-050",
+          "operation-history-051",
+          "operation-history-052",
+          "operation-history-053",
+          "operation-history-054",
+          "operation-history-055",
+          "operation-history-056"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 61,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-057",
+        "revision": 61,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036",
+          "operation-history-037",
+          "operation-history-038",
+          "operation-history-039",
+          "operation-history-040",
+          "operation-history-041",
+          "operation-history-042",
+          "operation-history-043",
+          "operation-history-044",
+          "operation-history-045",
+          "operation-history-046",
+          "operation-history-047",
+          "operation-history-048",
+          "operation-history-049",
+          "operation-history-050",
+          "operation-history-051",
+          "operation-history-052",
+          "operation-history-053",
+          "operation-history-054",
+          "operation-history-055",
+          "operation-history-056",
+          "operation-history-057"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 62,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-058",
+        "revision": 62,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036",
+          "operation-history-037",
+          "operation-history-038",
+          "operation-history-039",
+          "operation-history-040",
+          "operation-history-041",
+          "operation-history-042",
+          "operation-history-043",
+          "operation-history-044",
+          "operation-history-045",
+          "operation-history-046",
+          "operation-history-047",
+          "operation-history-048",
+          "operation-history-049",
+          "operation-history-050",
+          "operation-history-051",
+          "operation-history-052",
+          "operation-history-053",
+          "operation-history-054",
+          "operation-history-055",
+          "operation-history-056",
+          "operation-history-057",
+          "operation-history-058"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 63,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-059",
+        "revision": 63,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036",
+          "operation-history-037",
+          "operation-history-038",
+          "operation-history-039",
+          "operation-history-040",
+          "operation-history-041",
+          "operation-history-042",
+          "operation-history-043",
+          "operation-history-044",
+          "operation-history-045",
+          "operation-history-046",
+          "operation-history-047",
+          "operation-history-048",
+          "operation-history-049",
+          "operation-history-050",
+          "operation-history-051",
+          "operation-history-052",
+          "operation-history-053",
+          "operation-history-054",
+          "operation-history-055",
+          "operation-history-056",
+          "operation-history-057",
+          "operation-history-058",
+          "operation-history-059"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 64,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-060",
+        "revision": 64,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000001",
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036",
+          "operation-history-037",
+          "operation-history-038",
+          "operation-history-039",
+          "operation-history-040",
+          "operation-history-041",
+          "operation-history-042",
+          "operation-history-043",
+          "operation-history-044",
+          "operation-history-045",
+          "operation-history-046",
+          "operation-history-047",
+          "operation-history-048",
+          "operation-history-049",
+          "operation-history-050",
+          "operation-history-051",
+          "operation-history-052",
+          "operation-history-053",
+          "operation-history-054",
+          "operation-history-055",
+          "operation-history-056",
+          "operation-history-057",
+          "operation-history-058",
+          "operation-history-059",
+          "operation-history-060"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 65,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-061",
+        "revision": 65,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-00000002",
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036",
+          "operation-history-037",
+          "operation-history-038",
+          "operation-history-039",
+          "operation-history-040",
+          "operation-history-041",
+          "operation-history-042",
+          "operation-history-043",
+          "operation-history-044",
+          "operation-history-045",
+          "operation-history-046",
+          "operation-history-047",
+          "operation-history-048",
+          "operation-history-049",
+          "operation-history-050",
+          "operation-history-051",
+          "operation-history-052",
+          "operation-history-053",
+          "operation-history-054",
+          "operation-history-055",
+          "operation-history-056",
+          "operation-history-057",
+          "operation-history-058",
+          "operation-history-059",
+          "operation-history-060",
+          "operation-history-061"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 66,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-062",
+        "revision": 66,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-close01",
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036",
+          "operation-history-037",
+          "operation-history-038",
+          "operation-history-039",
+          "operation-history-040",
+          "operation-history-041",
+          "operation-history-042",
+          "operation-history-043",
+          "operation-history-044",
+          "operation-history-045",
+          "operation-history-046",
+          "operation-history-047",
+          "operation-history-048",
+          "operation-history-049",
+          "operation-history-050",
+          "operation-history-051",
+          "operation-history-052",
+          "operation-history-053",
+          "operation-history-054",
+          "operation-history-055",
+          "operation-history-056",
+          "operation-history-057",
+          "operation-history-058",
+          "operation-history-059",
+          "operation-history-060",
+          "operation-history-061",
+          "operation-history-062"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 67,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-063",
+        "revision": 67,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-history-000",
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036",
+          "operation-history-037",
+          "operation-history-038",
+          "operation-history-039",
+          "operation-history-040",
+          "operation-history-041",
+          "operation-history-042",
+          "operation-history-043",
+          "operation-history-044",
+          "operation-history-045",
+          "operation-history-046",
+          "operation-history-047",
+          "operation-history-048",
+          "operation-history-049",
+          "operation-history-050",
+          "operation-history-051",
+          "operation-history-052",
+          "operation-history-053",
+          "operation-history-054",
+          "operation-history-055",
+          "operation-history-056",
+          "operation-history-057",
+          "operation-history-058",
+          "operation-history-059",
+          "operation-history-060",
+          "operation-history-061",
+          "operation-history-062",
+          "operation-history-063"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 68,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "history-window",
+      "change": {
+        "operation_id": "operation-history-064",
+        "revision": 68,
+        "base": [],
+        "tabs": []
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "applied": [
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036",
+          "operation-history-037",
+          "operation-history-038",
+          "operation-history-039",
+          "operation-history-040",
+          "operation-history-041",
+          "operation-history-042",
+          "operation-history-043",
+          "operation-history-044",
+          "operation-history-045",
+          "operation-history-046",
+          "operation-history-047",
+          "operation-history-048",
+          "operation-history-049",
+          "operation-history-050",
+          "operation-history-051",
+          "operation-history-052",
+          "operation-history-053",
+          "operation-history-054",
+          "operation-history-055",
+          "operation-history-056",
+          "operation-history-057",
+          "operation-history-058",
+          "operation-history-059",
+          "operation-history-060",
+          "operation-history-061",
+          "operation-history-062",
+          "operation-history-063",
+          "operation-history-064"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 69,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    },
+    {
+      "name": "expired-retry",
+      "change": {
+        "operation_id": "operation-00000001",
+        "revision": 0,
+        "base": [],
+        "tabs": [
+          {
+            "id": "$1",
+            "created_at": 101
+          }
+        ],
+        "selected": {
+          "id": "$1",
+          "created_at": 101
+        }
+      },
+      "sessions": [
+        {
+          "id": "$9",
+          "name": "",
+          "created_at": 201,
+          "restored_from": {
+            "id": "$1",
+            "created_at": 101
+          },
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        },
+        {
+          "id": "$2",
+          "name": "",
+          "created_at": 102,
+          "activity_at": 0,
+          "attached_clients": 0,
+          "window_count": 0,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": ""
+        }
+      ],
+      "result": {
+        "conflict": "workspace_conflict",
+        "applied": [
+          "operation-history-001",
+          "operation-history-002",
+          "operation-history-003",
+          "operation-history-004",
+          "operation-history-005",
+          "operation-history-006",
+          "operation-history-007",
+          "operation-history-008",
+          "operation-history-009",
+          "operation-history-010",
+          "operation-history-011",
+          "operation-history-012",
+          "operation-history-013",
+          "operation-history-014",
+          "operation-history-015",
+          "operation-history-016",
+          "operation-history-017",
+          "operation-history-018",
+          "operation-history-019",
+          "operation-history-020",
+          "operation-history-021",
+          "operation-history-022",
+          "operation-history-023",
+          "operation-history-024",
+          "operation-history-025",
+          "operation-history-026",
+          "operation-history-027",
+          "operation-history-028",
+          "operation-history-029",
+          "operation-history-030",
+          "operation-history-031",
+          "operation-history-032",
+          "operation-history-033",
+          "operation-history-034",
+          "operation-history-035",
+          "operation-history-036",
+          "operation-history-037",
+          "operation-history-038",
+          "operation-history-039",
+          "operation-history-040",
+          "operation-history-041",
+          "operation-history-042",
+          "operation-history-043",
+          "operation-history-044",
+          "operation-history-045",
+          "operation-history-046",
+          "operation-history-047",
+          "operation-history-048",
+          "operation-history-049",
+          "operation-history-050",
+          "operation-history-051",
+          "operation-history-052",
+          "operation-history-053",
+          "operation-history-054",
+          "operation-history-055",
+          "operation-history-056",
+          "operation-history-057",
+          "operation-history-058",
+          "operation-history-059",
+          "operation-history-060",
+          "operation-history-061",
+          "operation-history-062",
+          "operation-history-063",
+          "operation-history-064"
+        ],
+        "version": 1,
+        "initialized": true,
+        "revision": 69,
+        "tabs": [
+          {
+            "id": "$2",
+            "created_at": 102
+          }
+        ]
+      }
+    }
+  ]
+}

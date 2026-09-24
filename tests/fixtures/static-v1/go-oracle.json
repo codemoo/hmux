@@ -1,0 +1,1167 @@
+{
+  "cases": [
+    {
+      "method": "GET",
+      "path": "/",
+      "headers": null,
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "42",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/html; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "\u003c!doctype html\u003e\u003ctitle\u003eHMux fixture\u003c/title\u003e"
+    },
+    {
+      "method": "HEAD",
+      "path": "/",
+      "headers": null,
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "42",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/html; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/manifest.json",
+      "headers": null,
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "23",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "application/json",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "{\"name\":\"HMux fixture\"}"
+    },
+    {
+      "method": "HEAD",
+      "path": "/manifest.json",
+      "headers": null,
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "23",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "application/json",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/sw.js",
+      "headers": null,
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "18",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "// fixture worker\n"
+    },
+    {
+      "method": "HEAD",
+      "path": "/sw.js",
+      "headers": null,
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "18",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/assets/app-test.js",
+      "headers": null,
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "15",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "// fixture app\n"
+    },
+    {
+      "method": "HEAD",
+      "path": "/assets/app-test.js",
+      "headers": null,
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "15",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/assets/app-test.css",
+      "headers": null,
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "15",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/css; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "body{margin:0}\n"
+    },
+    {
+      "method": "HEAD",
+      "path": "/assets/app-test.css",
+      "headers": null,
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "15",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/css; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/fonts/NOTICE.txt",
+      "headers": null,
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "22",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "Synthetic font notice\n"
+    },
+    {
+      "method": "HEAD",
+      "path": "/fonts/NOTICE.txt",
+      "headers": null,
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "22",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/fonts/THIRD_PARTY_NOTICES.md",
+      "headers": null,
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "20",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "# Synthetic notices\n"
+    },
+    {
+      "method": "HEAD",
+      "path": "/fonts/THIRD_PARTY_NOTICES.md",
+      "headers": null,
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "20",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/fonts/test.woff2",
+      "headers": null,
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "11",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "font/woff2",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "wOF2fixture"
+    },
+    {
+      "method": "HEAD",
+      "path": "/fonts/test.woff2",
+      "headers": null,
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "11",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "font/woff2",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/folder/",
+      "headers": null,
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "6",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/html; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "nested"
+    },
+    {
+      "method": "HEAD",
+      "path": "/folder/",
+      "headers": null,
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "6",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/html; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/empty.txt",
+      "headers": null,
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "0",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": ""
+    },
+    {
+      "method": "HEAD",
+      "path": "/empty.txt",
+      "headers": null,
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "0",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": null,
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "36",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "0123456789abcdefghijklmnopqrstuvwxyz"
+    },
+    {
+      "method": "HEAD",
+      "path": "/range.txt",
+      "headers": null,
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "36",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/missing",
+      "headers": null,
+      "status": 404,
+      "response": {
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "404 page not found\n"
+    },
+    {
+      "method": "HEAD",
+      "path": "/missing",
+      "headers": null,
+      "status": 404,
+      "response": {
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "404 page not found\n"
+    },
+    {
+      "method": "GET",
+      "path": "/index.html?x=1",
+      "headers": null,
+      "status": 301,
+      "response": {
+        "Cache-Control": "no-store",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Location": "./?x=1",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": ""
+    },
+    {
+      "method": "HEAD",
+      "path": "/index.html?x=1",
+      "headers": null,
+      "status": 301,
+      "response": {
+        "Cache-Control": "no-store",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Location": "./?x=1",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/folder?x=1",
+      "headers": null,
+      "status": 301,
+      "response": {
+        "Cache-Control": "no-store",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Location": "folder/?x=1",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": ""
+    },
+    {
+      "method": "HEAD",
+      "path": "/folder?x=1",
+      "headers": null,
+      "status": 301,
+      "response": {
+        "Cache-Control": "no-store",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Location": "folder/?x=1",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt/?x=1",
+      "headers": null,
+      "status": 301,
+      "response": {
+        "Cache-Control": "no-store",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Location": "../range.txt?x=1",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": ""
+    },
+    {
+      "method": "HEAD",
+      "path": "/range.txt/?x=1",
+      "headers": null,
+      "status": 301,
+      "response": {
+        "Cache-Control": "no-store",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Location": "../range.txt?x=1",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": {
+        "Range": "bytes=0-3"
+      },
+      "status": 206,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "4",
+        "Content-Range": "bytes 0-3/36",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "0123"
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": {
+        "Range": "bytes=5-"
+      },
+      "status": 206,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "31",
+        "Content-Range": "bytes 5-35/36",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "56789abcdefghijklmnopqrstuvwxyz"
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": {
+        "Range": "bytes=-4"
+      },
+      "status": 206,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "4",
+        "Content-Range": "bytes 32-35/36",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "wxyz"
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": {
+        "Range": "bytes=-0"
+      },
+      "status": 206,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "0",
+        "Content-Range": "bytes 36-35/36",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": {
+        "Range": "bytes=--0"
+      },
+      "status": 416,
+      "response": {
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "invalid range\n"
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": {
+        "Range": "bytes=0-1,4-5"
+      },
+      "status": 206,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "346",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "multipart/byteranges; boundary=BOUNDARY",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "--BOUNDARY\r\nContent-Range: bytes 0-1/36\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n01\r\n--BOUNDARY\r\nContent-Range: bytes 4-5/36\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n45\r\n--BOUNDARY--\r\n"
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": {
+        "Range": "bytes=0-35,0-35"
+      },
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "36",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "0123456789abcdefghijklmnopqrstuvwxyz"
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": {
+        "Range": "bytes=99-"
+      },
+      "status": 416,
+      "response": {
+        "Content-Range": "bytes */36",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "invalid range: failed to overlap\n"
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": {
+        "Range": "bytes=4-2"
+      },
+      "status": 416,
+      "response": {
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "invalid range\n"
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": {
+        "Range": "nibbles=0-1"
+      },
+      "status": 416,
+      "response": {
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "invalid range\n"
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": {
+        "Range": "bytes="
+      },
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "36",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "0123456789abcdefghijklmnopqrstuvwxyz"
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": {
+        "Range": "bytes= 0 - 3 "
+      },
+      "status": 206,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "4",
+        "Content-Range": "bytes 0-3/36",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "0123"
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": {
+        "Range": "bytes=99-bad,1-2"
+      },
+      "status": 206,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "2",
+        "Content-Range": "bytes 1-2/36",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "12"
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": {
+        "Range": "bytes=-1-2"
+      },
+      "status": 416,
+      "response": {
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "invalid range\n"
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": {
+        "Range": "bytes=9223372036854775808-"
+      },
+      "status": 416,
+      "response": {
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "invalid range\n"
+    },
+    {
+      "method": "GET",
+      "path": "/empty.txt",
+      "headers": {
+        "Range": "bytes=0-"
+      },
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "0",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/empty.txt",
+      "headers": {
+        "Range": "bytes=-0"
+      },
+      "status": 206,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "0",
+        "Content-Range": "bytes 0--1/0",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/empty.txt",
+      "headers": {
+        "Range": "bytes=-4"
+      },
+      "status": 206,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "0",
+        "Content-Range": "bytes 0--1/0",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/empty.txt",
+      "headers": {
+        "Range": "nibbles=0-1"
+      },
+      "status": 416,
+      "response": {
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "invalid range\n"
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": {
+        "If-Match": "*"
+      },
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "36",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "0123456789abcdefghijklmnopqrstuvwxyz"
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": {
+        "If-Match": "\"absent\""
+      },
+      "status": 412,
+      "response": {
+        "Cache-Control": "no-store",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": {
+        "If-Match": "W/\"absent\", *"
+      },
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "36",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "0123456789abcdefghijklmnopqrstuvwxyz"
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": {
+        "If-None-Match": "*"
+      },
+      "status": 304,
+      "response": {
+        "Cache-Control": "no-store",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": {
+        "If-Modified-Since": "Fri, 02 Jan 2026 04:04:05 GMT",
+        "If-None-Match": "\"absent\""
+      },
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "36",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "0123456789abcdefghijklmnopqrstuvwxyz"
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": {
+        "If-Modified-Since": "Fri, 02 Jan 2026 03:04:05 GMT"
+      },
+      "status": 304,
+      "response": {
+        "Cache-Control": "no-store",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": {
+        "If-Modified-Since": "Fri, 02 Jan 2026 02:04:05 GMT"
+      },
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "36",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "0123456789abcdefghijklmnopqrstuvwxyz"
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": {
+        "If-Modified-Since": "invalid"
+      },
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "36",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "0123456789abcdefghijklmnopqrstuvwxyz"
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": {
+        "If-Unmodified-Since": "Fri, 02 Jan 2026 02:04:05 GMT"
+      },
+      "status": 412,
+      "response": {
+        "Cache-Control": "no-store",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": ""
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": {
+        "If-Unmodified-Since": "Fri, 02 Jan 2026 04:04:05 GMT"
+      },
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "36",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "0123456789abcdefghijklmnopqrstuvwxyz"
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": {
+        "If-Match": "*",
+        "If-Unmodified-Since": "Fri, 02 Jan 2026 02:04:05 GMT"
+      },
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "36",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "0123456789abcdefghijklmnopqrstuvwxyz"
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": {
+        "If-Range": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Range": "bytes=0-3"
+      },
+      "status": 206,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "4",
+        "Content-Range": "bytes 0-3/36",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "0123"
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": {
+        "If-Range": "Fri, 02 Jan 2026 02:04:05 GMT",
+        "Range": "bytes=0-3"
+      },
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "36",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "0123456789abcdefghijklmnopqrstuvwxyz"
+    },
+    {
+      "method": "GET",
+      "path": "/range.txt",
+      "headers": {
+        "If-Range": "\"absent\"",
+        "Range": "bytes=0-3"
+      },
+      "status": 200,
+      "response": {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "no-store",
+        "Content-Length": "36",
+        "Content-Security-Policy": "default-src 'none'; manifest-src 'self'; worker-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Last-Modified": "Fri, 02 Jan 2026 03:04:05 GMT",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff"
+      },
+      "body": "0123456789abcdefghijklmnopqrstuvwxyz"
+    }
+  ],
+  "files": {
+    "assets/app-test.css": "body{margin:0}\n",
+    "assets/app-test.js": "// fixture app\n",
+    "empty.txt": "",
+    "folder/index.html": "nested",
+    "fonts/NOTICE.txt": "Synthetic font notice\n",
+    "fonts/THIRD_PARTY_NOTICES.md": "# Synthetic notices\n",
+    "fonts/test.woff2": "wOF2fixture",
+    "index.html": "\u003c!doctype html\u003e\u003ctitle\u003eHMux fixture\u003c/title\u003e",
+    "manifest.json": "{\"name\":\"HMux fixture\"}",
+    "range.txt": "0123456789abcdefghijklmnopqrstuvwxyz",
+    "sw.js": "// fixture worker\n"
+  },
+  "modified": 1767323045
+}

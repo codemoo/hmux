@@ -1,0 +1,228 @@
+[
+  {
+    "name": "darwin-cpu-final",
+    "kind": "cpu_darwin",
+    "first": "CPU usage: 10% user, 10% sys, 80% idle\nCPU usage: 12.5% user, 7.5% sys, 80.0% idle\n",
+    "want": {
+      "percent": 20
+    }
+  },
+  {
+    "name": "darwin-cpu-last-valid",
+    "kind": "cpu_darwin",
+    "first": "CPU usage: 20% user, 0% sys, 80% idle\nCPU usage: 30% user, 0% sys, 70% idle\nCPU usage: 0% user, 0% sys, NaN% idle\n",
+    "want": {
+      "percent": 30
+    }
+  },
+  {
+    "name": "darwin-cpu-single",
+    "kind": "cpu_darwin",
+    "first": "CPU usage: 1% user, 1% sys, 98% idle\n",
+    "want": null
+  },
+  {
+    "name": "darwin-cpu-invalid",
+    "kind": "cpu_darwin",
+    "first": "CPU usage: 1% user, 1% sys, 98% idle\nCPU usage: 1% user, 1% sys, 101% idle\n",
+    "want": null
+  },
+  {
+    "name": "darwin-cpu-missing",
+    "kind": "cpu_darwin",
+    "first": "Processes: 10 total\n",
+    "want": null
+  },
+  {
+    "name": "darwin-memory-resident",
+    "kind": "memory_darwin",
+    "first": "Mach Virtual Memory Statistics: (page size of 4096 bytes)\nAnonymous pages: 100.\nPages wired down: 20.\nPages purgeable: 10.\nPages occupied by compressor: 5.\n",
+    "second": "1048576\n",
+    "want": {
+      "used": 471040,
+      "total": 1048576
+    }
+  },
+  {
+    "name": "darwin-memory-purgeable-clamp",
+    "kind": "memory_darwin",
+    "first": "Mach Virtual Memory Statistics: (page size of 4096 bytes)\nAnonymous pages: 100.\nPages wired down: 20.\nPages purgeable: 1000.\nPages occupied by compressor: 5.\n",
+    "second": "1048576",
+    "want": {
+      "used": 102400,
+      "total": 1048576
+    }
+  },
+  {
+    "name": "darwin-memory-missing",
+    "kind": "memory_darwin",
+    "first": "Mach Virtual Memory Statistics: (page size of 4096 bytes)\nAnonymous pages: 100.\nPages wired down: 20.\nPages purgeable: 10.\n",
+    "second": "1048576",
+    "want": null
+  },
+  {
+    "name": "darwin-memory-too-small-total",
+    "kind": "memory_darwin",
+    "first": "Mach Virtual Memory Statistics: (page size of 4096 bytes)\nAnonymous pages: 100.\nPages wired down: 20.\nPages purgeable: 10.\nPages occupied by compressor: 5.\n",
+    "second": "10",
+    "want": null
+  },
+  {
+    "name": "darwin-memory-invalid-page",
+    "kind": "memory_darwin",
+    "first": "Mach Virtual Memory Statistics: (page size of 0 bytes)\nAnonymous pages: 100.\nPages wired down: 20.\nPages purgeable: 10.\nPages occupied by compressor: 5.\n",
+    "second": "1048576",
+    "want": null
+  },
+  {
+    "name": "linux-cpu-guest",
+    "kind": "cpu_linux",
+    "first": "cpu  100 0 100 700 100 0 0 0 0 0\n",
+    "second": "cpu  150 0 150 780 120 0 0 0 5 0\n",
+    "want": {
+      "percent": 50
+    }
+  },
+  {
+    "name": "linux-cpu-reset",
+    "kind": "cpu_linux",
+    "first": "cpu  150 0 150 780 120 0 0 0 5 0\n",
+    "second": "cpu  100 0 100 700 100 0 0 0 0 0\n",
+    "want": null
+  },
+  {
+    "name": "linux-cpu-unchanged",
+    "kind": "cpu_linux",
+    "first": "cpu 1 2 3 4\n",
+    "second": "cpu 1 2 3 4\n",
+    "want": null
+  },
+  {
+    "name": "linux-cpu-missing",
+    "kind": "cpu_linux",
+    "first": "cpu0 1 2 3 4\n",
+    "second": "cpu 1 2 3 4\n",
+    "want": null
+  },
+  {
+    "name": "linux-cpu-idle-regression",
+    "kind": "cpu_linux",
+    "first": "cpu 0 0 0 5\n",
+    "second": "cpu 1 0 0 4\n",
+    "want": null
+  },
+  {
+    "name": "linux-memory-kibibytes",
+    "kind": "memory_linux",
+    "first": "MemTotal: 16000000 kB\nMemFree: 1000 kB\nMemAvailable: 4000000 kB\n",
+    "want": {
+      "used": 12288000000,
+      "total": 16384000000
+    }
+  },
+  {
+    "name": "linux-memory-raw-bytes",
+    "kind": "memory_linux",
+    "first": "MemTotal: 100\nMemAvailable: 25\n",
+    "want": {
+      "used": 75,
+      "total": 100
+    }
+  },
+  {
+    "name": "linux-memory-missing",
+    "kind": "memory_linux",
+    "first": "MemTotal: 10 kB\n",
+    "want": null
+  },
+  {
+    "name": "linux-memory-overavailable",
+    "kind": "memory_linux",
+    "first": "MemTotal: 10 kB\nMemAvailable: 11 kB\n",
+    "want": null
+  },
+  {
+    "name": "linux-memory-invalid",
+    "kind": "memory_linux",
+    "first": "MemTotal: no kB\nMemAvailable: 1 kB\n",
+    "want": null
+  },
+  {
+    "name": "disk-normal",
+    "kind": "disk_bytes",
+    "blocks": 100,
+    "free": 25,
+    "size": 4096,
+    "want": {
+      "used": 307200,
+      "total": 409600
+    }
+  },
+  {
+    "name": "disk-empty",
+    "kind": "disk_bytes",
+    "size": 4096,
+    "want": null
+  },
+  {
+    "name": "disk-free-exceeds",
+    "kind": "disk_bytes",
+    "blocks": 100,
+    "free": 101,
+    "size": 4096,
+    "want": null
+  },
+  {
+    "name": "disk-zero-size",
+    "kind": "disk_bytes",
+    "blocks": 100,
+    "free": 25,
+    "want": null
+  },
+  {
+    "name": "disk-wire-limit",
+    "kind": "disk_bytes",
+    "blocks": 9007199254740992,
+    "size": 1,
+    "want": {
+      "used": 9007199254740992,
+      "total": 9007199254740992
+    }
+  },
+  {
+    "name": "gpu-canonical-maximum",
+    "kind": "gpu_darwin",
+    "first": "\u003cplist\u003e\u003carray\u003e\u003cdict\u003e\u003ckey\u003eGPU Power\u003c/key\u003e\u003cinteger\u003e99\u003c/integer\u003e\u003ckey\u003eGPU Activity(%)\u003c/key\u003e\u003cinteger\u003e88\u003c/integer\u003e\u003ckey\u003eDevice Utilization %\u003c/key\u003e\u003cinteger\u003e12\u003c/integer\u003e\u003ckey\u003eDevice Utilization %\u003c/key\u003e\u003creal\u003e34.5\u003c/real\u003e\u003c/dict\u003e\u003c/array\u003e\u003c/plist\u003e",
+    "want": {
+      "percent": 34.5
+    }
+  },
+  {
+    "name": "gpu-activity-fallback",
+    "kind": "gpu_darwin",
+    "first": "\u003cplist\u003e\u003cdict\u003e\u003ckey\u003eGPU Activity(%)\u003c/key\u003e\u003cstring\u003e42.25\u003c/string\u003e\u003c/dict\u003e\u003c/plist\u003e",
+    "want": {
+      "percent": 42.25
+    }
+  },
+  {
+    "name": "gpu-apple-plist",
+    "kind": "gpu_darwin",
+    "first": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003c!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\"\u003e\n\u003cplist version=\"1.0\"\u003e\u003cdict\u003e\u003ckey\u003eDevice Utilization %\u003c/key\u003e\u003cinteger\u003e35\u003c/integer\u003e\u003c/dict\u003e\u003c/plist\u003e",
+    "want": {
+      "percent": 35
+    }
+  },
+  {
+    "name": "gpu-power-only",
+    "kind": "gpu_darwin",
+    "first": "\u003cplist\u003e\u003cdict\u003e\u003ckey\u003eGPU Power\u003c/key\u003e\u003cinteger\u003e75\u003c/integer\u003e\u003c/dict\u003e\u003c/plist\u003e",
+    "want": null
+  },
+  {
+    "name": "gpu-nonfinite",
+    "kind": "gpu_darwin",
+    "first": "\u003cplist\u003e\u003cdict\u003e\u003ckey\u003eDevice Utilization %\u003c/key\u003e\u003creal\u003eNaN\u003c/real\u003e\u003c/dict\u003e\u003c/plist\u003e",
+    "want": null
+  }
+]

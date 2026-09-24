@@ -1,0 +1,49 @@
+[package]
+name = "hmux-home"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+repository.workspace = true
+
+[dependencies]
+base64.workspace = true
+hmux-core = { path = "../hmux-core" }
+hmux-model = { path = "../hmux-model" }
+hmux-protocol = { path = "../hmux-protocol" }
+hmux-usage = { path = "../hmux-usage" }
+httpdate = "1.0.3"
+idna = "=1.1.0"
+# Keep the current IDNA frontend with the small Unicode Rust backend. The
+# newer adapter uses ICU; retain the smaller dependency stack here.
+idna_adapter = "=1.1.0"
+http.workspace = true
+http-body-util.workspace = true
+hyper.workspace = true
+hyper-util.workspace = true
+tokio-tungstenite.workspace = true
+bytes.workspace = true
+prost.workspace = true
+serde_json.workspace = true
+tokio = { workspace = true, features = ["signal"] }
+tokio-util.workspace = true
+rustls.workspace = true
+tokio-rustls.workspace = true
+rustls-native-certs.workspace = true
+chrono = { workspace = true, features = ["clock"] }
+libc.workspace = true
+rustix.workspace = true
+sha2.workspace = true
+serde.workspace = true
+toml.workspace = true
+getrandom.workspace = true
+pty-process.workspace = true
+quick-xml.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
+futures-util.workspace = true
+rcgen = { version = "=0.13.2", default-features = false, features = ["ring"] }
+
+[lints]
+workspace = true

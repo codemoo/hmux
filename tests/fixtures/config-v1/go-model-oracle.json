@@ -1,0 +1,109 @@
+{
+  "array_decode_rejections": {
+    "catalog": "[]",
+    "catalog_nested_node": "{\"sessions\":[{\"workflows\":[{\"nodes\":[[]]}]}]}",
+    "catalog_nested_session": "{\"sessions\":[[]]}",
+    "catalog_nested_workflow": "{\"sessions\":[{\"workflows\":[[]]}]}",
+    "conversation": "[]",
+    "conversation_nested_message": "{\"messages\":[[]]}",
+    "inventory": "[]",
+    "inventory_nested_profile": "{\"profiles\":[[]]}",
+    "session": "[]",
+    "session_nested_identity": "{\"restored_from\":[]}",
+    "session_nested_summary": "{\"workflow\":[]}"
+  },
+  "catalog": {
+    "protocol_version": 1,
+    "generated_at": "2026-09-08T12:00:00.123Z",
+    "sessions": [
+      {
+        "id": "$7",
+        "name": "synthetic",
+        "created_at": 1700000000,
+        "activity_at": 0,
+        "attached_clients": 0,
+        "window_count": 0,
+        "window_names": [],
+        "active_window": "",
+        "current_path": "",
+        "current_command": "",
+        "tags": [
+          "ai"
+        ],
+        "workflow": {
+          "running": 1,
+          "waiting_approval": 0,
+          "waiting_input": 0,
+          "completed": 0,
+          "failed": 0,
+          "interrupted": 0,
+          "stale": 0,
+          "updated_at": 1700000001
+        },
+        "workflows": [
+          {
+            "id": "wf-synthetic",
+            "source": "codex-hook",
+            "status": "running",
+            "started_at": 1700000000,
+            "updated_at": 1700000001,
+            "nodes": []
+          }
+        ]
+      }
+    ],
+    "host_metrics": {
+      "observed_at": "2026-09-08T12:00:00.123Z",
+      "cpu_percent": 20.5,
+      "memory_used_bytes": 4,
+      "memory_total_bytes": 8
+    }
+  },
+  "conversation": {
+    "provider": "codex",
+    "session_id": "$7",
+    "created_at": 1700000000,
+    "status": "ready",
+    "messages": [
+      {
+        "id": "synthetic-1",
+        "role": "assistant",
+        "text": "안녕하세요"
+      }
+    ],
+    "truncated": false
+  },
+  "metrics_array_input": "{\"protocol_version\":1,\"host_metrics\":[\"2026-09-08T12:00:00Z\",20.5,null,null,null,null,null]}",
+  "metrics_array_result": {
+    "protocol_version": 1,
+    "generated_at": "0001-01-01T00:00:00Z",
+    "sessions": null,
+    "host_metrics": {
+      "observed_at": "0001-01-01T00:00:00Z"
+    }
+  },
+  "session_empty_slices": {
+    "id": "$8",
+    "name": "omission",
+    "created_at": 1700000002,
+    "activity_at": 0,
+    "attached_clients": 0,
+    "window_count": 0,
+    "window_names": null,
+    "active_window": "",
+    "current_path": "",
+    "current_command": ""
+  },
+  "session_nil_slices": {
+    "id": "$8",
+    "name": "omission",
+    "created_at": 1700000002,
+    "activity_at": 0,
+    "attached_clients": 0,
+    "window_count": 0,
+    "window_names": null,
+    "active_window": "",
+    "current_path": "",
+    "current_command": ""
+  }
+}

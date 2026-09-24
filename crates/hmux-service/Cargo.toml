@@ -1,0 +1,31 @@
+[package]
+name = "hmux-service"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+repository.workspace = true
+
+[dependencies]
+hmux-core = { path = "../hmux-core" }
+hmux-home = { path = "../hmux-home" }
+hmux-install = { path = "../hmux-install" }
+tokio = { workspace = true, features = ["process"] }
+tokio-util.workspace = true
+base64.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+uzers = { version = "=0.12.2", default-features = false }
+rustix = { workspace = true, features = ["fs"] }
+
+[lints]
+workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+libproc = "=0.14.11"
+hmux-platform = { path = "../hmux-platform" }
+
+[[test]]
+name = "native_manager"
+harness = false

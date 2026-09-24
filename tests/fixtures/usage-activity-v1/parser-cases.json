@@ -1,0 +1,44 @@
+[
+  {
+    "name": "claude",
+    "provider": "claude",
+    "line": "{\"type\":\"assistant\",\"timestamp\":\"2026-09-24T00:00:00Z\",\"sessionId\":\"s1\",\"message\":{\"model\":\"sonnet\",\"usage\":{\"input_tokens\":100,\"output_tokens\":20,\"cache_creation_input_tokens\":5,\"cache_read_input_tokens\":900}}}",
+    "path": "synthetic.jsonl"
+  },
+  {
+    "name": "claude_fraction",
+    "provider": "claude",
+    "line": "{\"type\":\"assistant\",\"timestamp\":\"2026-09-24T00:00:01+09:00\",\"message\":{\"usage\":{\"input_tokens\":2.9,\"output_tokens\":3,\"cache_creation_input_tokens\":1}}}",
+    "path": "synthetic.jsonl"
+  },
+  {
+    "name": "codex",
+    "provider": "codex",
+    "line": "{\"type\":\"event_msg\",\"timestamp\":\"2026-09-24T00:00:02Z\",\"payload\":{\"type\":\"token_count\",\"info\":{\"last_token_usage\":{\"input_tokens\":130,\"cached_input_tokens\":100,\"output_tokens\":40,\"reasoning_output_tokens\":20}}}}",
+    "path": "synthetic.jsonl"
+  },
+  {
+    "name": "cached_only",
+    "provider": "codex",
+    "line": "{\"type\":\"event_msg\",\"payload\":{\"type\":\"token_count\",\"info\":{\"last_token_usage\":{\"input_tokens\":100,\"cached_input_tokens\":100}}}}",
+    "path": "synthetic.jsonl"
+  },
+  {
+    "name": "bad_line",
+    "provider": "claude",
+    "line": "{broken",
+    "path": "synthetic.jsonl"
+  },
+  {
+    "name": "claude_irrelevant_wrong_type",
+    "provider": "claude",
+    "line": "{\"type\":\"assistant\",\"timestamp\":\"2026-09-24T00:00:00Z\",\"sessionId\":\"s1\",\"payload\":42,\"message\":{\"model\":\"sonnet\",\"usage\":{\"input_tokens\":100,\"output_tokens\":20,\"cache_creation_input_tokens\":5}}}",
+    "path": "synthetic.jsonl"
+  },
+  {
+    "name": "codex_irrelevant_wrong_type",
+    "provider": "codex",
+    "line": "{\"type\":\"event_msg\",\"timestamp\":\"2026-09-24T00:00:02Z\",\"message\":42,\"payload\":{\"type\":\"token_count\",\"info\":{\"last_token_usage\":{\"input_tokens\":130,\"cached_input_tokens\":100,\"output_tokens\":40}}}}",
+    "path": "synthetic.jsonl"
+  }
+]

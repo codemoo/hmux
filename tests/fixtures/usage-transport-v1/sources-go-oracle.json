@@ -1,0 +1,410 @@
+[
+  {
+    "schema": 1,
+    "seq": 2,
+    "generated_at_utc": "2026-09-24T00:00:00.000Z",
+    "provider": "claude",
+    "burn_rate_per_min": 0,
+    "burn_state": "idle",
+    "today_total_tokens": 500,
+    "today_sessions": 0,
+    "rolling_5h": {
+      "used_pct": 0,
+      "remaining_seconds": 0,
+      "resets_at": null
+    },
+    "weekly": {
+      "used_pct": 0,
+      "remaining_seconds": 0,
+      "resets_at": null
+    },
+    "rolling_5h_observed": false,
+    "weekly_observed": false,
+    "status": {
+      "state": "authExpired",
+      "data_source": "jsonl_only",
+      "quota_source": "none",
+      "stale": true
+    },
+    "sources": {
+      "cli": {
+        "schema": 1,
+        "seq": 2,
+        "generated_at_utc": "2026-09-24T00:00:00.000Z",
+        "provider": "claude",
+        "burn_rate_per_min": 0,
+        "burn_state": "idle",
+        "today_total_tokens": 500,
+        "today_sessions": 0,
+        "rolling_5h": {
+          "used_pct": 0,
+          "remaining_seconds": 0,
+          "resets_at": null
+        },
+        "weekly": {
+          "used_pct": 0,
+          "remaining_seconds": 0,
+          "resets_at": null
+        },
+        "rolling_5h_observed": false,
+        "weekly_observed": false,
+        "status": {
+          "state": "authExpired",
+          "data_source": "jsonl_only",
+          "quota_source": "none",
+          "stale": true
+        }
+      },
+      "cswap": {
+        "schema": 1,
+        "seq": 2,
+        "generated_at_utc": "2026-09-24T00:00:00.000Z",
+        "provider": "claude",
+        "burn_rate_per_min": 0,
+        "burn_state": "idle",
+        "today_total_tokens": 500,
+        "today_sessions": 0,
+        "rolling_5h": {
+          "used_pct": 0,
+          "remaining_seconds": 0,
+          "resets_at": null
+        },
+        "weekly": {
+          "used_pct": 0.4,
+          "remaining_seconds": 86400,
+          "resets_at": "2026-09-25T00:00:00Z"
+        },
+        "rolling_5h_observed": false,
+        "weekly_observed": true,
+        "status": {
+          "state": "ok",
+          "data_source": "api+jsonl",
+          "quota_source": "claude_swap",
+          "stale": false,
+          "quota_observed_at": "2026-09-23T23:50:00Z"
+        },
+        "accounts": [
+          {
+            "number": 1,
+            "email": "test@example.invalid",
+            "active": true,
+            "status": "ok",
+            "five_hour": null,
+            "seven_day": {
+              "used_pct": 0.4,
+              "resets_at": "2026-09-25T00:00:00Z"
+            },
+            "last_refresh_at": "2026-09-23T23:50:00Z"
+          }
+        ],
+        "accounts_updated_at": "2026-09-23T23:50:00Z"
+      }
+    }
+  },
+  {
+    "schema": 1,
+    "seq": 2,
+    "generated_at_utc": "2026-09-24T00:00:00.000Z",
+    "provider": "claude",
+    "burn_rate_per_min": 0,
+    "burn_state": "idle",
+    "today_total_tokens": 500,
+    "today_sessions": 0,
+    "rolling_5h": {
+      "used_pct": 0,
+      "remaining_seconds": 0,
+      "resets_at": null
+    },
+    "weekly": {
+      "used_pct": 0,
+      "remaining_seconds": 0,
+      "resets_at": null
+    },
+    "rolling_5h_observed": false,
+    "weekly_observed": false,
+    "status": {
+      "state": "authExpired",
+      "data_source": "jsonl_only",
+      "quota_source": "none",
+      "stale": true
+    },
+    "sources": {
+      "cli": {
+        "schema": 1,
+        "seq": 2,
+        "generated_at_utc": "2026-09-24T00:00:00.000Z",
+        "provider": "claude",
+        "burn_rate_per_min": 0,
+        "burn_state": "idle",
+        "today_total_tokens": 500,
+        "today_sessions": 0,
+        "rolling_5h": {
+          "used_pct": 0,
+          "remaining_seconds": 0,
+          "resets_at": null
+        },
+        "weekly": {
+          "used_pct": 0,
+          "remaining_seconds": 0,
+          "resets_at": null
+        },
+        "rolling_5h_observed": false,
+        "weekly_observed": false,
+        "status": {
+          "state": "authExpired",
+          "data_source": "jsonl_only",
+          "quota_source": "none",
+          "stale": true
+        }
+      },
+      "cswap": {
+        "schema": 1,
+        "seq": 2,
+        "generated_at_utc": "2026-09-24T00:00:00.000Z",
+        "provider": "claude",
+        "burn_rate_per_min": 0,
+        "burn_state": "idle",
+        "today_total_tokens": 500,
+        "today_sessions": 0,
+        "rolling_5h": {
+          "used_pct": 0,
+          "remaining_seconds": 0,
+          "resets_at": null
+        },
+        "weekly": {
+          "used_pct": 0.4,
+          "remaining_seconds": 86400,
+          "resets_at": "2026-09-25T00:00:00Z"
+        },
+        "rolling_5h_observed": false,
+        "weekly_observed": true,
+        "status": {
+          "state": "ok",
+          "data_source": "api+jsonl",
+          "quota_source": "claude_swap",
+          "stale": true,
+          "quota_observed_at": "2026-09-23T23:50:00Z"
+        },
+        "accounts": [
+          {
+            "number": 1,
+            "email": "test@example.invalid",
+            "active": true,
+            "status": "stale",
+            "five_hour": null,
+            "seven_day": {
+              "used_pct": 0.4,
+              "resets_at": "2026-09-25T00:00:00Z"
+            },
+            "last_refresh_at": "2026-09-23T23:50:00Z"
+          }
+        ],
+        "accounts_updated_at": "2026-09-23T23:50:00Z"
+      }
+    }
+  },
+  {
+    "schema": 1,
+    "seq": 2,
+    "generated_at_utc": "2026-09-24T00:00:00.000Z",
+    "provider": "claude",
+    "burn_rate_per_min": 0,
+    "burn_state": "idle",
+    "today_total_tokens": 500,
+    "today_sessions": 0,
+    "rolling_5h": {
+      "used_pct": 0,
+      "remaining_seconds": 0,
+      "resets_at": null
+    },
+    "weekly": {
+      "used_pct": 0,
+      "remaining_seconds": 0,
+      "resets_at": null
+    },
+    "rolling_5h_observed": false,
+    "weekly_observed": false,
+    "status": {
+      "state": "authExpired",
+      "data_source": "jsonl_only",
+      "quota_source": "none",
+      "stale": true
+    },
+    "sources": {
+      "cli": {
+        "schema": 1,
+        "seq": 2,
+        "generated_at_utc": "2026-09-24T00:00:00.000Z",
+        "provider": "claude",
+        "burn_rate_per_min": 0,
+        "burn_state": "idle",
+        "today_total_tokens": 500,
+        "today_sessions": 0,
+        "rolling_5h": {
+          "used_pct": 0,
+          "remaining_seconds": 0,
+          "resets_at": null
+        },
+        "weekly": {
+          "used_pct": 0,
+          "remaining_seconds": 0,
+          "resets_at": null
+        },
+        "rolling_5h_observed": false,
+        "weekly_observed": false,
+        "status": {
+          "state": "authExpired",
+          "data_source": "jsonl_only",
+          "quota_source": "none",
+          "stale": true
+        }
+      },
+      "cswap": {
+        "schema": 1,
+        "seq": 2,
+        "generated_at_utc": "2026-09-24T00:00:00.000Z",
+        "provider": "claude",
+        "burn_rate_per_min": 0,
+        "burn_state": "idle",
+        "today_total_tokens": 500,
+        "today_sessions": 0,
+        "rolling_5h": {
+          "used_pct": 0,
+          "remaining_seconds": 0,
+          "resets_at": null
+        },
+        "weekly": {
+          "used_pct": 0.4,
+          "remaining_seconds": 86400,
+          "resets_at": "2026-09-25T00:00:00Z"
+        },
+        "rolling_5h_observed": false,
+        "weekly_observed": true,
+        "status": {
+          "state": "networkError",
+          "data_source": "api+jsonl",
+          "quota_source": "claude_swap",
+          "stale": true,
+          "quota_observed_at": "2026-09-23T23:50:00Z"
+        },
+        "accounts": [
+          {
+            "number": 1,
+            "email": "test@example.invalid",
+            "active": true,
+            "status": "keychain_unavailable",
+            "five_hour": null,
+            "seven_day": {
+              "used_pct": 0.4,
+              "resets_at": "2026-09-25T00:00:00Z"
+            },
+            "last_refresh_at": "2026-09-23T23:50:00Z"
+          }
+        ],
+        "accounts_updated_at": "2026-09-23T23:50:00Z"
+      }
+    }
+  },
+  {
+    "schema": 1,
+    "seq": 2,
+    "generated_at_utc": "2026-09-24T00:00:00.000Z",
+    "provider": "claude",
+    "burn_rate_per_min": 0,
+    "burn_state": "idle",
+    "today_total_tokens": 500,
+    "today_sessions": 0,
+    "rolling_5h": {
+      "used_pct": 0,
+      "remaining_seconds": 0,
+      "resets_at": null
+    },
+    "weekly": {
+      "used_pct": 0,
+      "remaining_seconds": 0,
+      "resets_at": null
+    },
+    "rolling_5h_observed": false,
+    "weekly_observed": false,
+    "status": {
+      "state": "authExpired",
+      "data_source": "jsonl_only",
+      "quota_source": "none",
+      "stale": true
+    },
+    "sources": {
+      "cli": {
+        "schema": 1,
+        "seq": 2,
+        "generated_at_utc": "2026-09-24T00:00:00.000Z",
+        "provider": "claude",
+        "burn_rate_per_min": 0,
+        "burn_state": "idle",
+        "today_total_tokens": 500,
+        "today_sessions": 0,
+        "rolling_5h": {
+          "used_pct": 0,
+          "remaining_seconds": 0,
+          "resets_at": null
+        },
+        "weekly": {
+          "used_pct": 0,
+          "remaining_seconds": 0,
+          "resets_at": null
+        },
+        "rolling_5h_observed": false,
+        "weekly_observed": false,
+        "status": {
+          "state": "authExpired",
+          "data_source": "jsonl_only",
+          "quota_source": "none",
+          "stale": true
+        }
+      },
+      "cswap": {
+        "schema": 1,
+        "seq": 2,
+        "generated_at_utc": "2026-09-24T00:00:00.000Z",
+        "provider": "claude",
+        "burn_rate_per_min": 0,
+        "burn_state": "idle",
+        "today_total_tokens": 500,
+        "today_sessions": 0,
+        "rolling_5h": {
+          "used_pct": 0,
+          "remaining_seconds": 0,
+          "resets_at": null
+        },
+        "weekly": {
+          "used_pct": 0.4,
+          "remaining_seconds": 86400,
+          "resets_at": "2026-09-25T00:00:00Z"
+        },
+        "rolling_5h_observed": false,
+        "weekly_observed": true,
+        "status": {
+          "state": "networkError",
+          "data_source": "api+jsonl",
+          "quota_source": "claude_swap",
+          "stale": true,
+          "quota_observed_at": "2026-09-23T23:50:00Z"
+        },
+        "accounts": [
+          {
+            "number": 1,
+            "email": "test@example.invalid",
+            "active": true,
+            "status": "token_expired",
+            "five_hour": null,
+            "seven_day": {
+              "used_pct": 0.4,
+              "resets_at": "2026-09-25T00:00:00Z"
+            },
+            "last_refresh_at": "2026-09-23T23:50:00Z"
+          }
+        ],
+        "accounts_updated_at": "2026-09-23T23:50:00Z"
+      }
+    }
+  }
+]

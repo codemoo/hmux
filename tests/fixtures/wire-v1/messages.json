@@ -1,0 +1,311 @@
+[
+  {
+    "name": "zero",
+    "input": "{}",
+    "go_accept": true,
+    "rust_accept": true,
+    "normalized": "{\"type\":\"\",\"session\":{\"id\":\"\",\"created_at\":0}}"
+  },
+  {
+    "name": "hello",
+    "input": "{\"type\":\"hello\",\"capabilities\":[\"terminal-output-flow-v1\",\"web-upload-v1\"]}",
+    "go_accept": true,
+    "rust_accept": true,
+    "normalized": "{\"type\":\"hello\",\"session\":{\"id\":\"\",\"created_at\":0},\"capabilities\":[\"terminal-output-flow-v1\",\"web-upload-v1\"]}"
+  },
+  {
+    "name": "open",
+    "input": "{\"type\":\"open\",\"id\":\"synthetic-view\",\"session\":{\"id\":\"$7\",\"created_at\":42},\"cols\":80,\"rows\":24}",
+    "go_accept": true,
+    "rust_accept": true,
+    "normalized": "{\"type\":\"open\",\"id\":\"synthetic-view\",\"session\":{\"id\":\"$7\",\"created_at\":42},\"cols\":80,\"rows\":24}"
+  },
+  {
+    "name": "data",
+    "input": "{\"type\":\"data\",\"id\":\"synthetic-view\",\"data\":\"7ZWc6riAABtbMG0=\"}",
+    "go_accept": true,
+    "rust_accept": true,
+    "normalized": "{\"type\":\"data\",\"id\":\"synthetic-view\",\"session\":{\"id\":\"\",\"created_at\":0},\"data\":\"7ZWc6riAABtbMG0=\"}"
+  },
+  {
+    "name": "bytes-array",
+    "input": "{\"type\":\"data\",\"data\":[0,1,255,null]}",
+    "go_accept": true,
+    "rust_accept": true,
+    "normalized": "{\"type\":\"data\",\"session\":{\"id\":\"\",\"created_at\":0},\"data\":\"AAH/AA==\"}"
+  },
+  {
+    "name": "base64-newline",
+    "input": "{\"type\":\"data\",\"data\":\"AQ\\r\\nID\"}",
+    "go_accept": true,
+    "rust_accept": true,
+    "normalized": "{\"type\":\"data\",\"session\":{\"id\":\"\",\"created_at\":0},\"data\":\"AQID\"}"
+  },
+  {
+    "name": "base64-trailing-bits",
+    "input": "{\"type\":\"data\",\"data\":\"Zh==\"}",
+    "go_accept": true,
+    "rust_accept": true,
+    "normalized": "{\"type\":\"data\",\"session\":{\"id\":\"\",\"created_at\":0},\"data\":\"Zg==\"}"
+  },
+  {
+    "name": "base64-no-padding",
+    "input": "{\"type\":\"data\",\"data\":\"AQ\"}",
+    "go_accept": false,
+    "rust_accept": false
+  },
+  {
+    "name": "base64-url",
+    "input": "{\"type\":\"data\",\"data\":\"-_==\"}",
+    "go_accept": false,
+    "rust_accept": false
+  },
+  {
+    "name": "byte-overflow",
+    "input": "{\"type\":\"data\",\"data\":[256]}",
+    "go_accept": false,
+    "rust_accept": false
+  },
+  {
+    "name": "null-fields",
+    "input": "{\"type\":null,\"id\":null,\"session\":null,\"header\":null,\"data\":null,\"cols\":null,\"capabilities\":null,\"payload\":null}",
+    "go_accept": true,
+    "rust_accept": true,
+    "normalized": "{\"type\":\"\",\"session\":{\"id\":\"\",\"created_at\":0},\"payload\":null}"
+  },
+  {
+    "name": "payload-large-integer",
+    "input": "{\"type\":\"response\",\"payload\":{\"value\":9007199254740993,\"opaque\":{\"anything\":true}}}",
+    "go_accept": true,
+    "rust_accept": true,
+    "normalized": "{\"type\":\"response\",\"session\":{\"id\":\"\",\"created_at\":0},\"payload\":{\"value\":9007199254740993,\"opaque\":{\"anything\":true}}}"
+  },
+  {
+    "name": "payload-whitespace",
+    "input": "{ \"payload\" : { \"z\" : 9007199254740993, \"a\" : \" a \\\" b \" } }",
+    "go_accept": true,
+    "rust_accept": true,
+    "normalized": "{\"type\":\"\",\"session\":{\"id\":\"\",\"created_at\":0},\"payload\":{\"z\":9007199254740993,\"a\":\" a \\\" b \"}}"
+  },
+  {
+    "name": "payload-array",
+    "input": "{\"type\":\"response\",\"payload\":[false,null,1]}",
+    "go_accept": true,
+    "rust_accept": true,
+    "normalized": "{\"type\":\"response\",\"session\":{\"id\":\"\",\"created_at\":0},\"payload\":[false,null,1]}"
+  },
+  {
+    "name": "html-escaping",
+    "input": "{\"type\":\"response\",\"payload\":{\"text\":\"\u003cscript\u003e\u0026\u003c/script\u003e\"}}",
+    "go_accept": true,
+    "rust_accept": true,
+    "normalized": "{\"type\":\"response\",\"session\":{\"id\":\"\",\"created_at\":0},\"payload\":{\"text\":\"\\u003cscript\\u003e\\u0026\\u003c/script\\u003e\"}}"
+  },
+  {
+    "name": "upload-header",
+    "input": "{\"type\":\"upload-start\",\"id\":\"0123456789abcdef0123456789abcdef\",\"header\":{\"protocol_version\":1,\"request_id\":\"0123456789abcdef0123456789abcdef\",\"session\":{\"id\":\"$2\",\"created_at\":42},\"file_count\":1,\"total_bytes\":1,\"files\":[{\"index\":0,\"size\":1,\"extension\":\"txt\"}]}}",
+    "go_accept": true,
+    "rust_accept": true,
+    "normalized": "{\"type\":\"upload-start\",\"id\":\"0123456789abcdef0123456789abcdef\",\"session\":{\"id\":\"\",\"created_at\":0},\"header\":{\"protocol_version\":1,\"request_id\":\"0123456789abcdef0123456789abcdef\",\"session\":{\"id\":\"$2\",\"created_at\":42},\"file_count\":1,\"total_bytes\":1,\"files\":[{\"index\":0,\"size\":1,\"extension\":\"txt\"}]}}"
+  },
+  {
+    "name": "empty-header-not-authorized-by-codec",
+    "input": "{\"type\":\"upload-start\",\"header\":{}}",
+    "go_accept": true,
+    "rust_accept": true,
+    "normalized": "{\"type\":\"upload-start\",\"session\":{\"id\":\"\",\"created_at\":0},\"header\":{\"protocol_version\":0,\"request_id\":\"\",\"session\":{\"id\":\"\",\"created_at\":0},\"file_count\":0,\"total_bytes\":0,\"files\":null}}"
+  },
+  {
+    "name": "session-limits-owned-by-operation",
+    "input": "{\"type\":\"request\",\"session\":{\"id\":\"$123456789012345\",\"created_at\":-1}}",
+    "go_accept": true,
+    "rust_accept": true,
+    "normalized": "{\"type\":\"request\",\"session\":{\"id\":\"$123456789012345\",\"created_at\":-1}}"
+  },
+  {
+    "name": "integer-max",
+    "input": "{\"session\":{\"created_at\":9223372036854775807},\"cols\":65535,\"received\":-9223372036854775808}",
+    "go_accept": true,
+    "rust_accept": true,
+    "normalized": "{\"type\":\"\",\"session\":{\"id\":\"\",\"created_at\":9223372036854775807},\"cols\":65535,\"received\":-9223372036854775808}"
+  },
+  {
+    "name": "integer-overflow",
+    "input": "{\"session\":{\"created_at\":9223372036854775808}}",
+    "go_accept": false,
+    "rust_accept": false
+  },
+  {
+    "name": "u16-overflow",
+    "input": "{\"cols\":65536}",
+    "go_accept": false,
+    "rust_accept": false
+  },
+  {
+    "name": "u16-negative",
+    "input": "{\"cols\":-1}",
+    "go_accept": false,
+    "rust_accept": false
+  },
+  {
+    "name": "float-integer",
+    "input": "{\"cols\":1.0}",
+    "go_accept": false,
+    "rust_accept": false
+  },
+  {
+    "name": "exponent-integer",
+    "input": "{\"cols\":1e0}",
+    "go_accept": false,
+    "rust_accept": false
+  },
+  {
+    "name": "string-integer",
+    "input": "{\"cols\":\"1\"}",
+    "go_accept": false,
+    "rust_accept": false
+  },
+  {
+    "name": "unknown-field",
+    "input": "{\"type\":\"hello\",\"unknown\":true}",
+    "go_accept": false,
+    "rust_accept": false
+  },
+  {
+    "name": "unknown-session-field",
+    "input": "{\"session\":{\"id\":\"$1\",\"extra\":true}}",
+    "go_accept": false,
+    "rust_accept": false
+  },
+  {
+    "name": "unknown-header-field",
+    "input": "{\"header\":{\"extra\":true}}",
+    "go_accept": false,
+    "rust_accept": false
+  },
+  {
+    "name": "unknown-file-field",
+    "input": "{\"header\":{\"files\":[{\"name\":\"private.txt\"}]}}",
+    "go_accept": false,
+    "rust_accept": false
+  },
+  {
+    "name": "trailing-object",
+    "input": "{} {}",
+    "go_accept": false,
+    "rust_accept": false
+  },
+  {
+    "name": "trailing-null",
+    "input": "{} null",
+    "go_accept": false,
+    "rust_accept": false
+  },
+  {
+    "name": "whitespace",
+    "input": " \n {\"type\":\"hello\"} \t\r\n",
+    "go_accept": true,
+    "rust_accept": true,
+    "normalized": "{\"type\":\"hello\",\"session\":{\"id\":\"\",\"created_at\":0}}"
+  },
+  {
+    "name": "top-array",
+    "input": "[]",
+    "go_accept": false,
+    "rust_accept": false
+  },
+  {
+    "name": "top-string",
+    "input": "\"hello\"",
+    "go_accept": false,
+    "rust_accept": false
+  },
+  {
+    "name": "truncated",
+    "input": "{\"type\":",
+    "go_accept": false,
+    "rust_accept": false
+  },
+  {
+    "name": "session-array",
+    "input": "{\"session\":[]}",
+    "go_accept": false,
+    "rust_accept": false
+  },
+  {
+    "name": "header-array",
+    "input": "{\"header\":[]}",
+    "go_accept": false,
+    "rust_accept": false
+  },
+  {
+    "name": "file-array",
+    "input": "{\"header\":{\"files\":[[]]}}",
+    "go_accept": false,
+    "rust_accept": false
+  },
+  {
+    "name": "file-null",
+    "input": "{\"header\":{\"files\":[null]}}",
+    "go_accept": true,
+    "rust_accept": true,
+    "normalized": "{\"type\":\"\",\"session\":{\"id\":\"\",\"created_at\":0},\"header\":{\"protocol_version\":0,\"request_id\":\"\",\"session\":{\"id\":\"\",\"created_at\":0},\"file_count\":0,\"total_bytes\":0,\"files\":[{\"index\":0,\"size\":0}]}}"
+  },
+  {
+    "name": "top-null",
+    "input": "null",
+    "go_accept": true,
+    "rust_accept": false,
+    "normalized": "{\"type\":\"\",\"session\":{\"id\":\"\",\"created_at\":0}}",
+    "delta": "Rust requires an envelope object"
+  },
+  {
+    "name": "case-variant",
+    "input": "{\"TYPE\":\"open\",\"Id\":\"x\",\"SESSION\":{\"ID\":\"$1\",\"CREATED_AT\":42}}",
+    "go_accept": true,
+    "rust_accept": false,
+    "normalized": "{\"type\":\"open\",\"id\":\"x\",\"session\":{\"id\":\"$1\",\"created_at\":42}}",
+    "delta": "Rust requires canonical field spelling"
+  },
+  {
+    "name": "duplicate-scalar",
+    "input": "{\"type\":\"a\",\"type\":\"b\"}",
+    "go_accept": true,
+    "rust_accept": false,
+    "normalized": "{\"type\":\"b\",\"session\":{\"id\":\"\",\"created_at\":0}}",
+    "delta": "Rust rejects duplicate envelope fields"
+  },
+  {
+    "name": "duplicate-session-merge",
+    "input": "{\"session\":{\"id\":\"$1\"},\"session\":{\"created_at\":42}}",
+    "go_accept": true,
+    "rust_accept": false,
+    "normalized": "{\"type\":\"\",\"session\":{\"id\":\"$1\",\"created_at\":42}}",
+    "delta": "Rust rejects duplicate envelope fields"
+  },
+  {
+    "name": "id-max",
+    "input": "{\"id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}",
+    "go_accept": true,
+    "rust_accept": true,
+    "normalized": "{\"type\":\"\",\"id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"session\":{\"id\":\"\",\"created_at\":0}}"
+  },
+  {
+    "name": "id-over",
+    "input": "{\"id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}",
+    "go_accept": false,
+    "rust_accept": false
+  },
+  {
+    "name": "capability-empty",
+    "input": "{\"capabilities\":[\"\"]}",
+    "go_accept": false,
+    "rust_accept": false
+  },
+  {
+    "name": "capability-bytes",
+    "input": "{\"capabilities\":[\"한한한한한한한한한한한한한한한한한한한한한한\"]}",
+    "go_accept": false,
+    "rust_accept": false
+  }
+]

@@ -1,0 +1,12 @@
+[
+  {"name":"codex_api_key_first","provider":"codex","body":"{\"OPENAI_API_KEY\":\"  key-primary  \",\"tokens\":{\"access_token\":\"oauth-secondary\",\"account_id\":\"ignored\"}}"},
+  {"name":"codex_blank_api_key_falls_back","provider":"codex","body":"{\"OPENAI_API_KEY\":\"  \",\"tokens\":{\"accessToken\":\" alias-token \",\"accountId\":\" alias-id \"}}"},
+  {"name":"codex_snake_first","provider":"codex","body":"{\"tokens\":{\"access_token\":\" snake-token \",\"accessToken\":\"camel-token\",\"account_id\":\" snake-id \",\"accountId\":\"camel-id\",\"account_email\":\"snake@example.test\"}}"},
+  {"name":"codex_blank_snake_alias","provider":"codex","body":"{\"tokens\":{\"access_token\":\" \",\"accessToken\":\"camel-token\",\"account_id\":null,\"accountId\":\"camel-id\"}}"},
+  {"name":"codex_email_identity","provider":"codex","body":"{\"tokens\":{\"access_token\":\"email-token\",\"account_email\":\"  person@example.test  \",\"accountEmail\":\"other@example.test\"}}"},
+  {"name":"codex_token_tail","provider":"codex","body":"{\"tokens\":{\"access_token\":\"  prefix-12345678  \",\"refresh_token\":\"ignored-refresh\",\"id_token\":\"ignored-id-token\"}}"},
+  {"name":"codex_short_token_tail","provider":"codex","body":"{\"tokens\":{\"accessToken\":\"short\"}}"},
+  {"name":"claude_trim_and_tail","provider":"claude","body":"{\"claudeAiOauth\":{\"accessToken\":\"  claude-12345678  \",\"refreshToken\":\"ignored-refresh\",\"scopes\":[\"scope\"],\"expiresAt\":1234.5,\"rateLimitTier\":\"tier\"}}"},
+  {"name":"claude_folded_fields_and_null_scope","provider":"claude","body":"{\"CLAUDEAIOAUTH\":{\"ACCESSTOKEN\":\" CAPS-12345678 \",\"REFRESHTOKEN\":null,\"SCOPES\":[null,\"scope\"],\"EXPIRESAT\":null}}"},
+  {"name":"codex_wrong_typed_optional_ignored","provider":"codex","body":"{\"tokens\":{\"access_token\":\"valid-token\",\"account_id\":42,\"accountId\":\"fallback-id\"},\"last_refresh\":[true]}"}
+]

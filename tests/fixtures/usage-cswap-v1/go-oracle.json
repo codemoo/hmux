@@ -1,0 +1,162 @@
+[
+  {
+    "name": "fresh_and_status",
+    "valid": true,
+    "accounts": [
+      {
+        "number": 1,
+        "email": "one@example.test",
+        "display_name": "Personal",
+        "active": false,
+        "status": "ok",
+        "five_hour": {
+          "used_pct": 1,
+          "resets_at": "2026-05-05T12:00:00.000Z"
+        },
+        "seven_day": {
+          "used_pct": 0,
+          "resets_at": null
+        },
+        "last_refresh_at": "2026-05-05T11:55:00.000Z"
+      },
+      {
+        "number": 2,
+        "email": "two@example.test",
+        "active": true,
+        "status": "token_expired",
+        "five_hour": {
+          "used_pct": 0.425,
+          "resets_at": "2026-05-06T00:00:00.000Z"
+        },
+        "seven_day": null,
+        "last_refresh_at": "2026-05-05T11:35:00.000Z"
+      }
+    ],
+    "updated_at": "2026-05-05T11:55:00.000Z"
+  },
+  {
+    "name": "stale_and_missing_freshness",
+    "valid": true,
+    "accounts": [
+      {
+        "number": 1,
+        "email": "Account 1",
+        "active": true,
+        "status": "unavailable",
+        "five_hour": null,
+        "seven_day": null,
+        "last_refresh_at": "2026-05-05T11:29:59.000Z"
+      },
+      {
+        "number": 2,
+        "email": "Account 2",
+        "active": false,
+        "status": "stale",
+        "five_hour": null,
+        "seven_day": null
+      },
+      {
+        "number": 3,
+        "email": "Account 3",
+        "active": false,
+        "status": "unavailable",
+        "five_hour": null,
+        "seven_day": null,
+        "last_refresh_at": "2026-05-05T11:59:00.000Z"
+      }
+    ],
+    "updated_at": "2026-05-05T11:59:00.000Z"
+  },
+  {
+    "name": "age_and_future_clamp",
+    "valid": true,
+    "accounts": [
+      {
+        "number": 1,
+        "email": "age@example.test",
+        "active": true,
+        "status": "ok",
+        "five_hour": {
+          "used_pct": 0,
+          "resets_at": null
+        },
+        "seven_day": null,
+        "last_refresh_at": "2026-05-05T11:59:49.750Z"
+      },
+      {
+        "number": 2,
+        "email": "future@example.test",
+        "active": false,
+        "status": "keychain_unavailable",
+        "five_hour": null,
+        "seven_day": {
+          "used_pct": 1,
+          "resets_at": null
+        },
+        "last_refresh_at": "2026-05-05T12:00:00.000Z"
+      }
+    ],
+    "updated_at": "2026-05-05T12:00:00.000Z"
+  },
+  {
+    "name": "empty",
+    "valid": true
+  },
+  {
+    "name": "nullable_defaults",
+    "valid": true,
+    "accounts": [
+      {
+        "number": 1,
+        "email": "Account 1",
+        "active": false,
+        "status": "unavailable",
+        "five_hour": {
+          "used_pct": 0,
+          "resets_at": null
+        },
+        "seven_day": null,
+        "last_refresh_at": "2026-05-05T11:30:00.000Z"
+      }
+    ],
+    "updated_at": "2026-05-05T11:30:00.000Z"
+  },
+  {
+    "name": "duplicate_number",
+    "valid": false
+  },
+  {
+    "name": "bad_schema",
+    "valid": false
+  },
+  {
+    "name": "missing_accounts",
+    "valid": false
+  },
+  {
+    "name": "negative_age",
+    "valid": false
+  },
+  {
+    "name": "future_timestamp",
+    "valid": false
+  },
+  {
+    "name": "invalid_percentage",
+    "valid": false
+  },
+  {
+    "name": "active_conflict",
+    "valid": true,
+    "accounts": [
+      {
+        "number": 1,
+        "email": "Account 1",
+        "active": false,
+        "status": "ok",
+        "five_hour": null,
+        "seven_day": null
+      }
+    ]
+  }
+]

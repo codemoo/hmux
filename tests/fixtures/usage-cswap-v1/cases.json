@@ -1,0 +1,36 @@
+[
+  {
+    "name": "fresh_and_status",
+    "now": "2026-05-05T12:00:00Z",
+    "input": {"schemaVersion":1,"activeAccountNumber":2,"accounts":[
+      {"number":1,"email":"  one@example.test  ","alias":" Personal ","active":false,"usageStatus":"ok","usage":{"fiveHour":{"pct":120,"resetsAt":"2026-05-05T15:00:00+03:00"},"sevenDay":{"pct":-5,"resetsAt":"bad"}},"usageFetchedAt":"2026-05-05T11:55:00Z","secret":"ignored"},
+      {"number":2,"email":"two@example.test","alias":"\u202eevil","active":true,"usageStatus":"token_expired","usage":null,"lastGoodUsage":{"fiveHour":{"pct":42.5,"resetsAt":"2026-05-06T00:00:00Z"}},"lastGoodFetchedAt":"2026-05-05T11:40:00Z","lastGoodAgeSeconds":1500}
+    ],"diagnostic":{"token":"never copied"}}
+  },
+  {
+    "name": "stale_and_missing_freshness",
+    "now": "2026-05-05T12:00:00Z",
+    "input": {"schemaVersion":1,"accounts":[
+      {"number":1,"email":"","active":true,"usageStatus":"ok","usage":{"fiveHour":{"pct":50}},"usageFetchedAt":"2026-05-05T11:29:59Z"},
+      {"number":2,"email":"bad\nlabel","usageStatus":"stale","usage":{"sevenDay":{"pct":80}}},
+      {"number":3,"usageStatus":"  ","usageAgeSeconds":60}
+    ]}
+  },
+  {
+    "name": "age_and_future_clamp",
+    "now": "2026-05-05T12:00:00Z",
+    "input": {"schemaVersion":1,"activeAccountNumber":1,"accounts":[
+      {"number":1,"email":"age@example.test","active":true,"usageStatus":"ok","usage":{"fiveHour":{"pct":0}},"usageAgeSeconds":10.25},
+      {"number":2,"email":"future@example.test","usageStatus":"keychain_unavailable","usage":{"sevenDay":{"pct":100}},"usageFetchedAt":"2026-05-05T12:04:00Z"}
+    ]}
+  },
+  {"name":"empty","now":"2026-05-05T12:00:00Z","input":{"schemaVersion":1,"accounts":[]}},
+  {"name":"nullable_defaults","now":"2026-05-05T12:00:00Z","input":{"schemaVersion":1,"accounts":[{"number":1,"email":null,"alias":null,"active":null,"usageStatus":null,"usage":{"fiveHour":{"pct":null}},"usageFetchedAt":"2026-05-05T11:30:00Z"}]}},
+  {"name":"duplicate_number","now":"2026-05-05T12:00:00Z","input":{"schemaVersion":1,"accounts":[{"number":1},{"number":1}]}},
+  {"name":"bad_schema","now":"2026-05-05T12:00:00Z","input":{"schemaVersion":2,"accounts":[]}},
+  {"name":"missing_accounts","now":"2026-05-05T12:00:00Z","input":{"schemaVersion":1}},
+  {"name":"negative_age","now":"2026-05-05T12:00:00Z","input":{"schemaVersion":1,"accounts":[{"number":1,"usageAgeSeconds":-1}]}},
+  {"name":"future_timestamp","now":"2026-05-05T12:00:00Z","input":{"schemaVersion":1,"accounts":[{"number":1,"usageFetchedAt":"2026-05-05T12:06:00Z"}]}},
+  {"name":"invalid_percentage","now":"2026-05-05T12:00:00Z","input":{"schemaVersion":1,"accounts":[{"number":1,"usage":{"fiveHour":{"pct":"bad"}}}]}},
+  {"name":"active_conflict","now":"2026-05-05T12:00:00Z","input":{"schemaVersion":1,"activeAccountNumber":2,"accounts":[{"number":1,"active":true,"usageStatus":"ok"}]}}
+]

@@ -1,0 +1,475 @@
+{
+  "csrf": "synthetic-csrf",
+  "header": {
+    "protocol_version": 1,
+    "request_id": "0123456789abcdef0123456789abcdef",
+    "session": {
+      "id": "$12",
+      "created_at": 123
+    },
+    "file_count": 2,
+    "total_bytes": 5,
+    "files": [
+      {
+        "index": 0,
+        "size": 2,
+        "extension": "txt"
+      },
+      {
+        "index": 1,
+        "size": 3
+      }
+    ]
+  },
+  "hashes": [
+    "fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603",
+    "08a018a9549220d707e11c5c4fe94d8dd60825f010e71efaa91e5e784f364d7b"
+  ],
+  "starts": [
+    {
+      "name": "valid",
+      "json": "{\"type\":\"start\",\"csrf\":\"synthetic-csrf\",\"session\":{\"id\":\"$12\",\"created_at\":123},\"files\":[{\"size\":2,\"extension\":\"txt\"},{\"size\":3}]}",
+      "go_valid": true,
+      "rust_valid": true,
+      "header": {
+        "protocol_version": 1,
+        "request_id": "0123456789abcdef0123456789abcdef",
+        "session": {
+          "id": "$12",
+          "created_at": 123
+        },
+        "file_count": 2,
+        "total_bytes": 5,
+        "files": [
+          {
+            "index": 0,
+            "size": 2,
+            "extension": "txt"
+          },
+          {
+            "index": 1,
+            "size": 3
+          }
+        ]
+      }
+    },
+    {
+      "name": "empty_extension_null",
+      "json": "{\"type\":\"start\",\"csrf\":\"synthetic-csrf\",\"session\":{\"id\":\"$12\",\"created_at\":123},\"files\":[{\"size\":2,\"extension\":\"txt\"},{\"size\":3,\"extension\":null}]}",
+      "go_valid": true,
+      "rust_valid": true,
+      "header": {
+        "protocol_version": 1,
+        "request_id": "0123456789abcdef0123456789abcdef",
+        "session": {
+          "id": "$12",
+          "created_at": 123
+        },
+        "file_count": 2,
+        "total_bytes": 5,
+        "files": [
+          {
+            "index": 0,
+            "size": 2,
+            "extension": "txt"
+          },
+          {
+            "index": 1,
+            "size": 3
+          }
+        ]
+      }
+    },
+    {
+      "name": "missing_extension",
+      "json": "{\"type\":\"start\",\"csrf\":\"synthetic-csrf\",\"session\":{\"id\":\"$12\",\"created_at\":123},\"files\":[{\"size\":2,\"extension\":\"txt\"},{\"size\":3}]}",
+      "go_valid": true,
+      "rust_valid": true,
+      "header": {
+        "protocol_version": 1,
+        "request_id": "0123456789abcdef0123456789abcdef",
+        "session": {
+          "id": "$12",
+          "created_at": 123
+        },
+        "file_count": 2,
+        "total_bytes": 5,
+        "files": [
+          {
+            "index": 0,
+            "size": 2,
+            "extension": "txt"
+          },
+          {
+            "index": 1,
+            "size": 3
+          }
+        ]
+      }
+    },
+    {
+      "name": "null_size",
+      "json": "{\"type\":\"start\",\"csrf\":\"synthetic-csrf\",\"session\":{\"id\":\"$12\",\"created_at\":123},\"files\":[{\"size\":null,\"extension\":\"txt\"},{\"size\":3}]}",
+      "go_valid": false,
+      "rust_valid": false,
+      "header": {
+        "protocol_version": 0,
+        "request_id": "",
+        "session": {
+          "id": "",
+          "created_at": 0
+        },
+        "file_count": 0,
+        "total_bytes": 0,
+        "files": null
+      }
+    },
+    {
+      "name": "zero_size",
+      "json": "{\"type\":\"start\",\"csrf\":\"synthetic-csrf\",\"session\":{\"id\":\"$12\",\"created_at\":123},\"files\":[{\"size\":0,\"extension\":\"txt\"},{\"size\":3}]}",
+      "go_valid": false,
+      "rust_valid": false,
+      "header": {
+        "protocol_version": 0,
+        "request_id": "",
+        "session": {
+          "id": "",
+          "created_at": 0
+        },
+        "file_count": 0,
+        "total_bytes": 0,
+        "files": null
+      }
+    },
+    {
+      "name": "bad_extension",
+      "json": "{\"type\":\"start\",\"csrf\":\"synthetic-csrf\",\"session\":{\"id\":\"$12\",\"created_at\":123},\"files\":[{\"size\":2,\"extension\":\"TXT\"},{\"size\":3}]}",
+      "go_valid": false,
+      "rust_valid": false,
+      "header": {
+        "protocol_version": 0,
+        "request_id": "",
+        "session": {
+          "id": "",
+          "created_at": 0
+        },
+        "file_count": 0,
+        "total_bytes": 0,
+        "files": null
+      }
+    },
+    {
+      "name": "bad_session",
+      "json": "{\"type\":\"start\",\"csrf\":\"synthetic-csrf\",\"session\":{\"id\":\"12\",\"created_at\":123},\"files\":[{\"size\":2,\"extension\":\"txt\"},{\"size\":3}]}",
+      "go_valid": false,
+      "rust_valid": false,
+      "header": {
+        "protocol_version": 0,
+        "request_id": "",
+        "session": {
+          "id": "",
+          "created_at": 0
+        },
+        "file_count": 0,
+        "total_bytes": 0,
+        "files": null
+      }
+    },
+    {
+      "name": "bad_created_at",
+      "json": "{\"type\":\"start\",\"csrf\":\"synthetic-csrf\",\"session\":{\"id\":\"$12\",\"created_at\":0},\"files\":[{\"size\":2,\"extension\":\"txt\"},{\"size\":3}]}",
+      "go_valid": false,
+      "rust_valid": false,
+      "header": {
+        "protocol_version": 0,
+        "request_id": "",
+        "session": {
+          "id": "",
+          "created_at": 0
+        },
+        "file_count": 0,
+        "total_bytes": 0,
+        "files": null
+      }
+    },
+    {
+      "name": "csrf_mismatch",
+      "json": "{\"type\":\"start\",\"csrf\":\"wrong\",\"session\":{\"id\":\"$12\",\"created_at\":123},\"files\":[{\"size\":2,\"extension\":\"txt\"},{\"size\":3}]}",
+      "go_valid": false,
+      "rust_valid": false,
+      "header": {
+        "protocol_version": 0,
+        "request_id": "",
+        "session": {
+          "id": "",
+          "created_at": 0
+        },
+        "file_count": 0,
+        "total_bytes": 0,
+        "files": null
+      }
+    },
+    {
+      "name": "unknown_start",
+      "json": "{\"type\":\"start\",\"extra\":1,\"csrf\":\"synthetic-csrf\",\"session\":{\"id\":\"$12\",\"created_at\":123},\"files\":[{\"size\":2,\"extension\":\"txt\"},{\"size\":3}]}",
+      "go_valid": false,
+      "rust_valid": false,
+      "header": {
+        "protocol_version": 0,
+        "request_id": "",
+        "session": {
+          "id": "",
+          "created_at": 0
+        },
+        "file_count": 0,
+        "total_bytes": 0,
+        "files": null
+      }
+    },
+    {
+      "name": "unknown_file",
+      "json": "{\"type\":\"start\",\"csrf\":\"synthetic-csrf\",\"session\":{\"id\":\"$12\",\"created_at\":123},\"files\":[{\"size\":2,\"name\":\"private\",\"extension\":\"txt\"},{\"size\":3}]}",
+      "go_valid": false,
+      "rust_valid": false,
+      "header": {
+        "protocol_version": 0,
+        "request_id": "",
+        "session": {
+          "id": "",
+          "created_at": 0
+        },
+        "file_count": 0,
+        "total_bytes": 0,
+        "files": null
+      }
+    },
+    {
+      "name": "duplicate_type",
+      "json": "{\"type\":\"bad\",\"type\":\"start\",\"csrf\":\"synthetic-csrf\",\"session\":{\"id\":\"$12\",\"created_at\":123},\"files\":[{\"size\":2,\"extension\":\"txt\"},{\"size\":3}]}",
+      "go_valid": true,
+      "rust_valid": false,
+      "header": {
+        "protocol_version": 1,
+        "request_id": "0123456789abcdef0123456789abcdef",
+        "session": {
+          "id": "$12",
+          "created_at": 123
+        },
+        "file_count": 2,
+        "total_bytes": 5,
+        "files": [
+          {
+            "index": 0,
+            "size": 2,
+            "extension": "txt"
+          },
+          {
+            "index": 1,
+            "size": 3
+          }
+        ]
+      }
+    },
+    {
+      "name": "trailing",
+      "json": "{\"type\":\"start\",\"csrf\":\"synthetic-csrf\",\"session\":{\"id\":\"$12\",\"created_at\":123},\"files\":[{\"size\":2,\"extension\":\"txt\"},{\"size\":3}]}{}",
+      "go_valid": false,
+      "rust_valid": false,
+      "header": {
+        "protocol_version": 0,
+        "request_id": "",
+        "session": {
+          "id": "",
+          "created_at": 0
+        },
+        "file_count": 0,
+        "total_bytes": 0,
+        "files": null
+      }
+    },
+    {
+      "name": "array",
+      "json": "[]",
+      "go_valid": false,
+      "rust_valid": false,
+      "header": {
+        "protocol_version": 0,
+        "request_id": "",
+        "session": {
+          "id": "",
+          "created_at": 0
+        },
+        "file_count": 0,
+        "total_bytes": 0,
+        "files": null
+      }
+    },
+    {
+      "name": "null",
+      "json": "null",
+      "go_valid": false,
+      "rust_valid": false,
+      "header": {
+        "protocol_version": 0,
+        "request_id": "",
+        "session": {
+          "id": "",
+          "created_at": 0
+        },
+        "file_count": 0,
+        "total_bytes": 0,
+        "files": null
+      }
+    },
+    {
+      "name": "empty_files",
+      "json": "{\"type\":\"start\",\"csrf\":\"synthetic-csrf\",\"session\":{\"id\":\"$12\",\"created_at\":123},\"files\":[]}",
+      "go_valid": false,
+      "rust_valid": false,
+      "header": {
+        "protocol_version": 0,
+        "request_id": "",
+        "session": {
+          "id": "",
+          "created_at": 0
+        },
+        "file_count": 0,
+        "total_bytes": 0,
+        "files": null
+      }
+    },
+    {
+      "name": "too_many_files",
+      "json": "{\"type\":\"start\",\"csrf\":\"synthetic-csrf\",\"session\":{\"id\":\"$12\",\"created_at\":123},\"files\":[{\"size\":1},{\"size\":1},{\"size\":1},{\"size\":1},{\"size\":1},{\"size\":1},{\"size\":1},{\"size\":1},{\"size\":1},{\"size\":1},{\"size\":1},{\"size\":1},{\"size\":1},{\"size\":1},{\"size\":1},{\"size\":1},{\"size\":1}]}",
+      "go_valid": false,
+      "rust_valid": false,
+      "header": {
+        "protocol_version": 0,
+        "request_id": "",
+        "session": {
+          "id": "",
+          "created_at": 0
+        },
+        "file_count": 0,
+        "total_bytes": 0,
+        "files": null
+      }
+    }
+  ],
+  "responses": [
+    {
+      "name": "valid",
+      "json": "{\"protocol_version\":1,\"request_id\":\"0123456789abcdef0123456789abcdef\",\"stage_id\":\"abcdef0123456789abcdef0123456789\",\"session\":{\"id\":\"$12\",\"created_at\":123},\"expires_at_unix\":1790000000,\"files\":[{\"index\":0,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0001.txt\",\"size\":2,\"sha256\":\"fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603\"},{\"index\":1,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0002\",\"size\":3,\"sha256\":\"08a018a9549220d707e11c5c4fe94d8dd60825f010e71efaa91e5e784f364d7b\"}]}",
+      "go_valid": true,
+      "rust_valid": true
+    },
+    {
+      "name": "request_mismatch",
+      "json": "{\"protocol_version\":1,\"request_id\":\"abcdef0123456789abcdef0123456789\",\"stage_id\":\"abcdef0123456789abcdef0123456789\",\"session\":{\"id\":\"$12\",\"created_at\":123},\"expires_at_unix\":1790000000,\"files\":[{\"index\":0,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0001.txt\",\"size\":2,\"sha256\":\"fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603\"},{\"index\":1,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0002\",\"size\":3,\"sha256\":\"08a018a9549220d707e11c5c4fe94d8dd60825f010e71efaa91e5e784f364d7b\"}]}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "stage_uppercase",
+      "json": "{\"protocol_version\":1,\"request_id\":\"0123456789abcdef0123456789abcdef\",\"stage_id\":\"ABCDEF0123456789ABCDEF0123456789\",\"session\":{\"id\":\"$12\",\"created_at\":123},\"expires_at_unix\":1790000000,\"files\":[{\"index\":0,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0001.txt\",\"size\":2,\"sha256\":\"fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603\"},{\"index\":1,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0002\",\"size\":3,\"sha256\":\"08a018a9549220d707e11c5c4fe94d8dd60825f010e71efaa91e5e784f364d7b\"}]}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "session_mismatch",
+      "json": "{\"protocol_version\":1,\"request_id\":\"0123456789abcdef0123456789abcdef\",\"stage_id\":\"abcdef0123456789abcdef0123456789\",\"session\":{\"id\":\"$12\",\"created_at\":124},\"expires_at_unix\":1790000000,\"files\":[{\"index\":0,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0001.txt\",\"size\":2,\"sha256\":\"fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603\"},{\"index\":1,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0002\",\"size\":3,\"sha256\":\"08a018a9549220d707e11c5c4fe94d8dd60825f010e71efaa91e5e784f364d7b\"}]}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "expiry_zero",
+      "json": "{\"protocol_version\":1,\"request_id\":\"0123456789abcdef0123456789abcdef\",\"stage_id\":\"abcdef0123456789abcdef0123456789\",\"session\":{\"id\":\"$12\",\"created_at\":123},\"expires_at_unix\":0,\"files\":[{\"index\":0,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0001.txt\",\"size\":2,\"sha256\":\"fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603\"},{\"index\":1,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0002\",\"size\":3,\"sha256\":\"08a018a9549220d707e11c5c4fe94d8dd60825f010e71efaa91e5e784f364d7b\"}]}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "wrong_hash",
+      "json": "{\"protocol_version\":1,\"request_id\":\"0123456789abcdef0123456789abcdef\",\"stage_id\":\"abcdef0123456789abcdef0123456789\",\"session\":{\"id\":\"$12\",\"created_at\":123},\"expires_at_unix\":1790000000,\"files\":[{\"index\":0,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0001.txt\",\"size\":2,\"sha256\":\"0000000000000000000000000000000000000000000000000000000000000000\"},{\"index\":1,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0002\",\"size\":3,\"sha256\":\"08a018a9549220d707e11c5c4fe94d8dd60825f010e71efaa91e5e784f364d7b\"}]}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "wrong_size",
+      "json": "{\"protocol_version\":1,\"request_id\":\"0123456789abcdef0123456789abcdef\",\"stage_id\":\"abcdef0123456789abcdef0123456789\",\"session\":{\"id\":\"$12\",\"created_at\":123},\"expires_at_unix\":1790000000,\"files\":[{\"index\":0,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0001.txt\",\"size\":3,\"sha256\":\"fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603\"},{\"index\":1,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0002\",\"size\":3,\"sha256\":\"08a018a9549220d707e11c5c4fe94d8dd60825f010e71efaa91e5e784f364d7b\"}]}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "wrong_index",
+      "json": "{\"protocol_version\":1,\"request_id\":\"0123456789abcdef0123456789abcdef\",\"stage_id\":\"abcdef0123456789abcdef0123456789\",\"session\":{\"id\":\"$12\",\"created_at\":123},\"expires_at_unix\":1790000000,\"files\":[{\"index\":1,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0001.txt\",\"size\":2,\"sha256\":\"fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603\"},{\"index\":1,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0002\",\"size\":3,\"sha256\":\"08a018a9549220d707e11c5c4fe94d8dd60825f010e71efaa91e5e784f364d7b\"}]}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "parent_traversal",
+      "json": "{\"protocol_version\":1,\"request_id\":\"0123456789abcdef0123456789abcdef\",\"stage_id\":\"abcdef0123456789abcdef0123456789\",\"session\":{\"id\":\"$12\",\"created_at\":123},\"expires_at_unix\":1790000000,\"files\":[{\"index\":0,\"path\":\"/synthetic/../staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0001.txt\",\"size\":2,\"sha256\":\"fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603\"},{\"index\":1,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0002\",\"size\":3,\"sha256\":\"08a018a9549220d707e11c5c4fe94d8dd60825f010e71efaa91e5e784f364d7b\"}]}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "wrong_directory",
+      "json": "{\"protocol_version\":1,\"request_id\":\"0123456789abcdef0123456789abcdef\",\"stage_id\":\"abcdef0123456789abcdef0123456789\",\"session\":{\"id\":\"$12\",\"created_at\":123},\"expires_at_unix\":1790000000,\"files\":[{\"index\":0,\"path\":\"/synthetic/other/1790000000-abcdef0123456789abcdef0123456789/file-0001.txt\",\"size\":2,\"sha256\":\"fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603\"},{\"index\":1,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0002\",\"size\":3,\"sha256\":\"08a018a9549220d707e11c5c4fe94d8dd60825f010e71efaa91e5e784f364d7b\"}]}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "wrong_filename",
+      "json": "{\"protocol_version\":1,\"request_id\":\"0123456789abcdef0123456789abcdef\",\"stage_id\":\"abcdef0123456789abcdef0123456789\",\"session\":{\"id\":\"$12\",\"created_at\":123},\"expires_at_unix\":1790000000,\"files\":[{\"index\":0,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0001.bin\",\"size\":2,\"sha256\":\"fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603\"},{\"index\":1,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0002\",\"size\":3,\"sha256\":\"08a018a9549220d707e11c5c4fe94d8dd60825f010e71efaa91e5e784f364d7b\"}]}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "relative_path",
+      "json": "{\"protocol_version\":1,\"request_id\":\"0123456789abcdef0123456789abcdef\",\"stage_id\":\"abcdef0123456789abcdef0123456789\",\"session\":{\"id\":\"$12\",\"created_at\":123},\"expires_at_unix\":1790000000,\"files\":[{\"index\":0,\"path\":\"synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0001.txt\",\"size\":2,\"sha256\":\"fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603\"},{\"index\":1,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0002\",\"size\":3,\"sha256\":\"08a018a9549220d707e11c5c4fe94d8dd60825f010e71efaa91e5e784f364d7b\"}]}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "newline_path",
+      "json": "{\"protocol_version\":1,\"request_id\":\"0123456789abcdef0123456789abcdef\",\"stage_id\":\"abcdef0123456789abcdef0123456789\",\"session\":{\"id\":\"$12\",\"created_at\":123},\"expires_at_unix\":1790000000,\"files\":[{\"index\":0,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789\\\\n/file-0001.txt\",\"size\":2,\"sha256\":\"fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603\"},{\"index\":1,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0002\",\"size\":3,\"sha256\":\"08a018a9549220d707e11c5c4fe94d8dd60825f010e71efaa91e5e784f364d7b\"}]}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "unknown_response",
+      "json": "{\"protocol_version\":1,\"extra\":1,\"request_id\":\"0123456789abcdef0123456789abcdef\",\"stage_id\":\"abcdef0123456789abcdef0123456789\",\"session\":{\"id\":\"$12\",\"created_at\":123},\"expires_at_unix\":1790000000,\"files\":[{\"index\":0,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0001.txt\",\"size\":2,\"sha256\":\"fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603\"},{\"index\":1,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0002\",\"size\":3,\"sha256\":\"08a018a9549220d707e11c5c4fe94d8dd60825f010e71efaa91e5e784f364d7b\"}]}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "unknown_staged_file",
+      "json": "{\"protocol_version\":1,\"request_id\":\"0123456789abcdef0123456789abcdef\",\"stage_id\":\"abcdef0123456789abcdef0123456789\",\"session\":{\"id\":\"$12\",\"created_at\":123},\"expires_at_unix\":1790000000,\"files\":[{\"index\":0,\"extra\":1,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0001.txt\",\"size\":2,\"sha256\":\"fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603\"},{\"index\":1,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0002\",\"size\":3,\"sha256\":\"08a018a9549220d707e11c5c4fe94d8dd60825f010e71efaa91e5e784f364d7b\"}]}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "duplicate_version",
+      "json": "{\"protocol_version\":0,\"protocol_version\":1,\"request_id\":\"0123456789abcdef0123456789abcdef\",\"stage_id\":\"abcdef0123456789abcdef0123456789\",\"session\":{\"id\":\"$12\",\"created_at\":123},\"expires_at_unix\":1790000000,\"files\":[{\"index\":0,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0001.txt\",\"size\":2,\"sha256\":\"fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603\"},{\"index\":1,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0002\",\"size\":3,\"sha256\":\"08a018a9549220d707e11c5c4fe94d8dd60825f010e71efaa91e5e784f364d7b\"}]}",
+      "go_valid": true,
+      "rust_valid": false
+    },
+    {
+      "name": "trailing",
+      "json": "{\"protocol_version\":1,\"request_id\":\"0123456789abcdef0123456789abcdef\",\"stage_id\":\"abcdef0123456789abcdef0123456789\",\"session\":{\"id\":\"$12\",\"created_at\":123},\"expires_at_unix\":1790000000,\"files\":[{\"index\":0,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0001.txt\",\"size\":2,\"sha256\":\"fb8e20fc2e4c3f248c60c39bd652f3c1347298bb977b8b4d5903b85055620603\"},{\"index\":1,\"path\":\"/synthetic/staged-files-v1/1790000000-abcdef0123456789abcdef0123456789/file-0002\",\"size\":3,\"sha256\":\"08a018a9549220d707e11c5c4fe94d8dd60825f010e71efaa91e5e784f364d7b\"}]}{}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "array",
+      "json": "[]",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "null",
+      "json": "null",
+      "go_valid": false,
+      "rust_valid": false
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+[package]
+name = "hmux-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+rustix = { workspace = true, features = ["fs"] }
+tokio = { workspace = true, features = ["process", "io-util"] }
+hmux-model = { path = "../hmux-model" }
+serde_json.workspace = true
+base64.workspace = true
+
+[lints]
+workspace = true

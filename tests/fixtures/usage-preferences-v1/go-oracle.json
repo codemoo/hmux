@@ -1,0 +1,80 @@
+{
+  "cases": [
+    {
+      "json": "{\"version\":1,\"revision\":1,\"claude\":{\"enabled\":false,\"source\":\"cswap\"},\"codex\":{\"enabled\":true,\"source\":\"cli\"}}",
+      "valid": true
+    },
+    {
+      "json": "{}",
+      "valid": false
+    },
+    {
+      "json": "[]",
+      "valid": false
+    },
+    {
+      "json": "null",
+      "valid": false
+    },
+    {
+      "json": "{\"version\":1,\"claude\":{\"source\":\"cswap\"},\"codex\":{\"source\":\"cli\"}}",
+      "valid": true
+    },
+    {
+      "json": "{\"version\":1,\"revision\":null,\"claude\":{\"enabled\":null,\"source\":\"cli\"},\"codex\":{\"source\":\"codex-lb\"}}",
+      "valid": true
+    },
+    {
+      "json": "{\"version\":1,\"revision\":9007199254740991,\"claude\":{\"source\":\"cswap\"},\"codex\":{\"source\":\"cli\"}}",
+      "valid": true
+    },
+    {
+      "json": "{\"version\":1,\"revision\":9007199254740992,\"claude\":{\"source\":\"cswap\"},\"codex\":{\"source\":\"cli\"}}",
+      "valid": false
+    },
+    {
+      "json": "{\"version\":1,\"revision\":-1,\"claude\":{\"source\":\"cswap\"},\"codex\":{\"source\":\"cli\"}}",
+      "valid": false
+    },
+    {
+      "json": "{\"version\":1,\"claude\":{\"source\":\"codex-lb\"},\"codex\":{\"source\":\"cli\"}}",
+      "valid": false
+    },
+    {
+      "json": "{\"version\":1,\"claude\":[true,\"cswap\"],\"codex\":{\"source\":\"cli\"}}",
+      "valid": false
+    },
+    {
+      "json": "{\"version\":1,\"unknown\":true,\"claude\":{\"source\":\"cswap\"},\"codex\":{\"source\":\"cli\"}}",
+      "valid": false
+    }
+  ],
+  "default": {
+    "version": 1,
+    "revision": 0,
+    "claude": {
+      "enabled": true,
+      "source": "cswap"
+    },
+    "codex": {
+      "enabled": true,
+      "source": "codex-lb"
+    }
+  },
+  "key": "7fa7b0b31206c1cc95096195f8c7f4128d110c39c780345d3249f8e0383b96b8",
+  "profile": "profile-one",
+  "saved": {
+    "version": 1,
+    "revision": 1,
+    "claude": {
+      "enabled": false,
+      "source": "cswap"
+    },
+    "codex": {
+      "enabled": true,
+      "source": "cli"
+    }
+  },
+  "saved_json": "{\"version\":1,\"revision\":1,\"claude\":{\"enabled\":false,\"source\":\"cswap\"},\"codex\":{\"enabled\":true,\"source\":\"cli\"}}",
+  "username": "one"
+}

@@ -1,0 +1,32 @@
+{
+  "events": [
+    {"name":"direct_start","line":"{\"type\":\"task_started\",\"timestamp\":\"2026-09-20T01:02:00Z\"}","kind":"task_started","completed_at":"2026-09-20T01:02:00Z"},
+    {"name":"direct_complete","line":"{\"type\":\"task_complete\",\"timestamp\":\"2026-09-20T01:02:03.456Z\"}","kind":"task_complete","completed_at":"2026-09-20T01:02:03.456Z"},
+    {"name":"payload_start","line":"{\"type\":\"event_msg\",\"payload\":{\"type\":\"task_started\"}}","kind":"task_started","completed_at":""},
+    {"name":"payload_complete","line":"{\"type\":\"event_msg\",\"payload\":{\"type\":\"task_complete\"}}","kind":"task_complete","completed_at":""},
+    {"name":"direct_precedence","line":"{\"type\":\"task_complete\",\"payload\":{\"type\":\"task_started\"}}","kind":"task_complete","completed_at":""},
+    {"name":"escaped_direct_type","line":"{\"type\":\"task_\\u0063omplete\",\"timestamp\":\"2026-09-20T01:02:03Z\"}","kind":"task_complete","completed_at":"2026-09-20T01:02:03Z"},
+    {"name":"escaped_payload_type","line":"{\"type\":\"event_msg\",\"payload\":{\"type\":\"task_\\u0073tarted\"}}","kind":"task_started","completed_at":""},
+    {"name":"escaped_timestamp","line":"{\"type\":\"task_complete\",\"timestamp\":\"2026-09-20T01:02:03\\u005a\"}","kind":"task_complete","completed_at":"2026-09-20T01:02:03Z"},
+    {"name":"fraction_nanos","line":"{\"type\":\"task_complete\",\"timestamp\":\"2026-09-20T01:02:03.123456789Z\"}","kind":"task_complete","completed_at":"2026-09-20T01:02:03.123456789Z"},
+    {"name":"fraction_trim","line":"{\"type\":\"task_complete\",\"timestamp\":\"2026-09-20T01:02:03.120000000Z\"}","kind":"task_complete","completed_at":"2026-09-20T01:02:03.12Z"},
+    {"name":"positive_zone","line":"{\"type\":\"task_complete\",\"timestamp\":\"2026-09-20T10:02:03+09:00\"}","kind":"task_complete","completed_at":"2026-09-20T01:02:03Z"},
+    {"name":"negative_zone","line":"{\"type\":\"task_complete\",\"timestamp\":\"2026-09-19T20:32:03-04:30\"}","kind":"task_complete","completed_at":"2026-09-20T01:02:03Z"},
+    {"name":"bad_timestamp","line":"{\"type\":\"task_complete\",\"timestamp\":\"yesterday\"}","kind":"task_complete","completed_at":""},
+    {"name":"zero_timestamp","line":"{\"type\":\"task_complete\",\"timestamp\":\"0001-01-01T00:00:00Z\"}","kind":"task_complete","completed_at":""},
+    {"name":"zero_in_zone","line":"{\"type\":\"task_complete\",\"timestamp\":\"0001-01-01T01:00:00+01:00\"}","kind":"task_complete","completed_at":""},
+    {"name":"null_timestamp","line":"{\"type\":\"task_complete\",\"timestamp\":null}","kind":"task_complete","completed_at":""},
+    {"name":"missing_timestamp","line":"{\"type\":\"task_complete\"}","kind":"task_complete","completed_at":""},
+    {"name":"malformed","line":"{\"type\":\"task_complete\"","kind":"","completed_at":""},
+    {"name":"null_type","line":"{\"type\":null}","kind":"","completed_at":""},
+    {"name":"numeric_type","line":"{\"type\":7,\"payload\":{\"type\":\"task_complete\"}}","kind":"","completed_at":""},
+    {"name":"numeric_payload_type","line":"{\"type\":\"event_msg\",\"payload\":{\"type\":7}}","kind":"","completed_at":""},
+    {"name":"unknown_type","line":"{\"type\":\"other\"}","kind":"","completed_at":""},
+    {"name":"array_payload","line":"{\"type\":\"event_msg\",\"payload\":[]}","kind":"","completed_at":""}
+  ],
+  "ids": [
+    {"session_id":"$1","created_at":42,"record_id":"test","offset":123,"id":"43ae4bdb76b5ba6ac8289660f79cc43c37a429e45c43532398cbb84d50845f75"},
+    {"session_id":"$999","created_at":123456789,"record_id":"record-A","offset":0,"id":"a8c4d24b83d4d4d003f60fbd397d278cb82e2ac1ebb305411da3d9b2796bb514"},
+    {"session_id":"$2","created_at":7,"record_id":"unicode-한글","offset":8192,"id":"2063a4e132405efffda08f05dfc37bc9a27348aedb9ee152c01eaff63fe1ac2d"}
+  ]
+}

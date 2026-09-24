@@ -1,0 +1,477 @@
+{
+  "state": "{\"version\":1,\"public_key\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\",\"private_key\":\"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc\",\"subscriptions\":{\"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE\":{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}}}",
+  "subscription": {
+    "endpoint": "https://web.push.apple.com/synthetic",
+    "keys": {
+      "auth": "BwcHBwcHBwcHBwcHBwcHBw",
+      "p256dh": "BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM"
+    }
+  },
+  "login_id": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE",
+  "endpoints": [
+    {
+      "name": "apple",
+      "input": "https://web.push.apple.com/synthetic",
+      "go_valid": true,
+      "rust_valid": true
+    },
+    {
+      "name": "google",
+      "input": "https://fcm.googleapis.com/fcm/send/fixture",
+      "go_valid": true,
+      "rust_valid": true
+    },
+    {
+      "name": "mozilla",
+      "input": "https://updates.push.services.mozilla.com/wpush/fixture",
+      "go_valid": true,
+      "rust_valid": true
+    },
+    {
+      "name": "mozilla-subdomain",
+      "input": "https://a.push.services.mozilla.com/fixture",
+      "go_valid": true,
+      "rust_valid": true
+    },
+    {
+      "name": "windows",
+      "input": "https://wns2-fixture.notify.windows.com/fixture",
+      "go_valid": true,
+      "rust_valid": true
+    },
+    {
+      "name": "uppercase-host",
+      "input": "https://WEB.PUSH.APPLE.COM/fixture",
+      "go_valid": true,
+      "rust_valid": true
+    },
+    {
+      "name": "uppercase-scheme",
+      "input": "HTTPS://web.push.apple.com/fixture",
+      "go_valid": true,
+      "rust_valid": false,
+      "delta": "strict lowercase scheme"
+    },
+    {
+      "name": "encoded-path",
+      "input": "https://web.push.apple.com/a%2Fb?channel=x%20y",
+      "go_valid": true,
+      "rust_valid": true
+    },
+    {
+      "name": "http",
+      "input": "http://web.push.apple.com/fixture",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "opaque",
+      "input": "https:web.push.apple.com/fixture",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "userinfo",
+      "input": "https://user@web.push.apple.com/fixture",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "port",
+      "input": "https://web.push.apple.com:443/fixture",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "empty-port",
+      "input": "https://web.push.apple.com:/fixture",
+      "go_valid": true,
+      "rust_valid": false,
+      "delta": "strict authority without port delimiter"
+    },
+    {
+      "name": "fragment",
+      "input": "https://web.push.apple.com/fixture#x",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "empty-fragment",
+      "input": "https://web.push.apple.com/fixture#",
+      "go_valid": true,
+      "rust_valid": false,
+      "delta": "strict fragment delimiter rejection"
+    },
+    {
+      "name": "other-host",
+      "input": "https://web.push.apple.com.evil.example/fixture",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "private-ip",
+      "input": "https://127.0.0.1/fixture",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "bare-mozilla",
+      "input": "https://push.services.mozilla.com/fixture",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "trailing-dot",
+      "input": "https://web.push.apple.com./fixture",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "unicode-path",
+      "input": "https://web.push.apple.com/한글",
+      "go_valid": true,
+      "rust_valid": false,
+      "delta": "strict ASCII URL"
+    },
+    {
+      "name": "space-path",
+      "input": "https://web.push.apple.com/a b",
+      "go_valid": true,
+      "rust_valid": false,
+      "delta": "strict whitespace rejection"
+    },
+    {
+      "name": "bad-path-escape",
+      "input": "https://web.push.apple.com/%ZZ",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "bad-query-escape",
+      "input": "https://web.push.apple.com/?x=%ZZ",
+      "go_valid": true,
+      "rust_valid": false,
+      "delta": "strict percent escape rejection"
+    },
+    {
+      "name": "empty-host",
+      "input": "https:///fixture",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "exact-length",
+      "input": "https://web.push.apple.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "go_valid": true,
+      "rust_valid": true
+    },
+    {
+      "name": "too-long",
+      "input": "https://web.push.apple.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "go_valid": false,
+      "rust_valid": false
+    }
+  ],
+  "keys": [
+    {
+      "name": "valid",
+      "input": "{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}",
+      "go_valid": true,
+      "rust_valid": true
+    },
+    {
+      "name": "short-auth",
+      "input": "{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcH\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "long-auth",
+      "input": "{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBwc\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "padded-auth",
+      "input": "{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw==\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "newline-auth",
+      "input": "{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\\n\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}",
+      "go_valid": true,
+      "rust_valid": false,
+      "delta": "canonical base64"
+    },
+    {
+      "name": "trailing-bits-auth",
+      "input": "{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBx\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}",
+      "go_valid": true,
+      "rust_valid": false,
+      "delta": "canonical base64"
+    },
+    {
+      "name": "invalid-pub",
+      "input": "{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ\"}}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "compressed-pub",
+      "input": "{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"Ax4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlu\"}}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "short-pub",
+      "input": "{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwA\"}}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "long-pub",
+      "input": "{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKMA\"}}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "newline-pub",
+      "input": "{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\\n\"}}",
+      "go_valid": true,
+      "rust_valid": false,
+      "delta": "canonical base64"
+    },
+    {
+      "name": "trailing-bits-pub",
+      "input": "{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKN\"}}",
+      "go_valid": true,
+      "rust_valid": false,
+      "delta": "canonical base64"
+    },
+    {
+      "name": "empty",
+      "input": "{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"\",\"p256dh\":\"\"}}",
+      "go_valid": false,
+      "rust_valid": false
+    }
+  ],
+  "ids": [
+    {
+      "name": "valid",
+      "input": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE",
+      "go_valid": true,
+      "rust_valid": true
+    },
+    {
+      "name": "short",
+      "input": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "long",
+      "input": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEB",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "padded",
+      "input": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "invalid",
+      "input": "*******************************************",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "empty",
+      "input": "",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "newline",
+      "input": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE\r\n",
+      "go_valid": true,
+      "rust_valid": false,
+      "delta": "canonical base64"
+    },
+    {
+      "name": "trailing-bits",
+      "input": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQF",
+      "go_valid": true,
+      "rust_valid": false,
+      "delta": "canonical base64"
+    }
+  ],
+  "states": [
+    {
+      "name": "valid",
+      "input": "{\"version\":1,\"public_key\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\",\"private_key\":\"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc\",\"subscriptions\":{\"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE\":{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}}}",
+      "go_valid": true,
+      "rust_valid": true
+    },
+    {
+      "name": "version-zero",
+      "input": "{\"version\":0,\"public_key\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\",\"private_key\":\"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc\",\"subscriptions\":{\"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE\":{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}}}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "version-null",
+      "input": "{\"version\":null,\"public_key\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\",\"private_key\":\"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc\",\"subscriptions\":{\"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE\":{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}}}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "unknown",
+      "input": "{\"version\":1,\"extra\":true,\"public_key\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\",\"private_key\":\"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc\",\"subscriptions\":{\"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE\":{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}}}",
+      "go_valid": true,
+      "rust_valid": false,
+      "delta": "strict unknown fields"
+    },
+    {
+      "name": "duplicate",
+      "input": "{\"version\":0,\"version\":1,\"public_key\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\",\"private_key\":\"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc\",\"subscriptions\":{\"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE\":{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}}}",
+      "go_valid": true,
+      "rust_valid": false,
+      "delta": "strict duplicate fields"
+    },
+    {
+      "name": "unknown-sub",
+      "input": "{\"version\":1,\"public_key\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\",\"private_key\":\"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc\",\"subscriptions\":{\"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE\":{\"extra\":true,\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}}}",
+      "go_valid": true,
+      "rust_valid": false,
+      "delta": "strict unknown fields"
+    },
+    {
+      "name": "unknown-key",
+      "input": "{\"version\":1,\"public_key\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\",\"private_key\":\"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc\",\"subscriptions\":{\"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE\":{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"extra\":true,\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}}}",
+      "go_valid": true,
+      "rust_valid": false,
+      "delta": "strict unknown fields"
+    },
+    {
+      "name": "duplicate-endpoint",
+      "input": "{\"version\":1,\"public_key\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\",\"private_key\":\"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc\",\"subscriptions\":{\"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE\":{\"endpoint\":\"https://invalid.example/x\",\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}}}",
+      "go_valid": true,
+      "rust_valid": false,
+      "delta": "strict duplicate fields"
+    },
+    {
+      "name": "zero-private",
+      "input": "{\"version\":1,\"public_key\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\",\"private_key\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"subscriptions\":{\"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE\":{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}}}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "large-private",
+      "input": "{\"version\":1,\"public_key\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\",\"private_key\":\"__________________________________________8\",\"subscriptions\":{\"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE\":{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}}}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "short-private",
+      "input": "{\"version\":1,\"public_key\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\",\"private_key\":\"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBw\",\"subscriptions\":{\"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE\":{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}}}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "newline-private",
+      "input": "{\"version\":1,\"public_key\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\",\"private_key\":\"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc\\n\",\"subscriptions\":{\"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE\":{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}}}",
+      "go_valid": true,
+      "rust_valid": false,
+      "delta": "canonical base64"
+    },
+    {
+      "name": "trailing-bits-private",
+      "input": "{\"version\":1,\"public_key\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\",\"private_key\":\"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwd\",\"subscriptions\":{\"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE\":{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}}}",
+      "go_valid": true,
+      "rust_valid": false,
+      "delta": "canonical base64"
+    },
+    {
+      "name": "wrong-public",
+      "input": "{\"version\":1,\"public_key\":\"BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ\",\"private_key\":\"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc\",\"subscriptions\":{\"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE\":{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}}}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "bad-login",
+      "input": "{\"version\":1,\"public_key\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\",\"private_key\":\"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc\",\"subscriptions\":{\"bad\":{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}}}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "null-subscriptions",
+      "input": "{\"version\":1,\"public_key\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\",\"private_key\":\"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc\",\"subscriptions\":null}",
+      "go_valid": true,
+      "rust_valid": true
+    },
+    {
+      "name": "empty-subscriptions",
+      "input": "{\"version\":1,\"public_key\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\",\"private_key\":\"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc\",\"subscriptions\":{}}",
+      "go_valid": true,
+      "rust_valid": true
+    },
+    {
+      "name": "missing-subscriptions",
+      "input": "{\"private_key\":\"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc\",\"public_key\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\",\"version\":1}",
+      "go_valid": true,
+      "rust_valid": true
+    },
+    {
+      "name": "array",
+      "input": "[]",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "null",
+      "input": "null",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "trailing",
+      "input": "{\"version\":1,\"public_key\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\",\"private_key\":\"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc\",\"subscriptions\":{\"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE\":{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}}}{}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "positional-state",
+      "input": "[1,\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\",\"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc\",{\"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE\":{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}}]",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "positional-sub",
+      "input": "{\"version\":1,\"public_key\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\",\"private_key\":\"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc\",\"subscriptions\":{\"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE\":[\"https://web.push.apple.com/synthetic\",{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}]}}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "positional-keys",
+      "input": "{\"version\":1,\"public_key\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\",\"private_key\":\"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc\",\"subscriptions\":{\"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE\":{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":[\"BwcHBwcHBwcHBwcHBwcHBw\",\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"]}}}",
+      "go_valid": false,
+      "rust_valid": false
+    },
+    {
+      "name": "escaped-login",
+      "input": "{\"version\":1,\"public_key\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\",\"private_key\":\"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc\",\"subscriptions\":{\"\\u0041QEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE\":{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}}}",
+      "go_valid": true,
+      "rust_valid": true
+    },
+    {
+      "name": "duplicate-login",
+      "input": "{\"version\":1,\"public_key\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\",\"private_key\":\"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc\",\"subscriptions\":{\"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE\":{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}},\"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE\":{\"endpoint\":\"https://web.push.apple.com/synthetic\",\"keys\":{\"auth\":\"BwcHBwcHBwcHBwcHBwcHBw\",\"p256dh\":\"BB4YUy_UdUwC8wQdnHXOszuD_9gax85P6ILMscmLxYlupGwxHE4v9A3ZajZT5uRURdMt_khuztdcepDGoYiBwKM\"}}}}",
+      "go_valid": true,
+      "rust_valid": false,
+      "delta": "strict duplicate map keys"
+    }
+  ]
+}

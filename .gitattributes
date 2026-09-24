@@ -1,2 +1,2 @@
-# Unified patch context markers and timestamp separators are significant.
-*.patch -whitespace
+# Preserve the upstream license bytes and recognize its CRLF line endings.
+third_party/licenses/quick-xml-LICENSE-MIT.txt -text whitespace=cr-at-eol

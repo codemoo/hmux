@@ -1,0 +1,54 @@
+[workspace]
+members = ["crates/hmux-protocol", "crates/hmux-gateway", "tools/hmux-protocol-gen", "crates/hmux-model", "crates/hmux-home", "crates/hmux-core", "crates/hmux-usage", "crates/hmux-web", "crates/hmux-agent", "crates/hmux-service", "crates/hmux-install", "crates/hmux-platform"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+publish = false
+repository = "https://github.com/codemoo/hmux"
+
+[workspace.dependencies]
+prost = { version = "=0.14.1", default-features = false, features = ["derive", "std"] }
+bytes = "1.10.1"
+base64 = "0.22.1"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = { version = "1.0.140", features = ["raw_value"] }
+
+chrono = { version = "0.4.42", default-features = false, features = ["std", "serde"] }
+hmac = "0.12.1"
+pbkdf2 = "0.12.2"
+sha1 = "0.10.6"
+sha2 = "0.10.9"
+subtle = "2.6.1"
+data-encoding = "2.9.0"
+getrandom = "0.3.4"
+p256 = { version = "=0.13.2", default-features = false, features = ["arithmetic", "std", "ecdh", "ecdsa"] }
+aes-gcm = { version = "=0.10.3", default-features = false, features = ["aes", "alloc"] }
+hkdf = { version = "=0.12.4", default-features = false }
+
+toml = "0.8.23"
+libc = "0.2.174"
+rustix = { version = "1.0.8", features = ["process"] }
+tokio = { version = "1.48.0", default-features = false, features = ["rt", "sync", "time", "macros", "io-util", "net"] }
+tokio-util = { version = "0.7.16", default-features = false, features = ["rt"] }
+tokio-tungstenite = { version = "=0.28.0", default-features = false, features = ["handshake"] }
+futures-util = { version = "0.3.31", default-features = false, features = ["std", "sink", "async-await"] }
+http = "1.3.1"
+http-body-util = "0.1.3"
+hyper = { version = "1.7.0", default-features = false, features = ["server", "client", "http1"] }
+hyper-util = { version = "0.1.17", default-features = false, features = ["tokio"] }
+rustls = { version = "=0.23.45", default-features = false, features = ["ring", "std", "tls12"] }
+tokio-rustls = { version = "=0.26.5", default-features = false, features = ["ring", "tls12"] }
+rustls-native-certs = "=0.8.4"
+pty-process = { version = "=0.5.3", default-features = false, features = ["async"] }
+quick-xml = { version = "=0.41.0", default-features = false }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"

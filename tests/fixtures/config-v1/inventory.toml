@@ -1,0 +1,32 @@
+schema_version = 1
+revision = "synthetic-v1"
+
+[[profiles]]
+id = "codex"
+label = "Codex 한글"
+default_directory = "~/work"
+command = ["codex", "arg with spaces; $(false)"]
+tags = ["ai", "codex"]
+
+[[profiles]]
+id = "shell"
+label = "Shell"
+default_directory = "~/work"
+command = ["sh", "-l"]
+
+[[clients]]
+id = "retired"
+role = "remote"
+hostnames = ["unused.invalid"]
+
+[[identity_refs]]
+id = "retired"
+path = "unused"
+
+[[hosts]]
+id = "retired"
+ssh_alias = "unused"
+address = "unused.invalid"
+user = "unused"
+port = 22
+identity_ref = "retired"

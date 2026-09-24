@@ -1,0 +1,557 @@
+[
+  {
+    "name": "codex-user-hello",
+    "provider": "codex",
+    "line": "{\"payload\":{\"content\":[{\"text\":\"hello\",\"type\":\"input_text\"}],\"role\":\"user\",\"type\":\"message\"},\"type\":\"response_item\"}",
+    "messages": [
+      {
+        "id": "98fcc27da01d8476af19ec94160edfcb",
+        "role": "user",
+        "text": "hello"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "claude-user-hello",
+    "provider": "claude",
+    "line": "{\"message\":{\"content\":\"hello\",\"role\":\"user\"},\"type\":\"user\"}",
+    "messages": [
+      {
+        "id": "98fcc27da01d8476af19ec94160edfcb",
+        "role": "user",
+        "text": "hello"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "codex-user- ",
+    "provider": "codex",
+    "line": "{\"payload\":{\"content\":[{\"text\":\" \",\"type\":\"input_text\"}],\"role\":\"user\",\"type\":\"message\"},\"type\":\"response_item\"}",
+    "messages": [
+      {
+        "id": "ace9364ffc0eb4a45e6fa9f3af482739",
+        "role": "user",
+        "text": " "
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "claude-user- ",
+    "provider": "claude",
+    "line": "{\"message\":{\"content\":\" \",\"role\":\"user\"},\"type\":\"user\"}",
+    "messages": [],
+    "truncated": false
+  },
+  {
+    "name": "codex-user-한글\n\u003cA\u003e\u0026\u2028\u2029\ttext",
+    "provider": "codex",
+    "line": "{\"payload\":{\"content\":[{\"text\":\"한글\\n\\u003cA\\u003e\\u0026\\u2028\\u2029\\ttext\",\"type\":\"input_text\"}],\"role\":\"user\",\"type\":\"message\"},\"type\":\"response_item\"}",
+    "messages": [
+      {
+        "id": "5d56de73b4a09c7a3b749140c74bd7a8",
+        "role": "user",
+        "text": "한글\n\u003cA\u003e\u0026\u2028\u2029\ttext"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "claude-user-한글\n\u003cA\u003e\u0026\u2028\u2029\ttext",
+    "provider": "claude",
+    "line": "{\"message\":{\"content\":\"한글\\n\\u003cA\\u003e\\u0026\\u2028\\u2029\\ttext\",\"role\":\"user\"},\"type\":\"user\"}",
+    "messages": [
+      {
+        "id": "5d56de73b4a09c7a3b749140c74bd7a8",
+        "role": "user",
+        "text": "한글\n\u003cA\u003e\u0026\u2028\u2029\ttext"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "codex-user-| A | B |\n|---|---|",
+    "provider": "codex",
+    "line": "{\"payload\":{\"content\":[{\"text\":\"| A | B |\\n|---|---|\",\"type\":\"input_text\"}],\"role\":\"user\",\"type\":\"message\"},\"type\":\"response_item\"}",
+    "messages": [
+      {
+        "id": "262813825101f6dcdea3b240e755145d",
+        "role": "user",
+        "text": "| A | B |\n|---|---|"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "claude-user-| A | B |\n|---|---|",
+    "provider": "claude",
+    "line": "{\"message\":{\"content\":\"| A | B |\\n|---|---|\",\"role\":\"user\"},\"type\":\"user\"}",
+    "messages": [
+      {
+        "id": "262813825101f6dcdea3b240e755145d",
+        "role": "user",
+        "text": "| A | B |\n|---|---|"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "codex-user- ordinary\nmessage ",
+    "provider": "codex",
+    "line": "{\"payload\":{\"content\":[{\"text\":\" ordinary\\nmessage \",\"type\":\"input_text\"}],\"role\":\"user\",\"type\":\"message\"},\"type\":\"response_item\"}",
+    "messages": [
+      {
+        "id": "d22234cbace0eadd13f57e4689e25421",
+        "role": "user",
+        "text": " ordinary\nmessage "
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "claude-user- ordinary\nmessage ",
+    "provider": "claude",
+    "line": "{\"message\":{\"content\":\" ordinary\\nmessage \",\"role\":\"user\"},\"type\":\"user\"}",
+    "messages": [
+      {
+        "id": "d22234cbace0eadd13f57e4689e25421",
+        "role": "user",
+        "text": " ordinary\nmessage "
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "codex-assistant-hello",
+    "provider": "codex",
+    "line": "{\"payload\":{\"content\":[{\"text\":\"hello\",\"type\":\"output_text\"}],\"role\":\"assistant\",\"type\":\"message\"},\"type\":\"response_item\"}",
+    "messages": [
+      {
+        "id": "cf3713ecdd9063248b9a86d24d20e418",
+        "role": "assistant",
+        "text": "hello"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "claude-assistant-hello",
+    "provider": "claude",
+    "line": "{\"message\":{\"content\":\"hello\",\"role\":\"assistant\"},\"type\":\"assistant\"}",
+    "messages": [
+      {
+        "id": "cf3713ecdd9063248b9a86d24d20e418",
+        "role": "assistant",
+        "text": "hello"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "codex-assistant- ",
+    "provider": "codex",
+    "line": "{\"payload\":{\"content\":[{\"text\":\" \",\"type\":\"output_text\"}],\"role\":\"assistant\",\"type\":\"message\"},\"type\":\"response_item\"}",
+    "messages": [
+      {
+        "id": "9b2a3d515f20332b9d37f7cb73da1a57",
+        "role": "assistant",
+        "text": " "
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "claude-assistant- ",
+    "provider": "claude",
+    "line": "{\"message\":{\"content\":\" \",\"role\":\"assistant\"},\"type\":\"assistant\"}",
+    "messages": [],
+    "truncated": false
+  },
+  {
+    "name": "codex-assistant-한글\n\u003cA\u003e\u0026\u2028\u2029\ttext",
+    "provider": "codex",
+    "line": "{\"payload\":{\"content\":[{\"text\":\"한글\\n\\u003cA\\u003e\\u0026\\u2028\\u2029\\ttext\",\"type\":\"output_text\"}],\"role\":\"assistant\",\"type\":\"message\"},\"type\":\"response_item\"}",
+    "messages": [
+      {
+        "id": "f9226f54dedaf177e9db360439ec752d",
+        "role": "assistant",
+        "text": "한글\n\u003cA\u003e\u0026\u2028\u2029\ttext"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "claude-assistant-한글\n\u003cA\u003e\u0026\u2028\u2029\ttext",
+    "provider": "claude",
+    "line": "{\"message\":{\"content\":\"한글\\n\\u003cA\\u003e\\u0026\\u2028\\u2029\\ttext\",\"role\":\"assistant\"},\"type\":\"assistant\"}",
+    "messages": [
+      {
+        "id": "f9226f54dedaf177e9db360439ec752d",
+        "role": "assistant",
+        "text": "한글\n\u003cA\u003e\u0026\u2028\u2029\ttext"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "codex-assistant-| A | B |\n|---|---|",
+    "provider": "codex",
+    "line": "{\"payload\":{\"content\":[{\"text\":\"| A | B |\\n|---|---|\",\"type\":\"output_text\"}],\"role\":\"assistant\",\"type\":\"message\"},\"type\":\"response_item\"}",
+    "messages": [
+      {
+        "id": "814b4ad171057406953179919e577062",
+        "role": "assistant",
+        "text": "| A | B |\n|---|---|"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "claude-assistant-| A | B |\n|---|---|",
+    "provider": "claude",
+    "line": "{\"message\":{\"content\":\"| A | B |\\n|---|---|\",\"role\":\"assistant\"},\"type\":\"assistant\"}",
+    "messages": [
+      {
+        "id": "814b4ad171057406953179919e577062",
+        "role": "assistant",
+        "text": "| A | B |\n|---|---|"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "codex-assistant- ordinary\nmessage ",
+    "provider": "codex",
+    "line": "{\"payload\":{\"content\":[{\"text\":\" ordinary\\nmessage \",\"type\":\"output_text\"}],\"role\":\"assistant\",\"type\":\"message\"},\"type\":\"response_item\"}",
+    "messages": [
+      {
+        "id": "eb46c133dcf2b33b612cc784c05c3d02",
+        "role": "assistant",
+        "text": " ordinary\nmessage "
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "claude-assistant- ordinary\nmessage ",
+    "provider": "claude",
+    "line": "{\"message\":{\"content\":\" ordinary\\nmessage \",\"role\":\"assistant\"},\"type\":\"assistant\"}",
+    "messages": [
+      {
+        "id": "eb46c133dcf2b33b612cc784c05c3d02",
+        "role": "assistant",
+        "text": " ordinary\nmessage "
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "codex-filter-# AGENTS.md instructions",
+    "provider": "codex",
+    "line": "{\"payload\":{\"content\":[{\"text\":\"# AGENTS.md instructionssynthetic hidden text\",\"type\":\"input_text\"}],\"role\":\"user\",\"type\":\"message\"},\"type\":\"response_item\"}",
+    "messages": [],
+    "truncated": false
+  },
+  {
+    "name": "claude-filter-# AGENTS.md instructions",
+    "provider": "claude",
+    "line": "{\"message\":{\"content\":\"# AGENTS.md instructionssynthetic hidden text\",\"role\":\"user\"},\"type\":\"user\"}",
+    "messages": [],
+    "truncated": false
+  },
+  {
+    "name": "claude-mixed-# AGENTS.md instructions",
+    "provider": "claude",
+    "line": "{\"message\":{\"content\":[{\"text\":\"# AGENTS.md instructionshidden\",\"type\":\"text\"},{\"text\":\"visible\",\"type\":\"text\"}],\"role\":\"user\"},\"type\":\"user\"}",
+    "messages": [
+      {
+        "id": "bc2531cf67e7d27f408ef86dbc22b92f",
+        "role": "user",
+        "text": "visible"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "codex-filter-\u003cenvironment_context\u003e",
+    "provider": "codex",
+    "line": "{\"payload\":{\"content\":[{\"text\":\"\\u003cenvironment_context\\u003esynthetic hidden text\",\"type\":\"input_text\"}],\"role\":\"user\",\"type\":\"message\"},\"type\":\"response_item\"}",
+    "messages": [],
+    "truncated": false
+  },
+  {
+    "name": "claude-filter-\u003cenvironment_context\u003e",
+    "provider": "claude",
+    "line": "{\"message\":{\"content\":\"\\u003cenvironment_context\\u003esynthetic hidden text\",\"role\":\"user\"},\"type\":\"user\"}",
+    "messages": [],
+    "truncated": false
+  },
+  {
+    "name": "claude-mixed-\u003cenvironment_context\u003e",
+    "provider": "claude",
+    "line": "{\"message\":{\"content\":[{\"text\":\"\\u003cenvironment_context\\u003ehidden\",\"type\":\"text\"},{\"text\":\"visible\",\"type\":\"text\"}],\"role\":\"user\"},\"type\":\"user\"}",
+    "messages": [
+      {
+        "id": "75376addcb3cf608fe893c574990185f",
+        "role": "user",
+        "text": "visible"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "codex-filter-\u003ccodex_internal_context",
+    "provider": "codex",
+    "line": "{\"payload\":{\"content\":[{\"text\":\"\\u003ccodex_internal_contextsynthetic hidden text\",\"type\":\"input_text\"}],\"role\":\"user\",\"type\":\"message\"},\"type\":\"response_item\"}",
+    "messages": [],
+    "truncated": false
+  },
+  {
+    "name": "claude-filter-\u003ccodex_internal_context",
+    "provider": "claude",
+    "line": "{\"message\":{\"content\":\"\\u003ccodex_internal_contextsynthetic hidden text\",\"role\":\"user\"},\"type\":\"user\"}",
+    "messages": [],
+    "truncated": false
+  },
+  {
+    "name": "claude-mixed-\u003ccodex_internal_context",
+    "provider": "claude",
+    "line": "{\"message\":{\"content\":[{\"text\":\"\\u003ccodex_internal_contexthidden\",\"type\":\"text\"},{\"text\":\"visible\",\"type\":\"text\"}],\"role\":\"user\"},\"type\":\"user\"}",
+    "messages": [
+      {
+        "id": "09c0b91c79a1a24c6cabab77bb2b2d36",
+        "role": "user",
+        "text": "visible"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "codex-filter-\u003csystem-reminder\u003e",
+    "provider": "codex",
+    "line": "{\"payload\":{\"content\":[{\"text\":\"\\u003csystem-reminder\\u003esynthetic hidden text\",\"type\":\"input_text\"}],\"role\":\"user\",\"type\":\"message\"},\"type\":\"response_item\"}",
+    "messages": [],
+    "truncated": false
+  },
+  {
+    "name": "claude-filter-\u003csystem-reminder\u003e",
+    "provider": "claude",
+    "line": "{\"message\":{\"content\":\"\\u003csystem-reminder\\u003esynthetic hidden text\",\"role\":\"user\"},\"type\":\"user\"}",
+    "messages": [],
+    "truncated": false
+  },
+  {
+    "name": "claude-mixed-\u003csystem-reminder\u003e",
+    "provider": "claude",
+    "line": "{\"message\":{\"content\":[{\"text\":\"\\u003csystem-reminder\\u003ehidden\",\"type\":\"text\"},{\"text\":\"visible\",\"type\":\"text\"}],\"role\":\"user\"},\"type\":\"user\"}",
+    "messages": [
+      {
+        "id": "b1ceca30f088a6d033262f347eb23293",
+        "role": "user",
+        "text": "visible"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "codex-filter-\u003ctask-notification\u003e",
+    "provider": "codex",
+    "line": "{\"payload\":{\"content\":[{\"text\":\"\\u003ctask-notification\\u003esynthetic hidden text\",\"type\":\"input_text\"}],\"role\":\"user\",\"type\":\"message\"},\"type\":\"response_item\"}",
+    "messages": [
+      {
+        "id": "69bc66fd4a50152a1b8445c21fa0faaa",
+        "role": "user",
+        "text": "\u003ctask-notification\u003esynthetic hidden text"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "claude-filter-\u003ctask-notification\u003e",
+    "provider": "claude",
+    "line": "{\"message\":{\"content\":\"\\u003ctask-notification\\u003esynthetic hidden text\",\"role\":\"user\"},\"type\":\"user\"}",
+    "messages": [],
+    "truncated": false
+  },
+  {
+    "name": "claude-mixed-\u003ctask-notification\u003e",
+    "provider": "claude",
+    "line": "{\"message\":{\"content\":[{\"text\":\"\\u003ctask-notification\\u003ehidden\",\"type\":\"text\"},{\"text\":\"visible\",\"type\":\"text\"}],\"role\":\"user\"},\"type\":\"user\"}",
+    "messages": [
+      {
+        "id": "b1ceca30f088a6d033262f347eb23293",
+        "role": "user",
+        "text": "visible"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "codex-filter-This session is being continued from a previous conversation that ran out of context.",
+    "provider": "codex",
+    "line": "{\"payload\":{\"content\":[{\"text\":\"This session is being continued from a previous conversation that ran out of context.synthetic hidden text\",\"type\":\"input_text\"}],\"role\":\"user\",\"type\":\"message\"},\"type\":\"response_item\"}",
+    "messages": [
+      {
+        "id": "6edd7d0cd94e5ecd5ee98abc59202407",
+        "role": "user",
+        "text": "This session is being continued from a previous conversation that ran out of context.synthetic hidden text"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "claude-filter-This session is being continued from a previous conversation that ran out of context.",
+    "provider": "claude",
+    "line": "{\"message\":{\"content\":\"This session is being continued from a previous conversation that ran out of context.synthetic hidden text\",\"role\":\"user\"},\"type\":\"user\"}",
+    "messages": [],
+    "truncated": false
+  },
+  {
+    "name": "claude-mixed-This session is being continued from a previous conversation that ran out of context.",
+    "provider": "claude",
+    "line": "{\"message\":{\"content\":[{\"text\":\"This session is being continued from a previous conversation that ran out of context.hidden\",\"type\":\"text\"},{\"text\":\"visible\",\"type\":\"text\"}],\"role\":\"user\"},\"type\":\"user\"}",
+    "messages": [
+      {
+        "id": "b1ceca30f088a6d033262f347eb23293",
+        "role": "user",
+        "text": "visible"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "codex-channel-analysis",
+    "provider": "codex",
+    "line": "{\"payload\":{\"content\":[{\"text\":\"channel check\",\"type\":\"output_text\"}],\"role\":\"assistant\",\"channel\":\"analysis\",\"type\":\"message\"},\"type\":\"response_item\"}",
+    "messages": [],
+    "truncated": false
+  },
+  {
+    "name": "codex-channel-commentary",
+    "provider": "codex",
+    "line": "{\"payload\":{\"content\":[{\"text\":\"channel check\",\"type\":\"output_text\"}],\"role\":\"assistant\",\"channel\":\"commentary\",\"type\":\"message\"},\"type\":\"response_item\"}",
+    "messages": [
+      {
+        "id": "241165f180098a2c7cc45b638f09d36a",
+        "role": "assistant",
+        "text": "channel check"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "codex-channel-final",
+    "provider": "codex",
+    "line": "{\"payload\":{\"content\":[{\"text\":\"channel check\",\"type\":\"output_text\"}],\"role\":\"assistant\",\"channel\":\"final\",\"type\":\"message\"},\"type\":\"response_item\"}",
+    "messages": [
+      {
+        "id": "65f2b24950a63c8f43fea2149bf01e36",
+        "role": "assistant",
+        "text": "channel check"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "codex-channel-summary",
+    "provider": "codex",
+    "line": "{\"payload\":{\"content\":[{\"text\":\"channel check\",\"type\":\"output_text\"}],\"role\":\"assistant\",\"channel\":\"summary\",\"type\":\"message\"},\"type\":\"response_item\"}",
+    "messages": [],
+    "truncated": false
+  },
+  {
+    "name": "codex-channel-",
+    "provider": "codex",
+    "line": "{\"payload\":{\"content\":[{\"text\":\"channel check\",\"type\":\"output_text\"}],\"role\":\"assistant\",\"channel\":\"\",\"type\":\"message\"},\"type\":\"response_item\"}",
+    "messages": [
+      {
+        "id": "ce856bb222098fcc9c5f5a7d29788a57",
+        "role": "assistant",
+        "text": "channel check"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "claude-parts",
+    "provider": "claude",
+    "line": "{\"message\":{\"content\":[{\"text\":\"hidden\",\"type\":\"thinking\"},{\"text\":\"hidden\",\"type\":\"tool_use\"},{\"text\":\"one\",\"type\":\"text\"},{\"text\":\"two\",\"type\":\"text\"}],\"role\":\"assistant\"},\"type\":\"assistant\"}",
+    "messages": [
+      {
+        "id": "a62bb1062c740ec46a3c86a0e47039bc",
+        "role": "assistant",
+        "text": "one\ntwo"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "claude-isSidechain",
+    "provider": "claude",
+    "line": "{\"isSidechain\":true,\"message\":{\"content\":\"hidden\",\"role\":\"assistant\"},\"type\":\"assistant\"}",
+    "messages": [],
+    "truncated": false
+  },
+  {
+    "name": "claude-isMeta",
+    "provider": "claude",
+    "line": "{\"isMeta\":true,\"message\":{\"content\":\"hidden\",\"role\":\"assistant\"},\"type\":\"assistant\"}",
+    "messages": [],
+    "truncated": false
+  },
+  {
+    "name": "claude-isCompactSummary",
+    "provider": "claude",
+    "line": "{\"isCompactSummary\":true,\"message\":{\"content\":\"hidden\",\"role\":\"assistant\"},\"type\":\"assistant\"}",
+    "messages": [],
+    "truncated": false
+  },
+  {
+    "name": "codex-escaped-role",
+    "provider": "codex",
+    "line": "{\"payload\":{\"content\":[{\"text\":\"escaped\",\"type\":\"input_text\"}],\"role\":\"\\u0075ser\",\"type\":\"message\"},\"type\":\"response_item\"}",
+    "messages": [
+      {
+        "id": "e3b95b6551b892189e184df6f12fba77",
+        "role": "user",
+        "text": "escaped"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "claude-escaped-type",
+    "provider": "claude",
+    "line": "{\"message\":{\"content\":\"escaped\",\"role\":\"\\u0075ser\"},\"type\":\"\\u0075ser\"}",
+    "messages": [
+      {
+        "id": "5ee1c257c189b7a17b199b9341465374",
+        "role": "user",
+        "text": "escaped"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "codex-null-part",
+    "provider": "codex",
+    "line": "{\"type\":\"response_item\",\"payload\":{\"type\":\"message\",\"role\":\"user\",\"content\":[null,{\"type\":\"input_text\",\"text\":\"visible\"}]}}",
+    "messages": [
+      {
+        "id": "bcc2d929c514c81c5956ee0fd67314be",
+        "role": "user",
+        "text": "visible"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "name": "codex-tool-recipient",
+    "provider": "codex",
+    "line": "{\"payload\":{\"content\":[{\"text\":\"hidden\",\"type\":\"output_text\"}],\"role\":\"assistant\",\"recipient\":\"functions.exec\",\"type\":\"message\"},\"type\":\"response_item\"}",
+    "messages": [],
+    "truncated": false
+  }
+]

@@ -1,0 +1,49 @@
+[
+  {
+    "op": "snapshot",
+    "now": "2026-09-23T23:59:50Z"
+  },
+  {
+    "op": "ingest",
+    "now": "2026-09-23T23:59:51Z",
+    "at": "2026-09-23T23:59:51Z",
+    "tokens": 600,
+    "session": "a",
+    "source": "jsonl"
+  },
+  {
+    "op": "ingest",
+    "now": "2026-09-23T23:59:52Z",
+    "at": "2026-09-23T23:59:12Z",
+    "tokens": 200,
+    "session": "b",
+    "source": "hermes"
+  },
+  {
+    "op": "snapshot",
+    "now": "2026-09-23T23:59:55Z"
+  },
+  {
+    "op": "ingest",
+    "now": "2026-09-24T00:00:01Z",
+    "at": "2026-09-23T23:59:52Z",
+    "tokens": 100,
+    "session": "old"
+  },
+  {
+    "op": "ingest",
+    "now": "2026-09-24T00:00:02Z",
+    "at": "2026-09-24T00:00:02Z",
+    "tokens": 3100,
+    "session": "c",
+    "source": "jsonl"
+  },
+  {
+    "op": "snapshot",
+    "now": "2026-09-24T00:01:05Z"
+  },
+  {
+    "op": "snapshot",
+    "now": "2026-09-24T00:02:00Z"
+  }
+]

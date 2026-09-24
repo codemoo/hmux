@@ -1,0 +1,101 @@
+[
+  {
+    "name": "shell",
+    "rows": "1 0 S 0 zsh\n2 1 R+ 2.4 python",
+    "pane": 1,
+    "provider_pid": 0,
+    "status": "unavailable",
+    "candidate_pid": 2,
+    "process": "python",
+    "state": "working",
+    "wrappers": [],
+    "wrapper_status": "unavailable"
+  },
+  {
+    "name": "foreground",
+    "rows": "1 0 S 0 zsh\n2 1 S 0 codex\n3 1 S+ 0 claude",
+    "pane": 1,
+    "provider_pid": 3,
+    "status": "ready",
+    "candidate_pid": 2,
+    "process": "codex",
+    "state": "idle",
+    "wrappers": [],
+    "wrapper_status": "ready"
+  },
+  {
+    "name": "ambiguous",
+    "rows": "1 0 S 0 zsh\n2 1 S+ 0 codex\n3 1 S+ 0 claude",
+    "pane": 1,
+    "provider_pid": 0,
+    "status": "ambiguous",
+    "candidate_pid": 2,
+    "process": "codex",
+    "state": "idle",
+    "wrappers": [],
+    "wrapper_status": "unavailable"
+  },
+  {
+    "name": "nested",
+    "rows": "1 0 S 0 zsh\n2 1 S+ 0 codex\n3 2 R+ 2 claude",
+    "pane": 1,
+    "provider_pid": 2,
+    "status": "ready",
+    "candidate_pid": 2,
+    "process": "codex",
+    "state": "idle",
+    "wrappers": [],
+    "wrapper_status": "ambiguous"
+  },
+  {
+    "name": "wrapper",
+    "rows": "1 0 S 0 zsh\n2 1 S+ 0 codex\n3 2 S 0 node\n4 3 S 0 sh",
+    "pane": 1,
+    "provider_pid": 2,
+    "status": "ready",
+    "candidate_pid": 2,
+    "process": "codex",
+    "state": "idle",
+    "wrappers": [
+      3,
+      4
+    ],
+    "wrapper_status": "ready"
+  },
+  {
+    "name": "wrapper-branch",
+    "rows": "1 0 S 0 zsh\n2 1 S+ 0 codex\n3 2 S 0 node\n4 2 S 0 sh",
+    "pane": 1,
+    "provider_pid": 2,
+    "status": "ready",
+    "candidate_pid": 2,
+    "process": "codex",
+    "state": "idle",
+    "wrappers": [],
+    "wrapper_status": "ambiguous"
+  },
+  {
+    "name": "claude-version",
+    "rows": "1 0 S 0 zsh\n2 1 S+ 0 /synthetic/.local/share/claude/versions/2.1.263",
+    "pane": 1,
+    "provider_pid": 2,
+    "status": "ready",
+    "candidate_pid": 2,
+    "process": "2.1.263",
+    "state": "idle",
+    "wrappers": [],
+    "wrapper_status": "ready"
+  },
+  {
+    "name": "missing",
+    "rows": "1 0 S 0 zsh",
+    "pane": 10,
+    "provider_pid": 0,
+    "status": "unavailable",
+    "candidate_pid": 0,
+    "process": "",
+    "state": "",
+    "wrappers": [],
+    "wrapper_status": "unavailable"
+  }
+]

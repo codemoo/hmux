@@ -1,0 +1,49 @@
+{
+  "home-current": {
+    "inventory_path": "{HOME}/inventory.toml",
+    "role": "home",
+    "schema_version": 1,
+    "state_dir": "{HOME}/state/hmux"
+  },
+  "home-default": {
+    "inventory_path": "{HOME}/.config/hmux/inventory.toml",
+    "role": "home",
+    "schema_version": 1,
+    "state_dir": "{HOME}/.local/state/hmux"
+  },
+  "home-legacy": {
+    "inventory_path": "{HOME}/.config/hmux/inventory.toml",
+    "role": "home",
+    "schema_version": 1,
+    "state_dir": "{HOME}/legacy-state"
+  },
+  "inventory": {
+    "schema_version": 1,
+    "revision": "synthetic-v1",
+    "profiles": [
+      {
+        "id": "codex",
+        "label": "Codex 한글",
+        "default_directory": "~/work",
+        "command": [
+          "codex",
+          "arg with spaces; $(false)"
+        ],
+        "tags": [
+          "ai",
+          "codex"
+        ]
+      },
+      {
+        "id": "shell",
+        "label": "Shell",
+        "default_directory": "~/work",
+        "command": [
+          "sh",
+          "-l"
+        ],
+        "tags": null
+      }
+    ]
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "duplicate": {
+    "input": "{\"schemaVersion\":1,\"accounts\":[{\"number\":1},{\"number\":1}]}",
+    "valid": false,
+    "expected": null
+  },
+  "missing_array": {
+    "input": "{\"schemaVersion\":1}",
+    "valid": false,
+    "expected": null
+  },
+  "missing_time": {
+    "input": "{\"schemaVersion\":1,\"accounts\":[{\"number\":4,\"alias\":\"\",\"email\":\"hidden@example.test\",\"status\":\"rateLimited\",\"fiveHourPct\":0.25}]}",
+    "valid": true,
+    "expected": {
+      "accounts": [
+        {
+          "active": false,
+          "display_name": "Account 4",
+          "email": "",
+          "five_hour": {
+            "used_pct": 0.25,
+            "resets_at": null
+          },
+          "last_refresh_at": null,
+          "number": 4,
+          "plan_type": "",
+          "seven_day": null,
+          "status": "rate_limited",
+          "tokens_per_hour": null,
+          "total_tokens": null
+        }
+      ],
+      "updated_at": "2026-07-03T13:01:00.000Z"
+    }
+  },
+  "normal": {
+    "input": "{\"schemaVersion\":1,\"accountsUpdatedAt\":\"2026-07-03T13:00:00Z\",\"accounts\":[{\"number\":1,\"accountId\":\"synthetic-id\",\"email\":\"private@example.test\",\"alias\":\" Work \",\"displayName\":\"Ignore me\",\"status\":\" active \",\"plan_type\":\"chatgpt_pro\",\"fiveHourPct\":1.5,\"sevenDayPct\":-0.5,\"resetAtPrimary\":\"2026-07-03T15:00:00Z\",\"totalTokens\":123,\"tokensPerHour\":45.6,\"lastRefreshAt\":\"2026-07-03T12:55:00Z\"},{\"number\":2,\"email\":\"hidden@example.test\",\"displayName\":\"Ignore\",\"status\":\"token-expired\",\"planType\":\"unknown\",\"sevenDayPct\":0.92}]}",
+    "valid": true,
+    "expected": {
+      "accounts": [
+        {
+          "active": true,
+          "display_name": "Work",
+          "email": "",
+          "five_hour": {
+            "used_pct": 1,
+            "resets_at": "2026-07-03T15:00:00.000Z"
+          },
+          "last_refresh_at": "2026-07-03T12:55:00.000Z",
+          "number": 1,
+          "plan_type": "pro",
+          "seven_day": {
+            "used_pct": 0,
+            "resets_at": null
+          },
+          "status": "ok",
+          "tokens_per_hour": 45.6,
+          "total_tokens": 123
+        },
+        {
+          "active": false,
+          "display_name": "Account 2",
+          "email": "",
+          "five_hour": null,
+          "last_refresh_at": null,
+          "number": 2,
+          "plan_type": "",
+          "seven_day": {
+            "used_pct": 0.92,
+            "resets_at": null
+          },
+          "status": "reauth_required",
+          "tokens_per_hour": null,
+          "total_tokens": null
+        }
+      ],
+      "updated_at": "2026-07-03T13:00:00.000Z"
+    }
+  },
+  "zero": {
+    "input": "{\"schemaVersion\":1,\"accounts\":[]}",
+    "valid": true,
+    "expected": {
+      "accounts": [],
+      "updated_at": null
+    }
+  }
+}

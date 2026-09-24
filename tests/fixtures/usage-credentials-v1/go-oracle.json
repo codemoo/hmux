@@ -1,0 +1,12 @@
+[
+  {"name":"codex_api_key_first","token":"key-primary","account_id":"","identity":"tk:-primary","digest_hex":"3904636e336a092d068d75345b6c9157fc73338a9ed7f124dc88262fde8a5024"},
+  {"name":"codex_blank_api_key_falls_back","token":"alias-token","account_id":"alias-id","identity":"id:alias-id","digest_hex":"a9ff7a7fd6744357b0fe2506ff2c485c01634948533be02cd72ff6b34bb678c9"},
+  {"name":"codex_snake_first","token":"snake-token","account_id":"snake-id","identity":"id:snake-id","digest_hex":"40b49716dc116e119b4db0d38a1906f8b174309cb49383eebc59f4860679dcc4"},
+  {"name":"codex_blank_snake_alias","token":"camel-token","account_id":"camel-id","identity":"id:camel-id","digest_hex":"b13ec7fd8195a1ad60665b0cc81496321b4fa25eb2864d12fe4c2b43762ba1d1"},
+  {"name":"codex_email_identity","token":"email-token","account_id":"","identity":"em:person@example.test","digest_hex":"c49159c2c9542b558a149d4121b8cfad49d3f3060b8dd50d2d190a1271011da6"},
+  {"name":"codex_token_tail","token":"prefix-12345678","account_id":"","identity":"tk:12345678","digest_hex":"2e3f8e12fb6fb586570a75609bad59f7436cee7c8718276c8ec476d03726f80c"},
+  {"name":"codex_short_token_tail","token":"short","account_id":"","identity":"tk:short","digest_hex":"6c2a9ed0a8099dbbfbea2e79941556c497542f609303c234127616d05e443c52"},
+  {"name":"claude_trim_and_tail","token":"claude-12345678","account_id":"","identity":"tk:12345678","digest_hex":"2e3f8e12fb6fb586570a75609bad59f7436cee7c8718276c8ec476d03726f80c"},
+  {"name":"claude_folded_fields_and_null_scope","token":"CAPS-12345678","account_id":"","identity":"tk:12345678","digest_hex":"2e3f8e12fb6fb586570a75609bad59f7436cee7c8718276c8ec476d03726f80c"},
+  {"name":"codex_wrong_typed_optional_ignored","token":"valid-token","account_id":"fallback-id","identity":"id:fallback-id","digest_hex":"94969fb1d2abdb12ae41ea172f5c19e080a3a18c7c81aefeae1e8f4f0dd261eb"}
+]

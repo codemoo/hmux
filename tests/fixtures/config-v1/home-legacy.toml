@@ -1,0 +1,12 @@
+schema_version = 1
+role = "home"
+client_id = "retired-home"
+dmz_alias = "unused"
+home_alias = "unused"
+agent_path = "ignored; never executed"
+control_path = "unused"
+cache_dir = "unused"
+public_key_path = "unused"
+timeout_seconds = 10
+update_check = false
+state_dir = "~/legacy-state"

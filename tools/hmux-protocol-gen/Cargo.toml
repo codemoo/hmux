@@ -1,0 +1,12 @@
+[package]
+name = "hmux-protocol-gen"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+prost-build = "=0.14.1"
+
+[lints]
+workspace = true

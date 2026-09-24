@@ -1,0 +1,5 @@
+schema_version = 1
+role = "home"
+inventory_path = "~/work/../inventory.toml"
+state_dir = "~/state//hmux"
+update_check = true

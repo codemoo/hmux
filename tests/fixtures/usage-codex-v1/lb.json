@@ -1,0 +1,75 @@
+{
+  "invalid_reset": {
+    "input": "{\"upstream_limits\":[{\"source\":\"aggregate\",\"limit_type\":\"credits\",\"limit_window\":\"5h\",\"max_value\":100,\"current_value\":20,\"remaining_value\":80,\"reset_at\":\"secret-non-time\"}]}",
+    "expected": null,
+    "valid": false
+  },
+  "per_key": {
+    "input": "{\"upstream_limits\":[{\"source\":\"aggregate\",\"limit_type\":\"credits\",\"limit_window\":\"5hours\",\"max_value\":100,\"current_value\":25,\"remaining_value\":75,\"reset_at\":\"2026-07-03T15:00:00Z\"},{\"source\":\"aggregate\",\"limit_type\":\"credits\",\"limit_window\":\"weekly\",\"max_value\":200,\"current_value\":100,\"remaining_value\":100,\"reset_at\":\"1783400000\"},{\"source\":\"per_key\",\"limit_type\":\"credits\",\"limit_window\":\"5h\",\"max_value\":100,\"current_value\":100,\"remaining_value\":0}]}",
+    "expected": {
+      "burn_state": "idle",
+      "generated_at_utc": "2026-07-03T13:01:00.000Z",
+      "provider": "codex",
+      "rolling_5h": {
+        "used_pct": 0.25,
+        "remaining_seconds": 7140,
+        "resets_at": "2026-07-03T15:00:00.000Z"
+      },
+      "rolling_5h_observed": true,
+      "schema": 1,
+      "seq": 7,
+      "status": {
+        "data_source": "api_only",
+        "quota_source": "codex_lb",
+        "stale": false,
+        "state": "ok"
+      },
+      "weekly": {
+        "used_pct": 0.5,
+        "remaining_seconds": 316340,
+        "resets_at": "2026-07-07T04:53:20.000Z"
+      },
+      "weekly_observed": true
+    },
+    "valid": true
+  },
+  "pool_empty": {
+    "input": "{\"upstream_limits\":[{\"source\":\"aggregate\",\"limit_type\":\"credits\",\"limit_window\":\"5h\",\"max_value\":100,\"current_value\":20,\"remaining_value\":80}],\"account_pool_usage\":{}}",
+    "expected": null,
+    "valid": false
+  },
+  "pool_partial": {
+    "input": "{\"upstream_limits\":[{\"source\":\"aggregate\",\"limit_type\":\"credits\",\"limit_window\":\"5h\",\"max_value\":100,\"current_value\":100,\"remaining_value\":0,\"reset_at\":\"2026-07-03T15:00:00Z\"},{\"source\":\"aggregate\",\"limit_type\":\"credits\",\"limit_window\":\"7d\",\"max_value\":100,\"current_value\":50,\"remaining_value\":50}],\"account_pool_usage\":{\"primary\":93}}",
+    "expected": {
+      "burn_state": "idle",
+      "generated_at_utc": "2026-07-03T13:01:00.000Z",
+      "provider": "codex",
+      "rolling_5h": {
+        "used_pct": 0.06999999999999995,
+        "remaining_seconds": 0,
+        "resets_at": null
+      },
+      "rolling_5h_observed": true,
+      "schema": 1,
+      "seq": 7,
+      "status": {
+        "data_source": "api_only",
+        "quota_source": "codex_lb",
+        "stale": false,
+        "state": "ok"
+      },
+      "weekly": {
+        "used_pct": 0,
+        "remaining_seconds": 0,
+        "resets_at": null
+      },
+      "weekly_observed": false
+    },
+    "valid": true
+  },
+  "pool_weekly": {
+    "input": "{\"account_pool_usage\":{\"primary\":0,\"secondary\":120}}",
+    "expected": null,
+    "valid": false
+  }
+}

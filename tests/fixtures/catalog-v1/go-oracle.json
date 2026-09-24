@@ -1,0 +1,150 @@
+[
+  {
+    "name": "empty",
+    "sessions": "",
+    "windows": "",
+    "valid": true,
+    "catalog": {
+      "protocol_version": 1,
+      "generated_at": "2026-09-24T00:00:00Z",
+      "sessions": []
+    }
+  },
+  {
+    "name": "no-windows",
+    "sessions": "$7|:hmux-sep-v1:|코덱\u001b[31m|:hmux-sep-v1:|1700000000|:hmux-sep-v1:|1700000200|:hmux-sep-v1:|0|:hmux-sep-v1:|2|:hmux-sep-v1:||:hmux-sep-v1:|3\n",
+    "windows": "",
+    "valid": true,
+    "catalog": {
+      "protocol_version": 1,
+      "generated_at": "2026-09-24T00:00:00Z",
+      "sessions": [
+        {
+          "id": "$7",
+          "name": "코덱 [31m",
+          "created_at": 1700000000,
+          "activity_at": 1700000200,
+          "attached_clients": 3,
+          "window_count": 2,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": "",
+          "kind": "shell",
+          "runtime": "process",
+          "state": "running",
+          "process": "shell"
+        }
+      ]
+    }
+  },
+  {
+    "name": "grouped-and-sorted",
+    "sessions": "$7|:hmux-sep-v1:|코덱\u001b[31m|:hmux-sep-v1:|1700000000|:hmux-sep-v1:|1700000200|:hmux-sep-v1:|0|:hmux-sep-v1:|2|:hmux-sep-v1:||:hmux-sep-v1:|3\n$8|:hmux-sep-v1:|internal|:hmux-sep-v1:|1700000000|:hmux-sep-v1:|1700000300|:hmux-sep-v1:|1|:hmux-sep-v1:|2|:hmux-sep-v1:|1|:hmux-sep-v1:|3\n$3|:hmux-sep-v1:|shell|:hmux-sep-v1:|1700000001|:hmux-sep-v1:|1700000200|:hmux-sep-v1:|1|:hmux-sep-v1:|1|:hmux-sep-v1:||:hmux-sep-v1:|\n",
+    "windows": "$7|:hmux-sep-v1:|editor|:hmux-sep-v1:|1|:hmux-sep-v1:|/tmp/긴 경로|:hmux-sep-v1:|codex|:hmux-sep-v1:|120|:hmux-sep-v1:|40|:hmux-sep-v1:|123\n$7|:hmux-sep-v1:|logs|:hmux-sep-v1:|0|:hmux-sep-v1:|/tmp|:hmux-sep-v1:|tail|:hmux-sep-v1:|bad|:hmux-sep-v1:|bad|:hmux-sep-v1:|bad\n$8|:hmux-sep-v1:|hidden|:hmux-sep-v1:|1|:hmux-sep-v1:|/tmp|:hmux-sep-v1:|sh|:hmux-sep-v1:|80|:hmux-sep-v1:|24|:hmux-sep-v1:|99\n",
+    "valid": true,
+    "catalog": {
+      "protocol_version": 1,
+      "generated_at": "2026-09-24T00:00:00Z",
+      "sessions": [
+        {
+          "id": "$3",
+          "name": "shell",
+          "created_at": 1700000001,
+          "activity_at": 1700000200,
+          "attached_clients": 1,
+          "window_count": 1,
+          "window_names": null,
+          "active_window": "",
+          "current_path": "",
+          "current_command": "",
+          "kind": "shell",
+          "runtime": "process",
+          "state": "running",
+          "process": "shell"
+        },
+        {
+          "id": "$7",
+          "name": "코덱 [31m",
+          "created_at": 1700000000,
+          "activity_at": 1700000200,
+          "attached_clients": 3,
+          "window_count": 2,
+          "window_names": [
+            "editor",
+            "logs"
+          ],
+          "active_window": "editor",
+          "current_path": "/tmp/긴 경로",
+          "current_command": "codex",
+          "kind": "shell",
+          "runtime": "process",
+          "state": "running",
+          "process": "codex",
+          "width": 120,
+          "height": 40
+        }
+      ]
+    }
+  },
+  {
+    "name": "unavailable-dimensions",
+    "sessions": "$7|:hmux-sep-v1:|코덱\u001b[31m|:hmux-sep-v1:|1700000000|:hmux-sep-v1:|1700000200|:hmux-sep-v1:|0|:hmux-sep-v1:|2|:hmux-sep-v1:||:hmux-sep-v1:|3\n",
+    "windows": "$7|:hmux-sep-v1:|editor|:hmux-sep-v1:|1|:hmux-sep-v1:|/tmp|:hmux-sep-v1:|sh|:hmux-sep-v1:||:hmux-sep-v1:||:hmux-sep-v1:|\n",
+    "valid": true,
+    "catalog": {
+      "protocol_version": 1,
+      "generated_at": "2026-09-24T00:00:00Z",
+      "sessions": [
+        {
+          "id": "$7",
+          "name": "코덱 [31m",
+          "created_at": 1700000000,
+          "activity_at": 1700000200,
+          "attached_clients": 3,
+          "window_count": 2,
+          "window_names": [
+            "editor"
+          ],
+          "active_window": "editor",
+          "current_path": "/tmp",
+          "current_command": "sh",
+          "kind": "shell",
+          "runtime": "process",
+          "state": "running",
+          "process": "sh"
+        }
+      ]
+    }
+  },
+  {
+    "name": "invalid-identity",
+    "sessions": "$7;bad|:hmux-sep-v1:|shell|:hmux-sep-v1:|1|:hmux-sep-v1:|1|:hmux-sep-v1:|0|:hmux-sep-v1:|1|:hmux-sep-v1:||:hmux-sep-v1:|\n",
+    "windows": "",
+    "valid": false
+  },
+  {
+    "name": "duplicate",
+    "sessions": "$7|:hmux-sep-v1:|코덱\u001b[31m|:hmux-sep-v1:|1700000000|:hmux-sep-v1:|1700000200|:hmux-sep-v1:|0|:hmux-sep-v1:|2|:hmux-sep-v1:||:hmux-sep-v1:|3\n$7|:hmux-sep-v1:|코덱\u001b[31m|:hmux-sep-v1:|1700000000|:hmux-sep-v1:|1700000200|:hmux-sep-v1:|0|:hmux-sep-v1:|2|:hmux-sep-v1:||:hmux-sep-v1:|3\n",
+    "windows": "",
+    "valid": false
+  },
+  {
+    "name": "separator-in-path",
+    "sessions": "$7|:hmux-sep-v1:|코덱\u001b[31m|:hmux-sep-v1:|1700000000|:hmux-sep-v1:|1700000200|:hmux-sep-v1:|0|:hmux-sep-v1:|2|:hmux-sep-v1:||:hmux-sep-v1:|3\n",
+    "windows": "$7|:hmux-sep-v1:|editor|:hmux-sep-v1:|1|:hmux-sep-v1:|/tmp/|:hmux-sep-v1:||:hmux-sep-v1:|sh|:hmux-sep-v1:|80|:hmux-sep-v1:|24|:hmux-sep-v1:|123\n",
+    "valid": false
+  },
+  {
+    "name": "invalid-active-dimension",
+    "sessions": "$7|:hmux-sep-v1:|코덱\u001b[31m|:hmux-sep-v1:|1700000000|:hmux-sep-v1:|1700000200|:hmux-sep-v1:|0|:hmux-sep-v1:|2|:hmux-sep-v1:||:hmux-sep-v1:|3\n",
+    "windows": "$7|:hmux-sep-v1:|editor|:hmux-sep-v1:|1|:hmux-sep-v1:|/tmp|:hmux-sep-v1:|sh|:hmux-sep-v1:|100001|:hmux-sep-v1:|24|:hmux-sep-v1:|123\n",
+    "valid": false
+  },
+  {
+    "name": "invalid-group-count",
+    "sessions": "$7|:hmux-sep-v1:|shell|:hmux-sep-v1:|1|:hmux-sep-v1:|1|:hmux-sep-v1:|0|:hmux-sep-v1:|1|:hmux-sep-v1:||:hmux-sep-v1:|10001\n",
+    "windows": "",
+    "valid": false
+  }
+]

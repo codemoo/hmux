@@ -1,0 +1,303 @@
+syntax = "proto3";
+package hmux.v2;
+
+// One Envelope per binary WS message. Authentication is the existing HTTPS
+// upgrade; this message never carries passwords, tokens or account authority.
+// IDs are gateway-owned and scoped to the current connection generation.
+message Envelope {
+  uint32 version = 1;
+  oneof body {
+    Hello hello = 10;
+    Request request = 11;
+    Response response = 12;
+    TerminalOpen terminal_open = 13;
+    Data terminal_input = 14;
+    Data terminal_output = 15;
+    Resize resize = 16;
+    Reference close = 17;
+    Reference cancel = 18;
+    Ack output_ack = 19;
+    Response terminal_exit = 20;
+    Reference refresh = 21;
+    Response refresh_result = 22;
+    CatalogSnapshot catalog = 35;
+    UsageSnapshot usage = 36;
+    Empty usage_unavailable = 25;
+    Completion task_complete = 26;
+    UploadStart upload_start = 27;
+    Data upload_data = 28;
+    Reference upload_finish = 29;
+    Reference upload_cancel = 30;
+    Reference upload_ready = 31;
+    Ack upload_ack = 32;
+    Response upload_complete = 33;
+    Response upload_error = 34;
+  }
+  reserved 2 to 9, 23, 24; // Retired JSON snapshot bodies; never reuse these tags.
+}
+message Empty {}
+message Session { string id = 1; int64 created_at = 2; }
+message Hello { repeated string capabilities = 1; }
+message Reference { string id = 1; }
+message Data { string id = 1; bytes data = 2; }
+message Ack { string id = 1; int64 received = 2; }
+message Resize { string id = 1; uint32 cols = 2; uint32 rows = 3; }
+message TerminalOpen {
+  string id = 1;
+  Session session = 2;
+  uint32 cols = 3;
+  uint32 rows = 4;
+  repeated string capabilities = 5;
+}
+// Action bodies are typed on this subprotocol. JSON v1 remains a separate
+// rolling-upgrade transport; retired opaque fields must never be reused.
+message Request {
+  string id = 1;
+  Operation operation = 2;
+  Session session = 3;
+  reserved 4;
+  reserved "payload_json";
+  oneof payload {
+    Empty empty = 10;
+    CreateRequest create = 11;
+    AliasRequest alias = 12;
+    HiddenRequest hidden = 13;
+    WorkspaceRequest workspace = 14;
+    ProviderKeyRequest provider_key = 15;
+    ProviderJobRequest provider_job = 16;
+  }
+}
+enum Operation {
+  OPERATION_UNSPECIFIED = 0;
+  PROFILES = 1;
+  CREATE = 2;
+  ALIAS = 3;
+  HIDDEN = 4;
+  CONVERSATION = 5;
+  WORKSPACE = 6;
+  PROVIDERS = 7;
+  PROVIDER_KEY = 8;
+  PROVIDER_JOB_START = 9;
+  PROVIDER_JOB = 10;
+  PROVIDER_JOB_INPUT = 11;
+  PROVIDER_JOB_CANCEL = 12;
+}
+message Response {
+  string id = 1;
+  reserved 2;
+  reserved "payload_json";
+  string error = 3;
+  oneof result {
+    ProfilesResult profiles = 10;
+    CreatedResult created = 11;
+    Empty ok = 12;
+    ConversationResult conversation = 13;
+    WorkspaceSnapshot workspace = 14;
+    ProviderResult providers = 15;
+    StageResult staged = 16;
+  }
+}
+message CreateRequest { optional string profile = 1; optional string name = 2; }
+message AliasRequest { optional string alias = 1; }
+message HiddenRequest { bool hidden = 1; }
+message WorkspaceRequest { WorkspaceChange change = 1; }
+message WorkspaceChange {
+  string operation_id = 1;
+  uint64 revision = 2;
+  repeated Session base = 3;
+  repeated Session tabs = 4;
+  Session selected = 5;
+}
+message ProviderKeyRequest { string provider = 1; string key = 2; }
+message ProviderJobRequest { string provider = 1; string action = 2; string text = 3; }
+message Profile { string id = 1; string label = 2; }
+message ProfilesResult { repeated Profile items = 1; }
+message CreatedResult { string id = 1; int64 created_at = 2; bool reused = 3; }
+message ConversationResult {
+  string provider = 1;
+  string session_id = 2;
+  int64 created_at = 3;
+  string status = 4;
+  ConversationMessages messages = 5;
+  bool truncated = 6;
+}
+message ConversationMessages { repeated ConversationMessage items = 1; }
+message ConversationMessage { string id = 1; string role = 2; string text = 3; }
+message WorkspaceSnapshot {
+  string conflict = 1;
+  repeated string applied = 2;
+  int64 version = 3;
+  bool initialized = 4;
+  uint64 revision = 5;
+  repeated Session tabs = 6;
+  Session selected = 7;
+}
+message ProviderResult {
+  ProviderStatuses providers = 1;
+  ProviderJobStatus job = 2;
+  optional string error = 3;
+}
+message ProviderStatuses { repeated ProviderStatus items = 1; }
+message ProviderStatus {
+  string id = 1; string label = 2; bool installed = 3; string auth = 4;
+  bool profile = 5; string version = 6; string key_hint = 7; string profile_id = 8;
+}
+message ProviderJobStatus {
+  string state = 1; string url = 2; string code = 3;
+  bool needs_input = 4; repeated string log = 5;
+}
+message StageResult {
+  uint32 protocol_version = 1; string request_id = 2; string stage_id = 3;
+  Session session = 4; int64 expires_at_unix = 5;
+  repeated StageFile files = 6;
+}
+message StageFile { uint32 index = 1; string path = 2; int64 size = 3; string sha256 = 4; }
+message JsonSnapshot { reserved 1; reserved "payload_json"; }
+message Usage { reserved 1, 2; reserved "provider", "snapshot_json"; }
+enum Provider { PROVIDER_UNSPECIFIED = 0; CLAUDE = 1; CODEX = 2; }
+message Completion { string id = 1; Session session = 2; string completed_at = 3; }
+message UploadStart { string id = 1; UploadHeader header = 2; }
+message UploadHeader {
+  uint32 protocol_version = 1;
+  string request_id = 2;
+  Session session = 3;
+  uint32 file_count = 4;
+  int64 total_bytes = 5;
+  repeated FileHeader files = 6;
+}
+message FileHeader { uint32 index = 1; int64 size = 2; string extension = 3; }
+
+// Typed, bounded catalog payload. A wrapper retains absent versus present-empty lists.
+message CatalogSnapshot {
+  int64 protocol_version = 1;
+  string generated_at = 2;
+  CatalogSessions sessions = 3;
+  CatalogHostMetrics host_metrics = 4;
+}
+message CatalogSessions { repeated CatalogSession items = 1; }
+message CatalogStrings { repeated string items = 1; }
+message CatalogWorkflows { repeated CatalogWorkflow items = 1; }
+message CatalogWorkflowNodes { repeated CatalogWorkflowNode items = 1; }
+message CatalogHostMetrics {
+  string observed_at = 1;
+  optional double cpu_percent = 2;
+  optional double gpu_percent = 3;
+  optional uint64 memory_used_bytes = 4;
+  optional uint64 memory_total_bytes = 5;
+  optional uint64 disk_used_bytes = 6;
+  optional uint64 disk_total_bytes = 7;
+}
+message CatalogSession {
+  Session identity = 1;
+  string name = 2;
+  string alias = 3;
+  bool hidden = 4;
+  Session restored_from = 5;
+  int64 activity_at = 6;
+  int64 attached_clients = 7;
+  int64 window_count = 8;
+  CatalogStrings window_names = 9;
+  string active_window = 10;
+  string current_path = 11;
+  string current_command = 12;
+  string profile = 13;
+  string label = 14;
+  CatalogStrings tags = 15;
+  string kind = 16;
+  string runtime = 17;
+  string model = 18;
+  string state = 19;
+  string process = 20;
+  int64 working_since = 21;
+  int64 width = 22;
+  int64 height = 23;
+  CatalogWorkflowSummary workflow = 24;
+  CatalogWorkflows workflows = 25;
+}
+message CatalogWorkflowSummary {
+  int64 running = 1;
+  int64 waiting_approval = 2;
+  int64 waiting_input = 3;
+  int64 completed = 4;
+  int64 failed = 5;
+  int64 interrupted = 6;
+  int64 stale = 7;
+  int64 updated_at = 8;
+}
+message CatalogWorkflow {
+  string id = 1;
+  string source = 2;
+  string session_id = 3;
+  string turn_id = 4;
+  string status = 5;
+  string model = 6;
+  int64 started_at = 7;
+  int64 updated_at = 8;
+  int64 ended_at = 9;
+  CatalogWorkflowNodes nodes = 10;
+}
+message CatalogWorkflowNode {
+  string id = 1;
+  string parent_id = 2;
+  string node_type = 3;
+  string provider = 4;
+  string status = 5;
+  int64 started_at = 6;
+  int64 updated_at = 7;
+  int64 ended_at = 8;
+}
+
+// Usage sources may contain a child snapshot, but that child cannot contain sources.
+message UsageSnapshot {
+  int64 schema = 1;
+  int64 seq = 2;
+  string generated_at_utc = 3;
+  Provider provider = 4;
+  string plan_type = 5;
+  double burn_rate_per_min = 6;
+  string burn_state = 7;
+  int64 today_total_tokens = 8;
+  int64 today_sessions = 9;
+  UsageWindow rolling_5h = 10;
+  UsageWindow weekly = 11;
+  bool rolling_5h_observed = 12;
+  bool weekly_observed = 13;
+  UsageStatus status = 14;
+  repeated UsageAccount accounts = 15;
+  optional string accounts_updated_at = 16;
+  repeated UsageSource sources = 17;
+}
+message UsageWindow {
+  double used_pct = 1;
+  int64 remaining_seconds = 2;
+  optional string resets_at = 3;
+}
+message UsageAccountWindow {
+  double used_pct = 1;
+  optional string resets_at = 2;
+}
+message UsageStatus {
+  string state = 1;
+  string data_source = 2;
+  string quota_source = 3;
+  bool stale = 4;
+  optional string quota_observed_at = 5;
+  optional string retry_at = 6;
+}
+message UsageAccount {
+  int64 number = 1;
+  string email = 2;
+  string display_name = 3;
+  bool active = 4;
+  string status = 5;
+  UsageAccountWindow five_hour = 6;
+  UsageAccountWindow seven_day = 7;
+  optional double tokens_per_hour = 8;
+  optional int64 total_tokens = 9;
+  optional string last_refresh_at = 10;
+  string plan_type = 11;
+}
+message UsageSource {
+  string name = 1;
+  UsageSnapshot snapshot = 2;
+}

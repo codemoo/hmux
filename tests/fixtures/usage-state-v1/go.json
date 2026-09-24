@@ -1,0 +1,33 @@
+{
+  "claude_malformed": "quotaEndpointChanged",
+  "claude_missing": "authExpired",
+  "claude_unauthorized": "authExpired",
+  "codex_malformed": "quotaEndpointChanged",
+  "codex_missing": "codexLoggedOut",
+  "codex_unauthorized": "codexLoggedOut",
+  "collapsed_retry": null,
+  "delay_seconds": [
+    2307,
+    300,
+    86400
+  ],
+  "expired_network": {
+    "state": "networkError",
+    "stale": true,
+    "retry_at": null,
+    "quota_observed_at": null
+  },
+  "rate_limited": {
+    "state": "rateLimited",
+    "stale": true,
+    "retry_at": "2026-09-08T04:43:33.123Z",
+    "quota_observed_at": null
+  },
+  "sticky_network": {
+    "state": "ok",
+    "stale": true,
+    "retry_at": null,
+    "quota_observed_at": "2026-09-08T04:05:06.123Z"
+  },
+  "visible_retry": "2026-09-08T04:05:06.124Z"
+}

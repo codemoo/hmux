@@ -1,0 +1,80 @@
+[
+  {
+    "rate": 0,
+    "state": "idle",
+    "total": 0,
+    "sessions": 0,
+    "observed": false,
+    "sources": []
+  },
+  {
+    "rate": 600,
+    "state": "walk",
+    "total": 600,
+    "sessions": 1,
+    "observed": true,
+    "sources": [
+      "jsonl"
+    ]
+  },
+  {
+    "rate": 800,
+    "state": "walk",
+    "total": 800,
+    "sessions": 2,
+    "observed": true,
+    "sources": [
+      "hermes",
+      "jsonl"
+    ]
+  },
+  {
+    "rate": 800,
+    "state": "walk",
+    "total": 800,
+    "sessions": 2,
+    "observed": true,
+    "sources": [
+      "hermes",
+      "jsonl"
+    ]
+  },
+  {
+    "rate": 900,
+    "state": "walk",
+    "total": 0,
+    "sessions": 0,
+    "observed": true,
+    "sources": []
+  },
+  {
+    "rate": 4000,
+    "state": "jog",
+    "total": 3100,
+    "sessions": 1,
+    "observed": true,
+    "sources": [
+      "jsonl"
+    ]
+  },
+  {
+    "rate": 17.605975863542433,
+    "state": "idle",
+    "total": 3100,
+    "sessions": 1,
+    "observed": true,
+    "sources": [
+      "jsonl"
+    ]
+  },
+  {
+    "rate": 1.1255123814131842,
+    "state": "idle",
+    "total": 3100,
+    "sessions": 1,
+    "observed": true,
+    "sources": [
+      "jsonl"
+    ]
+  }
+]

@@ -1,0 +1,488 @@
+[
+  {
+    "name": "claude-both",
+    "provider": "claude",
+    "raw": "{\"five_hour\":{\"utilization\":25,\"resets_at\":\"2026-09-24T05:00:00Z\"},\"seven_day\":{\"utilization\":60}}",
+    "want": {
+      "burn_rate_per_min": 0,
+      "burn_state": "idle",
+      "generated_at_utc": "2026-09-24T00:00:00.000Z",
+      "provider": "claude",
+      "rolling_5h": {
+        "remaining_seconds": 18000,
+        "resets_at": "2026-09-24T05:00:00Z",
+        "used_pct": 0.25
+      },
+      "rolling_5h_observed": true,
+      "schema": 1,
+      "seq": 9,
+      "status": {
+        "data_source": "api_only",
+        "quota_observed_at": "2026-09-24T00:00:00.000Z",
+        "quota_source": "oauth_api",
+        "stale": false,
+        "state": "ok"
+      },
+      "today_sessions": 0,
+      "today_total_tokens": 0,
+      "weekly": {
+        "remaining_seconds": 0,
+        "resets_at": null,
+        "used_pct": 0.6
+      },
+      "weekly_observed": true
+    }
+  },
+  {
+    "name": "claude-weekly-only",
+    "provider": "claude",
+    "raw": "{\"seven_day\":{\"utilization\":0},\"extra_rate_windows\":[{\"private\":\"synthetic\"}]}",
+    "want": {
+      "burn_rate_per_min": 0,
+      "burn_state": "idle",
+      "generated_at_utc": "2026-09-24T00:00:00.000Z",
+      "provider": "claude",
+      "rolling_5h": {
+        "remaining_seconds": 0,
+        "resets_at": null,
+        "used_pct": 0
+      },
+      "rolling_5h_observed": false,
+      "schema": 1,
+      "seq": 9,
+      "status": {
+        "data_source": "api_only",
+        "quota_observed_at": "2026-09-24T00:00:00.000Z",
+        "quota_source": "oauth_api",
+        "stale": false,
+        "state": "ok"
+      },
+      "today_sessions": 0,
+      "today_total_tokens": 0,
+      "weekly": {
+        "remaining_seconds": 0,
+        "resets_at": null,
+        "used_pct": 0
+      },
+      "weekly_observed": true
+    }
+  },
+  {
+    "name": "claude-empty",
+    "provider": "claude",
+    "raw": "{}",
+    "want": null
+  },
+  {
+    "name": "claude-missing-pct",
+    "provider": "claude",
+    "raw": "{\"five_hour\":{}}",
+    "want": null
+  },
+  {
+    "name": "claude-string-pct",
+    "provider": "claude",
+    "raw": "{\"five_hour\":{\"utilization\":\"25\"}}",
+    "want": null
+  },
+  {
+    "name": "claude-negative",
+    "provider": "claude",
+    "raw": "{\"five_hour\":{\"utilization\":-1}}",
+    "want": null
+  },
+  {
+    "name": "claude-over",
+    "provider": "claude",
+    "raw": "{\"five_hour\":{\"utilization\":101}}",
+    "want": null
+  },
+  {
+    "name": "claude-bad-sonnet",
+    "provider": "claude",
+    "raw": "{\"five_hour\":{\"utilization\":10},\"seven_day_sonnet\":{\"utilization\":101}}",
+    "want": null
+  },
+  {
+    "name": "claude-empty-reset",
+    "provider": "claude",
+    "raw": "{\"five_hour\":{\"utilization\":10,\"resets_at\":\"\"}}",
+    "want": null
+  },
+  {
+    "name": "claude-trim-reset",
+    "provider": "claude",
+    "raw": "{\"five_hour\":{\"utilization\":100,\"resets_at\":\" 2026-09-24T00:00:00Z \"}}",
+    "want": {
+      "burn_rate_per_min": 0,
+      "burn_state": "idle",
+      "generated_at_utc": "2026-09-24T00:00:00.000Z",
+      "provider": "claude",
+      "rolling_5h": {
+        "remaining_seconds": 0,
+        "resets_at": "2026-09-24T00:00:00Z",
+        "used_pct": 1
+      },
+      "rolling_5h_observed": true,
+      "schema": 1,
+      "seq": 9,
+      "status": {
+        "data_source": "api_only",
+        "quota_observed_at": "2026-09-24T00:00:00.000Z",
+        "quota_source": "oauth_api",
+        "stale": false,
+        "state": "ok"
+      },
+      "today_sessions": 0,
+      "today_total_tokens": 0,
+      "weekly": {
+        "remaining_seconds": 0,
+        "resets_at": null,
+        "used_pct": 0
+      },
+      "weekly_observed": false
+    }
+  },
+  {
+    "name": "claude-extra-type",
+    "provider": "claude",
+    "raw": "{\"five_hour\":{\"utilization\":10},\"extra_rate_windows\":{}}",
+    "want": null
+  },
+  {
+    "name": "claude-zero-time",
+    "provider": "claude",
+    "raw": "{\"five_hour\":{\"utilization\":10,\"resets_at\":\"0001-01-01T00:00:00Z\"}}",
+    "want": null
+  },
+  {
+    "name": "codex-nested",
+    "provider": "codex",
+    "raw": "{\"plan_type\":\"ChatGPT_Pro\",\"rate_limit\":{\"primary_window\":{\"used_percent\":\"12.5\",\"reset_at\":1790229600},\"secondary_window\":{\"usedPercent\":100}}}",
+    "want": {
+      "burn_rate_per_min": 0,
+      "burn_state": "idle",
+      "generated_at_utc": "2026-09-24T00:00:00.000Z",
+      "plan_type": "pro",
+      "provider": "codex",
+      "rolling_5h": {
+        "remaining_seconds": 21600,
+        "resets_at": "2026-09-24T06:00:00.000Z",
+        "used_pct": 0.125
+      },
+      "rolling_5h_observed": true,
+      "schema": 1,
+      "seq": 9,
+      "status": {
+        "data_source": "api_only",
+        "quota_observed_at": "2026-09-24T00:00:00.000Z",
+        "quota_source": "oauth_api",
+        "stale": false,
+        "state": "ok"
+      },
+      "today_sessions": 0,
+      "today_total_tokens": 0,
+      "weekly": {
+        "remaining_seconds": 0,
+        "resets_at": null,
+        "used_pct": 1
+      },
+      "weekly_observed": true
+    }
+  },
+  {
+    "name": "codex-primary-wins",
+    "provider": "codex",
+    "raw": "{\"primary\":{\"usedPercent\":0,\"used_percent\":80},\"rate_limit\":{\"primary_window\":{\"used_percent\":99}},\"credits\":{\"remaining\":5},\"accountEmail\":\"synthetic@example.invalid\"}",
+    "want": {
+      "burn_rate_per_min": 0,
+      "burn_state": "idle",
+      "generated_at_utc": "2026-09-24T00:00:00.000Z",
+      "provider": "codex",
+      "rolling_5h": {
+        "remaining_seconds": 0,
+        "resets_at": null,
+        "used_pct": 0
+      },
+      "rolling_5h_observed": true,
+      "schema": 1,
+      "seq": 9,
+      "status": {
+        "data_source": "api_only",
+        "quota_observed_at": "2026-09-24T00:00:00.000Z",
+        "quota_source": "oauth_api",
+        "stale": false,
+        "state": "ok"
+      },
+      "today_sessions": 0,
+      "today_total_tokens": 0,
+      "weekly": {
+        "remaining_seconds": 0,
+        "resets_at": null,
+        "used_pct": 0
+      },
+      "weekly_observed": false
+    }
+  },
+  {
+    "name": "codex-weekly-only",
+    "provider": "codex",
+    "raw": "{\"plan_type\":\"plus\",\"secondary\":{\"usedPercent\":44.25,\"resetsAt\":\"2026-09-25T09:00:00+09:00\"}}",
+    "want": {
+      "burn_rate_per_min": 0,
+      "burn_state": "idle",
+      "generated_at_utc": "2026-09-24T00:00:00.000Z",
+      "plan_type": "plus",
+      "provider": "codex",
+      "rolling_5h": {
+        "remaining_seconds": 0,
+        "resets_at": null,
+        "used_pct": 0
+      },
+      "rolling_5h_observed": false,
+      "schema": 1,
+      "seq": 9,
+      "status": {
+        "data_source": "api_only",
+        "quota_observed_at": "2026-09-24T00:00:00.000Z",
+        "quota_source": "oauth_api",
+        "stale": false,
+        "state": "ok"
+      },
+      "today_sessions": 0,
+      "today_total_tokens": 0,
+      "weekly": {
+        "remaining_seconds": 86400,
+        "resets_at": "2026-09-25T00:00:00.000Z",
+        "used_pct": 0.4425
+      },
+      "weekly_observed": true
+    }
+  },
+  {
+    "name": "codex-empty-reset",
+    "provider": "codex",
+    "raw": "{\"primary\":{\"usedPercent\":1,\"resetsAt\":\"\"}}",
+    "want": {
+      "burn_rate_per_min": 0,
+      "burn_state": "idle",
+      "generated_at_utc": "2026-09-24T00:00:00.000Z",
+      "provider": "codex",
+      "rolling_5h": {
+        "remaining_seconds": 0,
+        "resets_at": null,
+        "used_pct": 0.01
+      },
+      "rolling_5h_observed": true,
+      "schema": 1,
+      "seq": 9,
+      "status": {
+        "data_source": "api_only",
+        "quota_observed_at": "2026-09-24T00:00:00.000Z",
+        "quota_source": "oauth_api",
+        "stale": false,
+        "state": "ok"
+      },
+      "today_sessions": 0,
+      "today_total_tokens": 0,
+      "weekly": {
+        "remaining_seconds": 0,
+        "resets_at": null,
+        "used_pct": 0
+      },
+      "weekly_observed": false
+    }
+  },
+  {
+    "name": "codex-number-string-epoch",
+    "provider": "codex",
+    "raw": "{\"primary\":{\"usedPercent\":1,\"reset_at\":\"1790229600\"}}",
+    "want": {
+      "burn_rate_per_min": 0,
+      "burn_state": "idle",
+      "generated_at_utc": "2026-09-24T00:00:00.000Z",
+      "provider": "codex",
+      "rolling_5h": {
+        "remaining_seconds": 21600,
+        "resets_at": "2026-09-24T06:00:00.000Z",
+        "used_pct": 0.01
+      },
+      "rolling_5h_observed": true,
+      "schema": 1,
+      "seq": 9,
+      "status": {
+        "data_source": "api_only",
+        "quota_observed_at": "2026-09-24T00:00:00.000Z",
+        "quota_source": "oauth_api",
+        "stale": false,
+        "state": "ok"
+      },
+      "today_sessions": 0,
+      "today_total_tokens": 0,
+      "weekly": {
+        "remaining_seconds": 0,
+        "resets_at": null,
+        "used_pct": 0
+      },
+      "weekly_observed": false
+    }
+  },
+  {
+    "name": "codex-reset-precedence",
+    "provider": "codex",
+    "raw": "{\"primary\":{\"usedPercent\":1,\"reset_at\":1790229600,\"resetsAt\":\"2026-09-23T00:00:00Z\"}}",
+    "want": {
+      "burn_rate_per_min": 0,
+      "burn_state": "idle",
+      "generated_at_utc": "2026-09-24T00:00:00.000Z",
+      "provider": "codex",
+      "rolling_5h": {
+        "remaining_seconds": 0,
+        "resets_at": "2026-09-23T00:00:00.000Z",
+        "used_pct": 0.01
+      },
+      "rolling_5h_observed": true,
+      "schema": 1,
+      "seq": 9,
+      "status": {
+        "data_source": "api_only",
+        "quota_observed_at": "2026-09-24T00:00:00.000Z",
+        "quota_source": "oauth_api",
+        "stale": false,
+        "state": "ok"
+      },
+      "today_sessions": 0,
+      "today_total_tokens": 0,
+      "weekly": {
+        "remaining_seconds": 0,
+        "resets_at": null,
+        "used_pct": 0
+      },
+      "weekly_observed": false
+    }
+  },
+  {
+    "name": "codex-malformed-flex-fallback",
+    "provider": "codex",
+    "raw": "{\"primary\":{\"usedPercent\":{},\"used_percent\":35,\"windowMinutes\":[],\"limit_window_seconds\":true}}",
+    "want": {
+      "burn_rate_per_min": 0,
+      "burn_state": "idle",
+      "generated_at_utc": "2026-09-24T00:00:00.000Z",
+      "provider": "codex",
+      "rolling_5h": {
+        "remaining_seconds": 0,
+        "resets_at": null,
+        "used_pct": 0.35
+      },
+      "rolling_5h_observed": true,
+      "schema": 1,
+      "seq": 9,
+      "status": {
+        "data_source": "api_only",
+        "quota_observed_at": "2026-09-24T00:00:00.000Z",
+        "quota_source": "oauth_api",
+        "stale": false,
+        "state": "ok"
+      },
+      "today_sessions": 0,
+      "today_total_tokens": 0,
+      "weekly": {
+        "remaining_seconds": 0,
+        "resets_at": null,
+        "used_pct": 0
+      },
+      "weekly_observed": false
+    }
+  },
+  {
+    "name": "codex-empty",
+    "provider": "codex",
+    "raw": "{}",
+    "want": null
+  },
+  {
+    "name": "codex-missing-pct",
+    "provider": "codex",
+    "raw": "{\"primary\":{}}",
+    "want": null
+  },
+  {
+    "name": "codex-negative",
+    "provider": "codex",
+    "raw": "{\"primary\":{\"used_percent\":-1}}",
+    "want": null
+  },
+  {
+    "name": "codex-nonfinite",
+    "provider": "codex",
+    "raw": "{\"primary\":{\"used_percent\":\"NaN\"}}",
+    "want": null
+  },
+  {
+    "name": "codex-overflow",
+    "provider": "codex",
+    "raw": "{\"primary\":{\"used_percent\":\"1e999\"}}",
+    "want": null
+  },
+  {
+    "name": "codex-bad-tertiary",
+    "provider": "codex",
+    "raw": "{\"primary\":{\"used_percent\":1},\"tertiary\":{\"used_percent\":101}}",
+    "want": null
+  },
+  {
+    "name": "codex-bad-ignored-alias",
+    "provider": "codex",
+    "raw": "{\"primary\":{\"usedPercent\":0,\"used_percent\":\"NaN\"}}",
+    "want": null
+  },
+  {
+    "name": "codex-bad-credits",
+    "provider": "codex",
+    "raw": "{\"primary\":{\"usedPercent\":0},\"credits\":{\"balance\":\"NaN\"}}",
+    "want": null
+  },
+  {
+    "name": "codex-bad-unused-window-int",
+    "provider": "codex",
+    "raw": "{\"primary\":{\"usedPercent\":0},\"rate_limit\":{\"primary_window\":{\"windowMinutes\":\"NaN\"}}}",
+    "want": null
+  },
+  {
+    "name": "codex-fraction-reset",
+    "provider": "codex",
+    "raw": "{\"primary\":{\"usedPercent\":0,\"reset_at\":123.4}}",
+    "want": null
+  },
+  {
+    "name": "codex-negative-reset",
+    "provider": "codex",
+    "raw": "{\"primary\":{\"usedPercent\":0,\"reset_at\":-1}}",
+    "want": null
+  },
+  {
+    "name": "codex-zero-reset",
+    "provider": "codex",
+    "raw": "{\"primary\":{\"usedPercent\":0,\"reset_at\":0}}",
+    "want": null
+  },
+  {
+    "name": "codex-blank-epoch",
+    "provider": "codex",
+    "raw": "{\"primary\":{\"usedPercent\":0,\"reset_at\":\"\"}}",
+    "want": null
+  },
+  {
+    "name": "codex-bad-unselected-reset-type",
+    "provider": "codex",
+    "raw": "{\"primary\":{\"usedPercent\":0},\"rate_limit\":{\"primary_window\":{\"reset_at\":{}}}}",
+    "want": null
+  },
+  {
+    "name": "codex-trailing",
+    "provider": "codex",
+    "raw": "{\"primary\":{\"used_percent\":0}} {}",
+    "want": null
+  }
+]
