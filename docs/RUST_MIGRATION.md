@@ -1,6 +1,6 @@
 # Rust runtime status
 
-Updated 2026-09-25. HMux now uses Rust for its native Gateway, Home connector,
+Updated 2026-09-26. HMux now uses Rust for its native Gateway, Home connector,
 usage collection, administration helper, installation and service lifecycle. The
 web/PWA remains TypeScript. Rust-only source, contributor checks, packaging and
 installation are the current product paths; Go source and tooling are not active
@@ -21,9 +21,11 @@ Neither document authorizes a deployment.
   contain `hmux-web`, `hmux-agent`, web assets, service/proxy templates, notices and
   a SHA-256 manifest. Non-host builds require an explicit `HMUX_RUST_TARGETS` value
   plus each target's Rust support, linker and platform SDK.
-- New Home installation uses the built bundle's `hmux-web install-home`. The native
-  installer preserves configuration, state and original tmux/provider processes;
-  service management remains opt-in and uses the existing account and explicit PATH.
+- New installations start with the built bundle's `hmux-web install` guide for
+  Gateway, Home or both, locally or over SSH. `install-home` remains the lower-level
+  Home installation/upgrade command. The installer preserves configuration, state
+  and original tmux/provider processes; service management remains opt-in and uses
+  the existing account and explicit PATH. See [Operations](OPERATIONS.md).
 - Versioned JSON v1 compatibility and Protobuf v2 remain supported Home transport
   contracts. Configuration, state, authentication and `{id, created_at}` session
   identity contracts remain authoritative.

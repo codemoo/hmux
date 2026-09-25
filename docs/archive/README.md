@@ -4,6 +4,8 @@ Start with [current documentation](../README.md) and [validation status](../VALI
 These records preserve what was known at the stated date; pending deployment
 statements and old UI experiments are not current instructions.
 
+- [Validation through 2026-09-26](VALIDATION_HISTORY_2026-09-26.md): Rust retirement,
+  installer/localization, usage recovery and admission/recovery checkpoint evidence.
 - [Rust contract plan through 2026-09-25](RUST_CONTRACTS_HISTORY_2026-09-25.md):
   proposal review, former Go source map, migration phases and gates before consolidation.
   [Runtime contracts](../RUST_CONTRACTS.md) remain the durable current reference.

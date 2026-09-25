@@ -34,7 +34,7 @@ Start at the root README, then choose a reference here. Contributors read
 `RUST_CONTRACTS.md` holds durable acceptance gates; `tests/RUST.md` holds runnable
 checks and the physical-device checklist; detailed historical evidence stays in
 `docs/archive/`. To verify the native runtime, follow the [test entry point](../tests/RUST.md#test-entry-point).
-`VALIDATION.md` alone summarizes the maintained deployment and completed checks.
+`VALIDATION.md` summarizes current recorded deployment and verification evidence.
 The runtime-status queue owns remaining acceptance work. Operations owns
 installation/service/diagnostic commands;
 Web owns current product behavior; scoped references expand their subjects.
