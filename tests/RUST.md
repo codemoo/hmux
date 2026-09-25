@@ -33,6 +33,18 @@ logs in and checks catalog/terminal ACK and reconnect using synthetic host tools
 The Home WSS suite independently checks both JSON v1 and Protobuf v2. Real tmux
 session/view tests use a disposable isolated socket and fake providers.
 
+The opt-in native metrics check reads only the host's CPU, RAM and filesystem
+statistics; GPU support is optional. It does not attach to tmux or provider work:
+
+```sh
+CARGO_HOME=/tmp/hmux-cargo cargo test -p hmux-home --lib \
+  metrics::tests::native_host_samples_have_fresh_cpu_memory_and_disk \
+  --locked -- --ignored --exact
+```
+
+Run it with normal host inspection permissions. Passing it verifies collection,
+not the authenticated browser's rendering or its clock/freshness behavior.
+
 The compatibility names `rust-check`, `rust-build`, `rust-package`,
 `rust-bundle-check`, `rust-native-cli` and `rust-native-matrix` invoke current Rust
 checks/builds. They do not compile the retired Go implementation.

@@ -28,7 +28,7 @@ static COMMANDS: OnceLock<CommandRunner> = OnceLock::new();
 enum Source {
     #[cfg(any(target_os = "macos", test))]
     Darwin {
-        top: PathBuf,
+        iostat: PathBuf,
         vm: PathBuf,
         sysctl: PathBuf,
         ioreg: PathBuf,
@@ -50,7 +50,7 @@ impl Collector {
     pub fn native() -> Self {
         #[cfg(target_os = "macos")]
         let source = Source::Darwin {
-            top: "/usr/bin/top".into(),
+            iostat: "/usr/sbin/iostat".into(),
             vm: "/usr/bin/vm_stat".into(),
             sysctl: "/usr/sbin/sysctl".into(),
             ioreg: "/usr/sbin/ioreg".into(),
@@ -78,7 +78,9 @@ impl Collector {
             if child.is_cancelled() {
                 return None;
             }
-            if self.disk && Instant::now() < deadline {
+            // statfs has no child process and is independent of command timeouts.
+            // A slow CPU/GPU command must not suppress a fresh disk observation.
+            if self.disk {
                 if let Some((used, total)) = disk() {
                     result.disk_used_bytes = Some(used);
                     result.disk_total_bytes = Some(total);
@@ -110,15 +112,15 @@ impl Collector {
         match &self.source {
             #[cfg(any(target_os = "macos", test))]
             Source::Darwin {
-                top,
+                iostat,
                 vm,
                 sysctl,
                 ioreg,
             } => {
                 let cpu = async {
                     let raw = command(
-                        top,
-                        &["-l", "2", "-s", "1", "-n", "0", "-stats", "pid"],
+                        iostat,
+                        &["-d", "-C", "-n", "0", "-c", "2", "-w", "1"],
                         TEXT_MAX,
                         stop,
                         deadline,

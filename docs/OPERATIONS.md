@@ -245,6 +245,12 @@ and recovery checkpoints run as shared bounded workers, not per-browser collecto
 Catalog reads use the latest completed metrics sample with its original timestamp
 and atomically committed recovery mapping.
 
+On macOS, CPU sampling uses the second, one-second interval reading from the
+built-in `iostat` CPU-only report instead of enumerating processes with `top`.
+Metric commands share a three-second budget; a failed CPU or GPU command omits
+that field without skipping filesystem statistics. Disk uses `statfs` in the same
+single admitted blocking worker. Failed fields do not reuse older observations.
+
 Transient tmux catalog or metadata failures retry after five seconds without
 terminating the connected peer or its live views. Retries retain the last published
 catalog timestamp; repeated failure can expire the Gateway's 40-second freshness

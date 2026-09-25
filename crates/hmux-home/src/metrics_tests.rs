@@ -7,6 +7,28 @@ use std::{
 static NEXT: AtomicU64 = AtomicU64::new(0);
 static SERIAL: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 struct Fixture(PathBuf);
+
+#[tokio::test]
+#[ignore = "reads native host CPU, memory and filesystem statistics"]
+async fn native_host_samples_have_fresh_cpu_memory_and_disk() {
+    let _serial = SERIAL.lock().await;
+    let collector = Arc::new(Collector::native());
+    let stop = CancellationToken::new();
+    let mut previous = None;
+    for _ in 0..3 {
+        let value = tokio::time::timeout(Duration::from_secs(5), collector.clone().sample(&stop))
+            .await
+            .expect("native sample exceeded deadline")
+            .expect("native sample missing");
+        value.validate().unwrap();
+        assert!(value.cpu_percent.is_some(), "CPU observation missing");
+        assert!(value.memory_used_bytes.is_some(), "RAM observation missing");
+        assert!(value.disk_used_bytes.is_some(), "disk observation missing");
+        assert_ne!(previous.as_ref(), Some(&value.observed_at));
+        previous = Some(value.observed_at);
+    }
+}
+
 impl Fixture {
     fn new() -> Self {
         let path = std::env::temp_dir().canonicalize().unwrap().join(format!(
@@ -24,13 +46,13 @@ impl Fixture {
         path
     }
     fn collector(&self) -> Arc<Collector> {
-        let top = self.script("top", "printf 'CPU usage: 2%% user, 3%% sys, 95%% idle\\nCPU usage: 10%% user, 15%% sys, 75%% idle\\n'");
+        let iostat = self.script("iostat", "[ \"$*\" = '-d -C -n 0 -c 2 -w 1' ] || exit 42\nprintf '      cpu\\n us sy id\\n 2 3 95\\n 10 15 75\\n'");
         let vm = self.script("vm", "printf 'Mach Virtual Memory Statistics: (page size of 4096 bytes)\\nAnonymous pages: 100.\\nPages wired down: 20.\\nPages purgeable: 10.\\nPages occupied by compressor: 5.\\n'");
         let sysctl = self.script("sysctl", "printf '1048576\\n'");
         let ioreg = self.script("ioreg", "if [ \"$4\" = IOAccelerator ]; then printf '<plist><dict/></plist>'; else printf '<plist><dict><key>GPU Activity(%%)</key><real>42.25</real></dict></plist>'; fi");
         Arc::new(Collector {
             source: Source::Darwin {
-                top,
+                iostat,
                 vm,
                 sysctl,
                 ioreg,
@@ -58,7 +80,7 @@ async fn synthetic_darwin_samples_and_replaces_failed_fields() {
     assert_eq!(value.memory_total_bytes, Some(1048576));
     assert_eq!(value.disk_total_bytes, None);
     assert!(value.validate().is_ok());
-    f.script("top", "exit 1");
+    f.script("iostat", "exit 1");
     f.script("ioreg", "exit 1");
     let value = collector.clone().sample(&stop).await.unwrap();
     assert_eq!(value.cpu_percent, None);
@@ -88,9 +110,10 @@ async fn clean_environment_and_literal_arguments_are_used() {
 async fn timeout_omits_only_failed_lanes_and_reaps_the_child() {
     let _serial = SERIAL.lock().await;
     let f = Fixture::new();
-    let collector = f.collector();
+    let mut collector = f.collector();
+    Arc::get_mut(&mut collector).unwrap().disk = true;
     f.script(
-        "top",
+        "iostat",
         "root=${0%/*}; printf '%s\\n' \"$$\" > \"$root/pid\"; exec /bin/sleep 20",
     );
     let started = Instant::now();
@@ -98,6 +121,10 @@ async fn timeout_omits_only_failed_lanes_and_reaps_the_child() {
     assert!(started.elapsed() < Duration::from_secs(5));
     assert_eq!(result.cpu_percent, None);
     assert!(result.memory_total_bytes.is_some());
+    assert!(
+        result.disk_used_bytes.is_some(),
+        "CPU timeout must not omit disk"
+    );
     let pid = fs::read_to_string(f.0.join("pid"))
         .unwrap()
         .trim()
@@ -114,7 +141,7 @@ async fn cancellation_and_single_process_wide_admission_are_joined() {
     let f = Fixture::new();
     let collector = f.collector();
     f.script(
-        "top",
+        "iostat",
         "root=${0%/*}; printf '%s\\n' \"$$\" > \"$root/pid\"; exec /bin/sleep 20",
     );
     let stop = CancellationToken::new();
@@ -184,7 +211,7 @@ async fn latest_sample_is_cleared_when_all_collectors_fail() {
         .unwrap()
         .unwrap();
     assert!(rx.borrow_and_update().is_some());
-    for name in ["top", "vm", "ioreg"] {
+    for name in ["iostat", "vm", "ioreg"] {
         f.script(name, "exit 1");
     }
     tokio::time::timeout(Duration::from_secs(7), rx.changed())
@@ -230,7 +257,7 @@ async fn both_wire_codecs_publish_basic_catalog_before_slow_metrics() {
         let f = Fixture::new();
         let collector = f.collector();
         f.script(
-            "top",
+            "iostat",
             "root=${0%/*}; printf '%s\\n' \"$$\" > \"$root/pid\"; exec /bin/sleep 20",
         );
         let tmux=f.script("tmux","case \"$1\" in\nlist-sessions) printf '%s\\n' '$7|:hmux-sep-v1:|synthetic|:hmux-sep-v1:|1700000000|:hmux-sep-v1:|1700000200|:hmux-sep-v1:|0|:hmux-sep-v1:|1|:hmux-sep-v1:||:hmux-sep-v1:|' ;;\nlist-windows) : ;;\n*) exit 99 ;;\nesac");

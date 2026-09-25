@@ -42,30 +42,22 @@ fn gpu_percentage(raw: &str) -> Option<f64> {
     (value.is_finite() && (0.0..=100.0).contains(&value)).then_some(value)
 }
 
-/// Use the last of at least two valid `top -l 2` CPU usage samples.
+/// CPU-only `iostat -d -C -n 0 -c 2 -w 1`: discard the since-boot first row
+/// and use the one-second interval row. No process enumeration is needed.
 pub fn cpu_darwin(raw: &[u8]) -> Option<f64> {
-    let raw = text(raw)?;
-    let mut valid = 0;
-    let mut last_idle = 0.0;
-    for line in raw.lines() {
-        let Some(rest) = line.trim_start().strip_prefix("CPU usage:") else {
-            continue;
-        };
-        let idle = rest.split(',').find_map(|part| {
-            let part = part.trim();
-            let suffix = part.get(part.len().checked_sub(4)?..)?;
-            if !suffix.eq_ignore_ascii_case("idle") {
-                return None;
-            }
-            let numeric = part[..part.len() - 4].trim_end().strip_suffix('%')?;
-            percentage(numeric.trim())
-        });
-        if let Some(idle) = idle {
-            valid += 1;
-            last_idle = idle;
+    let mut fields = text(raw)?.split_ascii_whitespace();
+    for header in ["cpu", "us", "sy", "id"] {
+        if fields.next() != Some(header) {
+            return None;
         }
     }
-    (valid >= 2).then_some(100.0 - last_idle)
+    let mut last_idle = 0.0;
+    for _ in 0..2 {
+        percentage(fields.next()?)?;
+        percentage(fields.next()?)?;
+        last_idle = percentage(fields.next()?)?;
+    }
+    fields.next().is_none().then_some(100.0 - last_idle)
 }
 
 fn page_size(header: &str) -> Option<u64> {

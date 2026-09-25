@@ -11,15 +11,20 @@ fn plist_predefined_and_character_references_need_no_dtd() {
 }
 
 #[test]
-fn darwin_cpu_uses_last_of_two_valid_samples() {
-    let raw =
-        b"CPU usage: 10% user, 10% sys, 80% idle\nCPU usage: 12.5% user, 7.5% sys, 80.0% idle\n";
+fn darwin_cpu_uses_interval_sample_and_validates_cpu_only_output() {
+    let raw = b"      cpu\n us sy id\n  2  3 95\n 12.5 7.5 80.0\n";
     assert_eq!(cpu_darwin(raw), Some(20.0));
     for raw in [
-        "Processes: 10 total\n",
-        "CPU usage: 1% user, 1% sys, 98% idle\n",
-        "CPU usage: 1% user, 1% sys, 98% idle\nCPU usage: 1% user, 1% sys, 101% idle\n",
-        "CPU usage: 1% user, 1% sys, 98% idle\nCPU usage: 1% user, 1% sys, NaN% idle\n",
+        "",
+        "cpu\nus sy id\n1 1 98\n",
+        "cpu\nus sy id\n1 1 98\n1 1 101\n",
+        "cpu\nus sy id\n1 1 98\n1 1 NaN\n",
+        "cpu\nus sy id\n1 1 98\n-1 1 100\n",
+        "cpu\nus sy id\n1 1 98\n1 101 0\n",
+        "cpu\nus sy id\nNaN 1 98\n1 1 98\n",
+        "cpu\nus sy id\n1 1 98\n1 1 98\nextra\n",
+        "cpu\nus id sy\n1 1 98\n1 1 98\n",
+        "cpu load average\nus sy id 1m 5m 15m\n1 1 98 2 2 2\n1 1 98 2 2 2\n",
     ] {
         assert_eq!(cpu_darwin(raw.as_bytes()), None, "{raw}");
     }
