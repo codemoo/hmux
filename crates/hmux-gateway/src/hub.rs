@@ -167,7 +167,7 @@ struct Peer {
 struct Pending {
     generation: Generation,
     context: ResponseContext,
-    reply: oneshot::Sender<Reply>,
+    reply: oneshot::Sender<Result<Reply, Error>>,
 }
 struct ViewState {
     generation: Generation,
@@ -675,6 +675,7 @@ impl Hub {
                     _ => break Error::Invalid,
                 }
             };
+            hub.detach_with_reason(generation, reason);
             sender.close();
             let _ = task.await;
             lifetime.finish::<()>(&Err(reason));
@@ -686,6 +687,9 @@ impl Hub {
         })
     }
     fn detach(&self, generation: Generation) {
+        self.detach_with_reason(generation, Error::Offline);
+    }
+    fn detach_with_reason(&self, generation: Generation, reason: Error) {
         let mut state = self.state();
         if state
             .peer
@@ -697,7 +701,9 @@ impl Hub {
         if let Some(peer) = state.peer.take() {
             peer.sender.close();
         }
-        state.pending.clear();
+        for (_, pending) in state.pending.drain() {
+            let _ = pending.reply.send(Err(reason));
+        }
         for view in state.views.values() {
             view.closed.store(HOME_OFFLINE, Ordering::Release);
         }
@@ -983,7 +989,7 @@ impl Hub {
         guard.sent = true;
         receipt.wait().await.map_err(map_transport)?;
         span.sent();
-        let response = reply.await.map_err(|_| Error::Offline)?;
+        let response = reply.await.map_err(|_| Error::Offline)??;
         self.peer(generation)?;
         guard.cancel_on_drop = false;
         Ok(response)
@@ -1078,7 +1084,7 @@ impl Hub {
         guard.sent = true;
         receipt.wait().await.map_err(map_transport)?;
         span.sent();
-        let response = reply.await.map_err(|_| Error::Offline)?;
+        let response = reply.await.map_err(|_| Error::Offline)??;
         self.peer(generation)?;
         if !response.error.is_empty() {
             return Err(Error::Invalid);
@@ -1209,10 +1215,17 @@ impl Hub {
                     if let Some(pending) = state.pending.remove(&response.id) {
                         if pending.generation == generation {
                             if !actions::response_matches(&response, pending.context) {
+                                let _ = pending.reply.send(Err(Error::Invalid));
                                 return Err(Error::Invalid);
                             }
-                            let response = self.retain_response(response)?;
-                            let _ = pending.reply.send(response);
+                            let response = match self.retain_response(response) {
+                                Ok(response) => response,
+                                Err(error) => {
+                                    let _ = pending.reply.send(Err(error));
+                                    return Err(error);
+                                }
+                            };
+                            let _ = pending.reply.send(Ok(response));
                         }
                     }
                 }

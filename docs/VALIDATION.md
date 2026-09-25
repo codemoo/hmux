@@ -1,6 +1,6 @@
 # Validation status
 
-Evidence summary updated 2026-09-25. Deployment observations describe one maintained
+Evidence summary updated 2026-09-26. Deployment observations describe one maintained
 installation, not every HMux deployment. [Rust runtime status](RUST_MIGRATION.md)
 owns the remaining acceptance queue; [Rust verification](../tests/RUST.md) owns
 runnable checks. Earlier rollout details and failed attempts remain in the
@@ -245,7 +245,53 @@ browser responses and isolated native fixtures; real credentials and maintained
 services were unchanged. These results do not establish physical-device acceptance
 or a deployment.
 
+## Admission and transient-failure recovery
+
+An incident review matched a browser 502 to Home conversation admission pressure;
+neither process restarted. Later transport reconnects followed slow catalog reads,
+but the available logs do not establish their underlying cause. Source review
+also identified avoidable failure paths: scheduled heartbeat ticks could already
+be expired before a Ping was sent, and brief Home send-queue pressure immediately
+failed the peer. Both paths now have bounded recovery without larger transport
+buffers or another resident service.
+
+Conversation admission has two waiting places and a two-second deadline. Terminal
+startup uses a separate eight-slot pool; running actions remain capped at eight,
+and the existing eight-view lifetime limit is unchanged. This increases the bounded
+peak number of simultaneous startup/action jobs, not their individual buffer caps.
+Known workspace, inspection and provider contention remains distinguishable from
+missing data. HTTP 503 and 504 distinguish temporary unavailability and deadlines;
+invalid responses remain 502. Only allowlisted browser reads retry, at most twice.
+
+The full release workspace suite passed 684 tests, with 21 opt-in tests ignored.
+After the last refinements, 256 targeted Home tests and 22 Gateway HTTP tests
+passed, including cancellation, exact identity, mutation non-replay and response
+classification. Transport regressions passed all 23 tests. The final concurrent
+startup regression holds all eight synthetic tmux starts open while a profile
+query succeeds, then verifies owned cleanup; both codecs passed on macOS and Linux.
+Strict Clippy, Rust formatting, ShellCheck, TypeScript, all 192 web tests and the
+web build passed. Independent reviews found and corrected swallowed busy errors
+and a waiting permit retained after admission.
+
+macOS ARM64 and Linux AMD64 bundles passed all five packaging checks. Isolated
+production-binary Gateway/Home login, catalog, terminal ACK and reconnect passed;
+macOS additionally passed the WSS reconnect/signal/private-input check with both
+codecs. An initial Linux test run used unrestricted test concurrency and hit the
+existing process-wide authentication startup limit; the prescribed two-thread
+Gateway rerun passed. A local parallel build was stopped to reduce host pressure
+and resumed with two build jobs. These are automated fixtures, not physical-device
+or long-running stability acceptance.
+
 ## Maintained deployment
+
+The admission/recovery update was deployed to the maintained Linux Gateway and
+macOS Home, including its web assets. Public asset hashes, anonymous API rejection,
+PWA CSP and no-store headers passed. Home published catalog and usage on the new
+connection; its configuration, singleton ownership and original tmux identities
+were preserved. The initial Home rollout checker rejected a transient launchd
+startup observation; a separate check confirmed the expected running binary and
+first-run owner without another restart. The failed check and verification receipt
+are retained privately. This is initial deployment verification, not a soak result.
 
 Private deployment checks verified initial connectivity, catalog and usage
 publication, configuration preservation, original-session preservation and

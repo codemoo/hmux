@@ -10,6 +10,7 @@ pub type Reporter = Arc<dyn Fn(Event) + Send + Sync>;
 pub enum Stage {
     Catalog,
     Action,
+    WorkspaceCatalog,
     ViewCleanup,
     Usage,
 }
@@ -17,6 +18,11 @@ pub enum Stage {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Reason {
     Busy,
+    RequestSlotsBusy,
+    InspectionSlotsBusy,
+    ConversationQueueBusy,
+    RequestAdmissionTimeout,
+    InspectionAdmissionTimeout,
     Cancelled,
     QueryTimeout,
     QueryFailure,
@@ -71,11 +77,17 @@ impl fmt::Display for Event {
         let stage = match self.stage {
             Stage::Catalog => "catalog",
             Stage::Action => "action",
+            Stage::WorkspaceCatalog => "workspace-catalog",
             Stage::ViewCleanup => "view-cleanup",
             Stage::Usage => "usage",
         };
         let reason = match self.reason {
             Reason::Busy => "busy",
+            Reason::RequestSlotsBusy => "request-slots-busy",
+            Reason::InspectionSlotsBusy => "inspection-slots-busy",
+            Reason::ConversationQueueBusy => "conversation-queue-busy",
+            Reason::RequestAdmissionTimeout => "request-admission-timeout",
+            Reason::InspectionAdmissionTimeout => "inspection-admission-timeout",
             Reason::Cancelled => "cancelled",
             Reason::QueryTimeout => "query-timeout",
             Reason::QueryFailure => "query-failure",

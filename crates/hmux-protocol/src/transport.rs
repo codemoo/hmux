@@ -154,6 +154,49 @@ impl Receipt {
 }
 
 impl Sender {
+    /// Wait for transient contention before encoding. Callers must hold their
+    /// own bounded producer/request admission while waiting; this does not add
+    /// payload storage or increase the transport's frame/byte budgets.
+    pub async fn reserve(
+        &self,
+        max_encoded_bytes: usize,
+        cancelled: &CancellationToken,
+    ) -> Result<Reservation, Error> {
+        match self.try_reserve(max_encoded_bytes) {
+            Err(Error::Busy) => {}
+            result => return result,
+        }
+        let deadline = Instant::now() + QUEUE_DEADLINE;
+        let acquire = async {
+            let slot = self
+                .slots
+                .clone()
+                .acquire_owned()
+                .await
+                .map_err(|_| Error::Closed)?;
+            let bytes = self
+                .bytes
+                .clone()
+                .acquire_many_owned(max_encoded_bytes as u32)
+                .await
+                .map_err(|_| Error::Closed)?;
+            Ok(Reservation {
+                queue: self.queue.clone(),
+                slot,
+                bytes,
+                stopped: self.stopped.clone(),
+                protocol: self.protocol,
+                admitted: Instant::now(),
+            })
+        };
+        tokio::select! {
+            biased;
+            _ = self.stopped.cancelled() => Err(Error::Closed),
+            _ = cancelled.cancelled() => Err(Error::Cancelled),
+            result = timeout_at(deadline, acquire) => result.unwrap_or(Err(Error::QueueTimeout)),
+        }
+    }
+
     pub fn try_reserve(&self, max_encoded_bytes: usize) -> Result<Reservation, Error> {
         if self.stopped.is_cancelled() {
             return Err(Error::Closed);
@@ -534,17 +577,17 @@ where
                             tokio::time::sleep_until(deadline).await;
                         }
                     }, if pending.is_some() => continue,
-                    tick = ticks.tick(), if pending.is_none() => {
+                    _ = ticks.tick(), if pending.is_none() => {
                         sequence = sequence.wrapping_add(1);
                         let mut nonce = random.hash_one(sequence);
                         while nonce == 0 || heartbeat.seen.load(Ordering::Acquire) == nonce {
                             sequence = sequence.wrapping_add(1);
                             nonce = random.hash_one(sequence);
                         }
-                        let deadline = tick + HEARTBEAT_DEADLINE;
-                        if Instant::now() >= deadline {
-                            break;
-                        }
+                        // A delayed runtime poll is not a missed Pong: the peer
+                        // has not received this Ping yet. Start its finite write
+                        // and response budget when we actually attempt the probe.
+                        let deadline = Instant::now() + HEARTBEAT_DEADLINE;
                         heartbeat.expected.store(nonce, Ordering::Release);
                         let sent = tokio::select! {
                             biased;

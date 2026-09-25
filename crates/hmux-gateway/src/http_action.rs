@@ -1,6 +1,7 @@
 //! Browser action authorization and forwarding. Home owns operation validation
 //! and exact session binding; account workspace state stays at this gateway.
 use super::*;
+use crate::hub::Error as HomeError;
 use crate::observation::ActionFailure;
 use hmux_core::workspace::Error as WorkspaceError;
 use hmux_model::workspace::Change;
@@ -9,6 +10,21 @@ use serde_json::value::RawValue;
 use std::time::{Duration, Instant};
 
 const ACTION_TIMEOUT: Duration = Duration::from_secs(20);
+fn home_error_status(error: HomeError) -> StatusCode {
+    match error {
+        HomeError::Offline
+        | HomeError::Stale
+        | HomeError::Busy
+        | HomeError::Capacity
+        | HomeError::Cancelled
+        | HomeError::Transport
+        | HomeError::OutputFull => StatusCode::SERVICE_UNAVAILABLE,
+        HomeError::Unsupported | HomeError::Invalid | HomeError::RemoteOperation => {
+            StatusCode::BAD_GATEWAY
+        }
+    }
+}
+
 #[derive(Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct WorkspaceRequest {
@@ -53,19 +69,26 @@ impl Gateway {
             Err(_) => return boundary::error(StatusCode::SERVICE_UNAVAILABLE),
         };
         let Some(home) = self.home.as_ref() else {
-            return boundary::error(StatusCode::SERVICE_UNAVAILABLE);
+            return boundary::retryable_error(StatusCode::SERVICE_UNAVAILABLE);
         };
         let started = Instant::now();
         let initial_generation = home.snapshot().generation;
-        let failed = |failure: ActionFailure| {
+        let failed = |failure: ActionFailure, status: StatusCode| {
             home.report_action_failure(
                 operation,
                 initial_generation,
                 failure,
-                502,
+                status.as_u16(),
                 started.elapsed(),
             );
-            boundary::error(StatusCode::BAD_GATEWAY)
+            if matches!(
+                status,
+                StatusCode::SERVICE_UNAVAILABLE | StatusCode::GATEWAY_TIMEOUT
+            ) {
+                boundary::retryable_error(status)
+            } else {
+                boundary::error(status)
+            }
         };
         let deadline = started + ACTION_TIMEOUT;
         let mut cancellation = access.clone();
@@ -109,14 +132,17 @@ impl Gateway {
                     return match result {
                         Ok(reply) => boundary::json(&reply),
                         Err(WorkspaceError::Busy) => {
-                            boundary::error(StatusCode::SERVICE_UNAVAILABLE)
+                            boundary::retryable_error(StatusCode::SERVICE_UNAVAILABLE)
                         }
-                        Err(_) => failed(ActionFailure::WorkspaceUnavailable),
+                        Err(_) => failed(
+                            ActionFailure::WorkspaceUnavailable,
+                            StatusCode::SERVICE_UNAVAILABLE,
+                        ),
                     };
                 }
             }
             let Some(generation) = home.snapshot().generation else {
-                return failed(ActionFailure::HomeOffline);
+                return failed(ActionFailure::HomeOffline, StatusCode::SERVICE_UNAVAILABLE);
             };
             // Construct only the allowlisted request fields. Browser-supplied
             // type/ID, data, geometry, errors and transport controls cannot escape.
@@ -145,31 +171,61 @@ impl Gateway {
             if let Err(status) = self.revalidate(token).await {
                 return boundary::error(status);
             }
-            let Ok(reply) = result else {
-                return failed(ActionFailure::HomeRequest);
+            let reply = match result {
+                Ok(reply) => reply,
+                Err(error) => return failed(ActionFailure::HomeRequest, home_error_status(error)),
             };
             if !reply.error.is_empty() {
-                return failed(if reply.error == "Home is busy" {
-                    ActionFailure::HomeBusy
+                return if reply.error == "Home is busy" {
+                    failed(ActionFailure::HomeBusy, StatusCode::SERVICE_UNAVAILABLE)
+                } else if reply.error == "Home operation timed out" {
+                    failed(ActionFailure::Deadline, StatusCode::GATEWAY_TIMEOUT)
                 } else {
-                    ActionFailure::HomeOperation
-                });
+                    failed(ActionFailure::HomeOperation, StatusCode::BAD_GATEWAY)
+                };
             }
             let raw = match actions::response_payload(&reply) {
                 Ok(raw) => raw,
-                Err(_) => return failed(ActionFailure::ResponseInvalid),
+                Err(_) => return failed(ActionFailure::ResponseInvalid, StatusCode::BAD_GATEWAY),
             };
             match serde_json::from_slice::<&RawValue>(&raw) {
                 Ok(raw) => boundary::json(&raw),
-                Err(_) => failed(ActionFailure::ResponseInvalid),
+                Err(_) => failed(ActionFailure::ResponseInvalid, StatusCode::BAD_GATEWAY),
             }
         };
         tokio::select! {
             biased;
             _=cancellation.wait_cancelled()=>boundary::error(StatusCode::UNAUTHORIZED),
             _=tokio::time::sleep(expiry)=>boundary::error(StatusCode::UNAUTHORIZED),
-            _=tokio::time::sleep(ACTION_TIMEOUT)=>failed(ActionFailure::Deadline),
+            _=tokio::time::sleep(ACTION_TIMEOUT)=>failed(ActionFailure::Deadline, StatusCode::GATEWAY_TIMEOUT),
             reply=work=>reply,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn transient_home_failures_keep_protocol_failures_distinct() {
+        for error in [
+            HomeError::Offline,
+            HomeError::Stale,
+            HomeError::Busy,
+            HomeError::Capacity,
+            HomeError::Cancelled,
+            HomeError::Transport,
+            HomeError::OutputFull,
+        ] {
+            assert_eq!(home_error_status(error), StatusCode::SERVICE_UNAVAILABLE);
+        }
+        for error in [
+            HomeError::Unsupported,
+            HomeError::Invalid,
+            HomeError::RemoteOperation,
+        ] {
+            assert_eq!(home_error_status(error), StatusCode::BAD_GATEWAY);
         }
     }
 }

@@ -326,11 +326,34 @@ transport/request, invalid response, workspace and deadline failures. A remote
 operation error is not classified as malformed protocol. Pair Gateway records with
 Home diagnostics and browser request status to identify which boundary failed.
 
+Action admission pressure and a disconnected Home return HTTP 503 with
+`Retry-After: 1`; reported Home deadlines and the Gateway action deadline return
+504. Malformed Home replies
+and unclassified operation failures remain 502. The browser retries only
+conversation, profile, provider and workspace reads, at most twice within its
+existing request deadline. Session creation and other mutations are never replayed.
+
+Home keeps eight running action slots, eight separate terminal-startup slots and
+two shared inspection slots. Concurrent view startups cannot exhaust action admission.
+The existing eight-view lifetime limit is unchanged.
+Conversation reads may wait up to two seconds for admission, with at most two queued jobs;
+the transport reader continues processing cancellation and terminal traffic.
+Queued jobs release their waiting place once admitted. Request capacity remains
+held through response delivery, and inspection capacity stays with the worker until its cleanup finishes. Diagnostics distinguish
+`request-slots-busy`, `inspection-slots-busy`, `conversation-queue-busy`,
+`request-admission-timeout` and `inspection-admission-timeout`.
+`stage=workspace-catalog` identifies a slow or failed catalog read within a
+workspace request. Known command/store contention retains its busy classification.
+
 Logs omit tokens, addresses, account/session identifiers, arbitrary operation strings, terminal
 content and arbitrary error text. Correlate UTC timestamps with browser diagnostics.
 Browser request cancellation does not cancel an in-flight shared transport write;
 queue waits honor caller cancellation and have a 5-second bound, while admitted
-writes have their own 5-second bound. Neither a log entry nor a socket handshake
+writes have their own 5-second bound. Bounded Home producers wait up to five seconds
+for transport admission before encoding instead of treating brief queue pressure
+as a disconnected peer. Heartbeat deadlines start when the Ping is attempted,
+so a delayed scheduler tick alone cannot close an unprobed connection. Neither a
+log entry nor a socket handshake
 alone establishes that an authenticated browser terminal is usable.
 
 ### macOS service-manager access errors

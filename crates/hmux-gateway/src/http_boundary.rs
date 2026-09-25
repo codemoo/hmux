@@ -211,6 +211,19 @@ pub fn error(status: StatusCode) -> Reply {
     response
 }
 
+/// Fixed retry hint for brief local admission failures and bounded deadlines.
+pub fn retryable_error(status: StatusCode) -> Reply {
+    debug_assert!(matches!(
+        status,
+        StatusCode::SERVICE_UNAVAILABLE | StatusCode::GATEWAY_TIMEOUT
+    ));
+    let mut response = error(status);
+    response
+        .headers_mut()
+        .insert(header::RETRY_AFTER, HeaderValue::from_static("1"));
+    response
+}
+
 pub fn json(value: &impl serde::Serialize) -> Reply {
     static BUDGET: OnceLock<Arc<ReplyBudget>> = OnceLock::new();
     json_with_budget(

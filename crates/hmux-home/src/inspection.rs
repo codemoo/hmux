@@ -5,7 +5,7 @@ use crate::{
     process::{self, Snapshot},
     records,
 };
-use hmux_core::command::{CommandRunner, CommandSpec};
+use hmux_core::command::{CommandRunner, CommandSpec, RunErrorKind};
 use hmux_model::Catalog;
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -75,6 +75,18 @@ pub(crate) fn admit() -> Option<OwnedSemaphorePermit> {
         .clone()
         .try_acquire_owned()
         .ok()
+}
+pub(crate) async fn wait_interactive(
+    stop: &CancellationToken,
+    deadline: tokio::time::Instant,
+) -> Option<OwnedSemaphorePermit> {
+    let slots = SLOTS.get_or_init(|| Arc::new(Semaphore::new(2)));
+    tokio::select! {
+        biased;
+        _ = stop.cancelled() => None,
+        _ = tokio::time::sleep_until(deadline) => None,
+        permit = slots.clone().acquire_owned() => permit.ok(),
+    }
 }
 /// Catalog and completion share at most one of the two scan permits, leaving
 /// one available for an interactive conversation even during background work.
@@ -152,7 +164,7 @@ pub(crate) async fn command(
         biased;
         _=stop.cancelled()=>{drop(cancel);let _=work.await;Err(Error::Cancelled)},
         _=tokio::time::sleep_until(deadline.into())=>{drop(cancel);let _=work.await;Err(Error::Cancelled)},
-        result=&mut work=>result.map(|r|r.stdout).map_err(|_|Error::Unavailable),
+        result=&mut work=>result.map(|r|r.stdout).map_err(|error| if error.kind() == RunErrorKind::Busy { Error::Busy } else { Error::Unavailable }),
     }
 }
 impl Inspector {
@@ -228,6 +240,9 @@ impl Inspector {
         let mut budget = DiscoveryBudget::default();
         let initial = self.discover(&codex, &mut budget, stop, deadline, runtime);
         check(stop, deadline)?;
+        if purpose == ScanPurpose::Conversation && matches!(initial, Err(Error::Busy)) {
+            return Err(Error::Busy);
+        }
         let known = initial.is_ok();
         let mut files = initial.unwrap_or_default();
         let mut wrappers = BTreeSet::new();
@@ -243,6 +258,9 @@ impl Inspector {
         }
         let wrapper_files = self.discover(&wrappers, &mut budget, stop, deadline, runtime);
         check(stop, deadline)?;
+        if purpose == ScanPurpose::Conversation && matches!(wrapper_files, Err(Error::Busy)) {
+            return Err(Error::Busy);
+        }
         let wrappers_known = wrapper_files.is_ok();
         if let Ok(values) = wrapper_files {
             files.extend(values);

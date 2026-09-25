@@ -1,9 +1,13 @@
 //! Home shared tabs. One bounded store survives reconnects; catalog/recovery
 //! reads complete before acquiring the Go-compatible workspace transaction lock.
-use crate::catalog::TmuxCatalogReader;
+use crate::catalog::{CatalogError, TmuxCatalogReader};
 use crate::observation;
 use bytes::Bytes;
-use hmux_core::{command::CommandRunner, workspace::Store, PrivateDir};
+use hmux_core::{
+    command::{CommandRunner, RunErrorKind},
+    workspace::Store,
+    PrivateDir,
+};
 use hmux_model::workspace::{Change, SessionLineage, Snapshot};
 use serde::Deserialize;
 use std::{path::Path, time::Duration};
@@ -65,7 +69,6 @@ impl Workspace {
         let _cancel_on_drop = stop.clone().drop_guard();
         let deadline = tokio::time::Instant::now() + Duration::from_secs(10);
         let runtime = tokio::runtime::Handle::current();
-        let started = std::time::Instant::now();
         let fetch_stop = stop.clone();
         let recovery = self.recovery.clone();
         let allowed_stop = stop.clone();
@@ -73,6 +76,7 @@ impl Workspace {
             None,
             change,
             move || {
+                let catalog_started = std::time::Instant::now();
                 let mut catalog = match runtime.block_on(reader.read_basic_cancelable(
                     &runner,
                     &fetch_stop,
@@ -82,15 +86,32 @@ impl Workspace {
                     Err(error) => {
                         if let Some(report) = &reporter {
                             report(observation::Event::new(
-                                observation::Stage::Action,
+                                observation::Stage::WorkspaceCatalog,
                                 Some(hmux_protocol::protobuf::types::Operation::Workspace),
                                 observation::Reason::catalog(&error),
-                                started,
+                                catalog_started,
                             ));
                         }
-                        return Err(Error::Unavailable);
+                        return Err(match error {
+                            CatalogError::Command(command)
+                                if command.kind() == RunErrorKind::Busy =>
+                            {
+                                Error::Busy
+                            }
+                            _ => Error::Unavailable,
+                        });
                     }
                 };
+                if catalog_started.elapsed() >= Duration::from_millis(500) {
+                    if let Some(report) = &reporter {
+                        report(observation::Event::new(
+                            observation::Stage::WorkspaceCatalog,
+                            Some(hmux_protocol::protobuf::types::Operation::Workspace),
+                            observation::Reason::Slow,
+                            catalog_started,
+                        ));
+                    }
+                }
                 if let Some(recovery) = recovery {
                     let _ = recovery.apply(&mut catalog);
                 }
@@ -144,6 +165,49 @@ fn encode(value: Snapshot) -> Result<Bytes, Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use hmux_core::command::CommandSpec;
+    use std::{
+        os::unix::fs::PermissionsExt,
+        sync::atomic::{AtomicU64, Ordering},
+    };
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+
+    #[tokio::test]
+    async fn busy_catalog_command_stays_busy_through_workspace() {
+        let dir = std::env::temp_dir().canonicalize().unwrap().join(format!(
+            "hmux-workspace-busy-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        std::fs::create_dir(&dir).unwrap();
+        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700)).unwrap();
+        let runner = CommandRunner::new(1).unwrap();
+        let holder = {
+            let runner = runner.clone();
+            tokio::spawn(async move {
+                runner
+                    .run(CommandSpec::new("/bin/sleep", 1024, Duration::from_secs(2)).arg("1"))
+                    .await
+            })
+        };
+        tokio::time::timeout(Duration::from_secs(1), async {
+            while runner.available_slots() != 0 {
+                tokio::time::sleep(Duration::from_millis(5)).await;
+            }
+        })
+        .await
+        .unwrap();
+        let workspace = Workspace::open(&dir).unwrap();
+        let reader =
+            TmuxCatalogReader::new("/bin/true".into(), None, Duration::from_secs(1)).unwrap();
+        let result = workspace
+            .request_typed(None, reader, runner, &CancellationToken::new())
+            .await;
+        assert!(matches!(result, Err(Error::Busy)));
+        holder.await.unwrap().unwrap();
+        workspace.shutdown().await;
+        std::fs::remove_dir_all(dir).unwrap();
+    }
     #[test]
     fn request_is_bounded_and_validates_changes_before_io() {
         assert!(decode(b"{}").unwrap().is_none());

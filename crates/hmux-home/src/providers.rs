@@ -616,6 +616,13 @@ pub struct ProviderError {
     message: String,
 }
 impl ProviderError {
+    pub(crate) fn is_busy(&self) -> bool {
+        matches!(
+            self.message.as_str(),
+            "provider request busy" | "provider setup busy" | "provider command busy"
+        )
+    }
+
     fn new(value: impl Into<String>) -> Self {
         Self {
             message: value.into(),
@@ -797,6 +804,27 @@ mod tests {
                 .id,
             "gemini"
         );
+    }
+
+    #[tokio::test]
+    async fn exhausted_provider_admission_is_retryable() {
+        let f = Fixture::new();
+        let held = f
+            .service
+            .active
+            .clone()
+            .try_acquire_many_owned(f.service.active.available_permits() as u32)
+            .unwrap();
+        let result = f
+            .service
+            .action_typed(
+                p::Operation::Providers,
+                p::request::Payload::Empty(p::Empty {}),
+                CancellationToken::new(),
+            )
+            .await;
+        assert!(matches!(result, Err(error) if error.is_busy()));
+        drop(held);
     }
 
     #[tokio::test]

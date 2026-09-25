@@ -127,6 +127,68 @@ fn enqueue(sender: &transport::Sender, raw: &[u8], token: CancellationToken) -> 
 }
 
 #[tokio::test]
+async fn bounded_reservation_recovers_without_expanding_byte_budget() {
+    let (server, _client) = pair().await;
+    let connection = transport::start(server, Negotiated::JsonV1, Direction::ToGateway).unwrap();
+    let occupied = connection
+        .sender
+        .try_reserve(transport::QUEUED_BYTES)
+        .unwrap();
+    let waiting = tokio::spawn({
+        let sender = connection.sender.clone();
+        async move { sender.reserve(128, &CancellationToken::new()).await }
+    });
+    tokio::task::yield_now().await;
+    assert!(!waiting.is_finished());
+    assert_eq!(connection.sender.retained_bytes(), transport::QUEUED_BYTES);
+    drop(occupied);
+    let reserved = waiting.await.unwrap().unwrap();
+    assert_eq!(connection.sender.retained_bytes(), 128);
+    drop(reserved);
+    assert_eq!(connection.sender.retained_frames(), 0);
+    assert_eq!(connection.sender.retained_bytes(), 0);
+    assert!(!connection.sender.is_closed());
+    connection.sender.close();
+    connection.task.await.unwrap();
+}
+
+#[tokio::test(start_paused = true)]
+async fn reservation_wait_honors_cancel_deadline_and_connection_close() {
+    let (server, _client) = pair().await;
+    let connection = transport::start(server, Negotiated::JsonV1, Direction::ToGateway).unwrap();
+    let occupied = connection
+        .sender
+        .try_reserve(transport::QUEUED_BYTES)
+        .unwrap();
+    let cancelled = CancellationToken::new();
+    cancelled.cancel();
+    assert!(matches!(
+        connection.sender.reserve(128, &cancelled).await,
+        Err(Error::Cancelled)
+    ));
+    assert_eq!(connection.sender.retained_frames(), 1);
+    let waiting = tokio::spawn({
+        let sender = connection.sender.clone();
+        async move { sender.reserve(128, &CancellationToken::new()).await }
+    });
+    tokio::task::yield_now().await;
+    tokio::time::advance(transport::QUEUE_DEADLINE + Duration::from_millis(1)).await;
+    assert!(matches!(waiting.await.unwrap(), Err(Error::QueueTimeout)));
+    assert_eq!(connection.sender.retained_frames(), 1);
+    connection.sender.close();
+    assert!(matches!(
+        connection
+            .sender
+            .reserve(128, &CancellationToken::new())
+            .await,
+        Err(Error::Closed)
+    ));
+    drop(occupied);
+    connection.task.await.unwrap();
+    assert_eq!(connection.sender.retained_frames(), 0);
+}
+
+#[tokio::test]
 async fn detached_cleanup_keeps_fifo_without_a_receipt_or_extra_waiter() {
     let (server, mut client, gate) = paused_pair().await;
     let connection = transport::start(server, Negotiated::JsonV1, Direction::ToGateway).unwrap();
@@ -435,6 +497,27 @@ async fn heartbeat_sends_ping_and_accepts_exact_pong() {
         panic!("second heartbeat ping missing")
     };
     assert_ne!(first, second);
+    assert!(!connection.sender.is_closed());
+    connection.sender.close();
+    connection.task.await.unwrap();
+}
+
+#[tokio::test(start_paused = true)]
+async fn delayed_heartbeat_tick_still_probes_before_timing_out() {
+    let (server, mut client) = pair().await;
+    let connection = transport::start(server, Negotiated::JsonV1, Direction::ToGateway).unwrap();
+    tokio::task::yield_now().await;
+    tokio::time::advance(
+        transport::HEARTBEAT_INTERVAL + transport::HEARTBEAT_DEADLINE + Duration::from_millis(1),
+    )
+    .await;
+    let Some(Ok(Message::Ping(nonce))) = client.next().await else {
+        panic!("delayed tick closed without probing the peer")
+    };
+    assert!(!connection.sender.is_closed());
+    client.send(Message::Pong(nonce)).await.unwrap();
+    tokio::task::yield_now().await;
+    tokio::time::advance(transport::HEARTBEAT_DEADLINE + Duration::from_millis(1)).await;
     assert!(!connection.sender.is_closed());
     connection.sender.close();
     connection.task.await.unwrap();

@@ -109,10 +109,116 @@ test("diagnostics report current request metadata without error contents and can
     },
     fetch: async () => ({ ok: false, status: 503, text: async () => "SECRET" }),
   });
-  await assert.rejects(api.request("/api/state"), /SECRET/);
+  await assert.rejects(api.request("/api/state"), /Temporarily unavailable/);
   assert.equal(reports[0].status, 503);
   assert.equal(reports[0].reason, "http");
   assert.ok(!JSON.stringify(reports).includes("SECRET"));
-  await assert.rejects(api.request("/api/diagnostics"), /SECRET/);
+  await assert.rejects(
+    api.request("/api/diagnostics"),
+    /Temporarily unavailable/,
+  );
   assert.equal(reports.length, 1);
+});
+
+const busy = (retry = "0") =>
+  new Response("Service Unavailable", {
+    status: 503,
+    headers: { "Retry-After": retry },
+  });
+
+test("a busy read-only action recovers without reporting a failure", async () => {
+  const requests = [],
+    failures = [];
+  const api = createSessionAPI({
+    csrf: () => "fixture",
+    unauthorized: () => assert.fail("unexpected logout"),
+    failure: (event) => failures.push(event),
+    fetch: async (_path, options) => {
+      requests.push(options.body);
+      return requests.length < 3 ? busy() : ok({ messages: [] });
+    },
+  });
+  const body = {
+    operation: "conversation",
+    session: { id: "$1", created_at: 1 },
+  };
+  const pending = api.request("/api/action", body);
+  body.session.id = "$2";
+  assert.deepEqual(await pending, { messages: [] });
+  assert.equal(requests.length, 3);
+  assert.ok(requests.every((value) => JSON.parse(value).session.id === "$1"));
+  assert.deepEqual(failures, []);
+});
+
+test("busy retries are finite and longer server backoffs are respected", async () => {
+  for (const retry of ["0", "20"]) {
+    let calls = 0;
+    const failures = [];
+    const api = createSessionAPI({
+      csrf: () => "fixture",
+      unauthorized: () => assert.fail("unexpected logout"),
+      failure: (event) => failures.push(event),
+      fetch: async () => {
+        calls++;
+        return busy(retry);
+      },
+    });
+    await assert.rejects(
+      api.request("/api/action", { operation: "conversation" }),
+      /Temporarily unavailable/,
+    );
+    assert.equal(calls, retry === "0" ? 3 : 1);
+    assert.equal(failures.length, 1);
+    assert.equal(failures[0].status, 503);
+  }
+});
+
+test("mutations and unknown actions are never replayed after a busy response", async () => {
+  for (const body of [
+    { operation: "create", payload: { name: "work" } },
+    { operation: "workspace", payload: { change: { operation_id: "test" } } },
+    { operation: "provider-job-start" },
+    { operation: "alias" },
+    { operation: "future-operation" },
+  ]) {
+    let calls = 0;
+    const api = createSessionAPI({
+      csrf: () => "fixture",
+      unauthorized: () => {},
+      fetch: async () => {
+        calls++;
+        return busy();
+      },
+    });
+    await assert.rejects(api.request("/api/action", body));
+    assert.equal(calls, 1);
+  }
+});
+
+test("tab cancellation and account reset cancel retry waits without replay", async () => {
+  for (const reset of [false, true]) {
+    let calls = 0;
+    const failures = [];
+    const parent = new AbortController();
+    const api = createSessionAPI({
+      csrf: () => "fixture",
+      unauthorized: () => {},
+      failure: (event) => failures.push(event),
+      fetch: async () => {
+        calls++;
+        return busy("1");
+      },
+    });
+    const pending = api.request(
+      "/api/action",
+      { operation: "conversation" },
+      parent.signal,
+    );
+    await new Promise((resolve) => setImmediate(resolve));
+    if (reset) api.reset();
+    else parent.abort();
+    await assert.rejects(pending, { name: "AbortError" });
+    assert.equal(calls, 1);
+    assert.deepEqual(failures, []);
+  }
 });

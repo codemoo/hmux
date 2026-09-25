@@ -2,7 +2,7 @@
 //! remain private; read/selection failures return only a public status category.
 use crate::{
     binding::{Binding, Status},
-    catalog::TmuxCatalogReader,
+    catalog::{CatalogError, TmuxCatalogReader},
     inspection::{self, Error, Inspector, ScanPurpose},
     records, transcript,
 };
@@ -74,7 +74,14 @@ impl Job {
                 &self.stop,
                 deadline.into(),
             ))
-            .map_err(|_| Error::Unavailable)?;
+            .map_err(|error| match error {
+                CatalogError::Command(error)
+                    if error.kind() == hmux_core::command::RunErrorKind::Busy =>
+                {
+                    Error::Busy
+                }
+                _ => Error::Unavailable,
+            })?;
         Ok(value
             .sessions
             .unwrap_or_default()
@@ -160,6 +167,7 @@ impl Job {
         inspection::check(&self.stop, deadline)?;
         match attempt {
             Ok(value) => Ok(value),
+            Err(Error::Busy) => Err(Error::Busy),
             Err(_) => Ok(self.empty(Status::Unavailable)),
         }
     }

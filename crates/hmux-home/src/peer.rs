@@ -32,7 +32,10 @@ use std::{
     sync::Arc,
     time::Duration,
 };
-use tokio::{sync::Semaphore, task::JoinSet};
+use tokio::{
+    sync::{OwnedSemaphorePermit, Semaphore},
+    task::JoinSet,
+};
 use tokio_util::sync::CancellationToken;
 
 const CATALOG_INTERVAL: Duration = Duration::from_secs(5);
@@ -41,10 +44,13 @@ const CATALOG_INTERVAL: Duration = Duration::from_secs(5);
 const CATALOG_RENEWAL: Duration = Duration::from_secs(15);
 const ACTION_TIMEOUT: Duration = Duration::from_secs(15);
 const REQUEST_SLOTS: usize = 8;
+const CONVERSATION_WAITERS: usize = 2;
+const CONVERSATION_WAIT: Duration = Duration::from_secs(2);
 // Leave ample room for the v1 JSON wrapper or v2 envelope around opaque JSON.
 const JSON_LIMIT: usize = wire::MAX_MESSAGE - 512;
 const UNAVAILABLE: &str = "Home operation unavailable";
 const BUSY: &str = "Home is busy";
+const TIMED_OUT: &str = "Home operation timed out";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
@@ -111,7 +117,10 @@ pub(crate) async fn send(
     match protocol {
         Negotiated::ProtobufV2 => {
             let size = envelope.encoded_len();
-            let reserved = sender.try_reserve(size).map_err(|_| Error::Transport)?;
+            let reserved = sender
+                .reserve(size, &cancel)
+                .await
+                .map_err(|_| Error::Transport)?;
             let raw =
                 protobuf::encode(&envelope, Direction::ToGateway).map_err(|_| Error::Encoding)?;
             reserved
@@ -126,7 +135,10 @@ pub(crate) async fn send(
                 legacy::to_json(envelope, Direction::ToGateway).map_err(|_| Error::Encoding)?;
             let mut count = Count(0);
             serde_json::to_writer(&mut count, &message).map_err(|_| Error::Encoding)?;
-            let reserved = sender.try_reserve(count.0).map_err(|_| Error::Transport)?;
+            let reserved = sender
+                .reserve(count.0, &cancel)
+                .await
+                .map_err(|_| Error::Transport)?;
             let raw = message.encode().map_err(|_| Error::Encoding)?;
             if raw.len() != count.0 {
                 return Err(Error::Encoding);
@@ -195,6 +207,19 @@ fn workspace_reason(error: crate::workspace::Error) -> Reason {
         crate::workspace::Error::Unavailable => Reason::Unavailable,
     }
 }
+fn workspace_failure(
+    id: String,
+    error: crate::workspace::Error,
+    cancelled: bool,
+) -> p::envelope::Body {
+    if error == crate::workspace::Error::Busy {
+        response(id, None, BUSY)
+    } else if error == crate::workspace::Error::Cancelled && !cancelled {
+        response(id, None, TIMED_OUT)
+    } else {
+        unsupported(id)
+    }
+}
 fn inspection_reason(error: inspection::Error) -> Reason {
     match error {
         inspection::Error::Busy => Reason::Busy,
@@ -203,6 +228,89 @@ fn inspection_reason(error: inspection::Error) -> Reason {
         inspection::Error::Worker => Reason::Worker,
         inspection::Error::Unavailable => Reason::Unavailable,
     }
+}
+
+struct ConversationAdmission {
+    request: Option<OwnedSemaphorePermit>,
+    scan: Option<OwnedSemaphorePermit>,
+    _queue: Option<OwnedSemaphorePermit>,
+    wait_source: Option<Reason>,
+}
+
+// A waiting request owns one of only two queue permits. Neither semaphore is
+// awaited by the peer reader, and a cancelled request cannot begin inspection.
+fn conversation_admission(
+    slots: &Arc<Semaphore>,
+    waiters: &Arc<Semaphore>,
+) -> Result<ConversationAdmission, Reason> {
+    if let Ok(request) = slots.clone().try_acquire_owned() {
+        if let Some(scan) = inspection::admit() {
+            return Ok(ConversationAdmission {
+                request: Some(request),
+                scan: Some(scan),
+                _queue: None,
+                wait_source: None,
+            });
+        }
+        drop(request);
+        return queued_conversation(waiters, Reason::InspectionSlotsBusy);
+    }
+    queued_conversation(waiters, Reason::RequestSlotsBusy)
+}
+
+fn queued_conversation(
+    waiters: &Arc<Semaphore>,
+    source: Reason,
+) -> Result<ConversationAdmission, Reason> {
+    let queue = waiters
+        .clone()
+        .try_acquire_owned()
+        .map_err(|_| Reason::ConversationQueueBusy)?;
+    Ok(ConversationAdmission {
+        request: None,
+        scan: None,
+        _queue: Some(queue),
+        wait_source: Some(source),
+    })
+}
+
+async fn wait_conversation_admission(
+    admission: &mut ConversationAdmission,
+    slots: Arc<Semaphore>,
+    cancel: &CancellationToken,
+    deadline: tokio::time::Instant,
+) -> Result<(), Reason> {
+    if cancel.is_cancelled() {
+        return Err(Reason::Cancelled);
+    }
+    if admission.request.is_none() {
+        let request = tokio::select! {
+            biased;
+            _ = cancel.cancelled() => return Err(Reason::Cancelled),
+            _ = tokio::time::sleep_until(deadline) => return Err(Reason::RequestAdmissionTimeout),
+            permit = slots.acquire_owned() => permit.map_err(|_| Reason::RequestSlotsBusy)?,
+        };
+        admission.request = Some(request);
+    }
+    if admission.scan.is_none() {
+        let scan = inspection::wait_interactive(cancel, deadline)
+            .await
+            .ok_or_else(|| {
+                if cancel.is_cancelled() {
+                    Reason::Cancelled
+                } else {
+                    Reason::InspectionAdmissionTimeout
+                }
+            })?;
+        admission.scan = Some(scan);
+    }
+    if cancel.is_cancelled() {
+        return Err(Reason::Cancelled);
+    }
+    // Running jobs are now bounded by their request permit. Failed admission
+    // keeps its queue permit until its small failure response is delivered.
+    admission._queue.take();
+    Ok(())
 }
 fn recoverable_legacy_action(value: &wire::Message, duplicate: bool) -> bool {
     value.kind == "request"
@@ -582,7 +690,11 @@ async fn serve_profiles(job: ProfileJob) -> (String, Result<(), Error>) {
                         }),
                         started,
                     );
-                    unsupported(id.clone())
+                    if early_reason == Some(Reason::QueryTimeout) {
+                        response(id.clone(), None, TIMED_OUT)
+                    } else {
+                        unsupported(id.clone())
+                    }
                 }
             }
         };
@@ -765,6 +877,10 @@ async fn run_owned(
         changed.clone(),
     ));
     let slots = Arc::new(Semaphore::new(REQUEST_SLOTS));
+    // Terminal startup may wait on tmux. Keep its bounded admission separate
+    // so eight concurrent starts cannot starve every control/query.
+    let terminal_slots = Arc::new(Semaphore::new(wire::MAX_TERMINALS));
+    let conversation_waiters = Arc::new(Semaphore::new(CONVERSATION_WAITERS));
     let profile_slot = Arc::new(Semaphore::new(1));
     let mut jobs = JoinSet::new();
     let mut pending = HashMap::<String, CancellationToken>::new();
@@ -814,9 +930,70 @@ async fn run_owned(
                         let started = std::time::Instant::now();
                         let operation = p::Operation::try_from(request.operation).ok();
                         if pending.contains_key(&request.id) { result = Err(Error::Protocol); break; }
+                        if operation == Some(p::Operation::Conversation) && inspector.is_some() {
+                            let Some(session) = request.session else { result = Err(Error::Protocol); break; };
+                            let admission = match conversation_admission(&slots, &conversation_waiters) {
+                                Ok(admission) => admission,
+                                Err(reason) => {
+                                    report_action(&reporter, operation, reason, started);
+                                    result = send(&sender, protocol, response(request.id, None, BUSY), stop.clone()).await;
+                                    if result.is_err() { break; }
+                                    continue;
+                                }
+                            };
+                            if let Some(source) = admission.wait_source {
+                                report_action(&reporter, operation, source, started);
+                            }
+                            let id = request.id;
+                            let cancellation = stop.child_token();
+                            pending.insert(id.clone(), cancellation.clone());
+                            let job = conversation::Job {
+                                inspector: inspector.as_ref().expect("configured").clone(),
+                                reader: catalog.clone(),
+                                identity: hmux_model::SessionIdentity { id: session.id, created_at: session.created_at },
+                                stop: cancellation.clone(),
+                            };
+                            let sender = sender.clone();
+                            let stop = stop.clone();
+                            let reporter = reporter.clone();
+                            let slots = slots.clone();
+                            jobs.spawn(async move {
+                                let deadline = (started + CONVERSATION_WAIT).into();
+                                let mut admission = admission;
+                                let admitted = wait_conversation_admission(&mut admission, slots, &cancellation, deadline).await;
+                                let body = match admitted {
+                                    Ok(()) => {
+                                        let scan = admission.scan.take().expect("admitted scan");
+                                        let outcome = job.run(scan).await;
+                                        match outcome {
+                                            Ok(value) if !cancellation.is_cancelled() => {
+                                                report_slow_action(&reporter, Some(p::Operation::Conversation), started);
+                                                response(id.clone(), Some(p::response::Result::Conversation(Box::new(actions::conversation_to_proto(value)))), "")
+                                            }
+                                            Err(error) => {
+                                                report_action(&reporter, Some(p::Operation::Conversation), inspection_reason(error), started);
+                                                if error == inspection::Error::Busy { response(id.clone(), None, BUSY) } else if error == inspection::Error::Cancelled && !cancellation.is_cancelled() { response(id.clone(), None, TIMED_OUT) } else { unsupported(id.clone()) }
+                                            }
+                                            _ => {
+                                                report_action(&reporter, Some(p::Operation::Conversation), Reason::Cancelled, started);
+                                                unsupported(id.clone())
+                                            }
+                                        }
+                                    }
+                                    Err(reason) => {
+                                        report_action(&reporter, Some(p::Operation::Conversation), reason, started);
+                                        if reason == Reason::Cancelled { unsupported(id.clone()) } else { response(id.clone(), None, BUSY) }
+                                    }
+                                };
+                                let sent = if stop.is_cancelled() { Ok(()) } else { send(&sender, protocol, body, stop).await };
+                                drop(admission);
+                                (id, sent)
+                            });
+                            continue;
+                        }
                         let permit = slots.clone().try_acquire_owned();
                         if permit.is_err() {
-                            report_action(&reporter, operation, Reason::Busy, started);
+                            report_action(&reporter, operation, Reason::RequestSlotsBusy, started);
                             result = send(&sender, protocol, response(request.id, None, BUSY), stop.clone()).await;
                             if result.is_err() { break; }
                             continue;
@@ -852,6 +1029,7 @@ async fn run_owned(
                                         if result.refresh_auth { if let Some(refresh) = refresh {refresh.request();} }
                                         if cancellation.is_cancelled() { unsupported(id.clone()) } else { response(id.clone(), Some(p::response::Result::Providers(Box::new(result.result))), "") }
                                     },
+                                    Err(error) if error.is_busy() => { report_action(&reporter, Some(operation), Reason::Busy, started); response(id.clone(), None, BUSY) },
                                     _ => { report_action(&reporter, Some(operation), Reason::Unavailable, started); unsupported(id.clone()) },
                                 };
                                 let sent = if stop.is_cancelled() { Ok(()) } else { send(&sender, protocol, body, stop).await };
@@ -874,31 +1052,12 @@ async fn run_owned(
                                 let outcome = workspace.request_typed_reported(change, catalog, runner, &cancellation, reporter.clone()).await;
                                 let body = match outcome {
                                     Ok(value) if !cancellation.is_cancelled() => { report_slow_action(&reporter, Some(p::Operation::Workspace), started); response(id.clone(), Some(p::response::Result::Workspace(Box::new(actions::workspace_to_proto(value)))), "") },
-                                    Err(error) => { report_action(&reporter, Some(p::Operation::Workspace), workspace_reason(error), started); unsupported(id.clone()) },
+                                    Err(error) => { report_action(&reporter, Some(p::Operation::Workspace), workspace_reason(error), started); workspace_failure(id.clone(), error, cancellation.is_cancelled()) },
                                     _ => { report_action(&reporter, Some(p::Operation::Workspace), Reason::Cancelled, started); unsupported(id.clone()) },
                                 };
                                 let sent = if stop.is_cancelled() { Ok(()) } else { send(&sender, protocol, body, stop).await };
                                 drop(permit);
                                 (id, sent)
-                            });
-                        } else if request.operation == p::Operation::Conversation as i32 && inspector.is_some() {
-                            let Some(session)=request.session else { result=Err(Error::Protocol);break; };
-                            let Some(io_permit)=inspection::admit() else {
-                                report_action(&reporter, operation, Reason::Busy, started);
-                                result=send(&sender,protocol,response(request.id,None,BUSY),stop.clone()).await;
-                                if result.is_err(){break;} continue;
-                            };
-                            let id=request.id;
-                            let cancellation=stop.child_token();
-                            pending.insert(id.clone(),cancellation.clone());
-                            let job=conversation::Job {inspector:inspector.as_ref().expect("configured").clone(),reader:catalog.clone(),identity:hmux_model::SessionIdentity{id:session.id,created_at:session.created_at},stop:cancellation.clone()};
-                            let sender=sender.clone();let stop=stop.clone();
-                            let reporter=reporter.clone();
-                            jobs.spawn(async move {
-                                let outcome=job.run(io_permit).await;
-                                let body=match outcome {Ok(value) if !cancellation.is_cancelled()=>{report_slow_action(&reporter,Some(p::Operation::Conversation),started);response(id.clone(),Some(p::response::Result::Conversation(Box::new(actions::conversation_to_proto(value)))),"")},Err(error)=>{report_action(&reporter,Some(p::Operation::Conversation),inspection_reason(error),started);unsupported(id.clone())},_=>{report_action(&reporter,Some(p::Operation::Conversation),Reason::Cancelled,started);unsupported(id.clone())}};
-                                let sent=if stop.is_cancelled(){Ok(())}else{send(&sender,protocol,body,stop).await};
-                                drop(permit);(id,sent)
                             });
                         } else if sessions::supported(request.operation) && session_context.is_some() {
                             let Some(action_permit) = sessions::admit() else {
@@ -932,7 +1091,7 @@ async fn run_owned(
                     }
                     TerminalOpen(open) => {
                         if pending.contains_key(&open.id) { result = Err(Error::Protocol); break; }
-                        let permit = slots.clone().try_acquire_owned();
+                        let permit = terminal_slots.clone().try_acquire_owned();
                         if permit.is_err() || terminals.len() >= wire::MAX_TERMINALS {
                             result = send(&sender, protocol, response(open.id, None, BUSY), stop.clone()).await;
                             if result.is_err() { break; }
@@ -1009,6 +1168,102 @@ async fn run_owned(
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
+    #[test]
+    fn workspace_busy_reply_is_retryable_but_invalid_is_not() {
+        let p::envelope::Body::Response(busy) =
+            workspace_failure("busy".into(), crate::workspace::Error::Busy, false)
+        else {
+            panic!("response")
+        };
+        assert_eq!(busy.error, BUSY);
+        let p::envelope::Body::Response(invalid) =
+            workspace_failure("invalid".into(), crate::workspace::Error::Invalid, false)
+        else {
+            panic!("response")
+        };
+        assert_eq!(invalid.error, UNAVAILABLE);
+        for (cancelled, expected) in [(false, TIMED_OUT), (true, UNAVAILABLE)] {
+            let p::envelope::Body::Response(reply) = workspace_failure(
+                "deadline".into(),
+                crate::workspace::Error::Cancelled,
+                cancelled,
+            ) else {
+                panic!("response")
+            };
+            assert_eq!(reply.error, expected);
+        }
+    }
+
+    #[tokio::test]
+    async fn conversation_wait_recovers_when_request_slot_releases() {
+        let slots = Arc::new(Semaphore::new(1));
+        let held = slots.clone().try_acquire_owned().unwrap();
+        let waiters = Arc::new(Semaphore::new(1));
+        let mut admission = conversation_admission(&slots, &waiters).unwrap();
+        assert_eq!(admission.wait_source, Some(Reason::RequestSlotsBusy));
+        assert!(matches!(
+            conversation_admission(&slots, &waiters),
+            Err(Reason::ConversationQueueBusy)
+        ));
+        let stop = CancellationToken::new();
+        let release = tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+            drop(held);
+        });
+        wait_conversation_admission(
+            &mut admission,
+            slots.clone(),
+            &stop,
+            tokio::time::Instant::now() + Duration::from_secs(1),
+        )
+        .await
+        .unwrap();
+        release.await.unwrap();
+        assert_eq!(waiters.available_permits(), 1);
+        drop(admission);
+        assert_eq!(slots.available_permits(), 1);
+        assert_eq!(waiters.available_permits(), 1);
+    }
+
+    #[tokio::test]
+    async fn conversation_wait_cancels_and_expires_without_losing_capacity() {
+        let slots = Arc::new(Semaphore::new(1));
+        let held = slots.clone().try_acquire_owned().unwrap();
+        let waiters = Arc::new(Semaphore::new(1));
+        let stop = CancellationToken::new();
+        let mut admission = conversation_admission(&slots, &waiters).unwrap();
+        stop.cancel();
+        assert!(matches!(
+            wait_conversation_admission(
+                &mut admission,
+                slots.clone(),
+                &stop,
+                tokio::time::Instant::now() + Duration::from_secs(1),
+            )
+            .await,
+            Err(Reason::Cancelled)
+        ));
+        drop(admission);
+        let mut admission = conversation_admission(&slots, &waiters).unwrap();
+        assert!(matches!(
+            wait_conversation_admission(
+                &mut admission,
+                slots.clone(),
+                &CancellationToken::new(),
+                tokio::time::Instant::now() + Duration::from_millis(20),
+            )
+            .await,
+            Err(Reason::RequestAdmissionTimeout)
+        ));
+        assert_eq!(waiters.available_permits(), 0);
+        drop(admission);
+        drop(held);
+        assert_eq!(slots.available_permits(), 1);
+        assert_eq!(waiters.available_permits(), 1);
+    }
+
     #[test]
     fn invalid_legacy_action_can_reply_without_closing_peer() {
         let raw = br#"{"type":"request","id":"bad-create","operation":"create","payload":{"extra":true}}"#;
@@ -1023,8 +1278,6 @@ mod tests {
         other.kind = "upload-data".into();
         assert!(!super::recoverable_legacy_action(&other, false));
     }
-
-    use super::*;
 
     #[test]
     fn serialization_caps_backing_capacity_and_fits_both_envelopes() {

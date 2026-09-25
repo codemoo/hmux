@@ -349,13 +349,13 @@ impl Push {
         payload: Value,
         completion: Option<(SessionIdentity, Generation)>,
         deadline: Option<Instant>,
-    ) -> bool {
+    ) -> Result<StatusCode, push_transport::Error> {
         if self.0.stop.is_cancelled() {
-            return false;
+            return Err(push_transport::Error::Cancelled);
         }
         let raw = match serde_json::to_vec(&payload) {
             Ok(raw) => raw,
-            Err(_) => return false,
+            Err(_) => return Err(push_transport::Error::Invalid),
         };
         let prepared = match self
             .0
@@ -364,7 +364,7 @@ impl Push {
             .await
         {
             Ok(prepared) => prepared,
-            Err(_) => return false,
+            Err(error) => return Err(map_store(error)),
         };
         let owner = self.clone();
         let auth = context.auth.clone();
@@ -431,15 +431,11 @@ impl Push {
                 Ok(())
             })
             .await;
-        match status {
-            Ok(StatusCode::NOT_FOUND | StatusCode::GONE) => {
-                let _ = self.0.store.remove(&id, Some(&endpoint)).await;
-                self.prune_transient().await;
-                false
-            }
-            Ok(status) => status.is_success(),
-            Err(_) => false,
+        if let Ok(StatusCode::NOT_FOUND | StatusCode::GONE) = status {
+            let _ = self.0.store.remove(&id, Some(&endpoint)).await;
+            self.prune_transient().await;
         }
+        status
     }
 }
 

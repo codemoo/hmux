@@ -4,6 +4,7 @@ use super::*;
 use crate::{
     push,
     push_state::{self, Keys, Subscription},
+    push_transport,
 };
 use hmux_model::SessionIdentity;
 use serde_json::json;
@@ -36,6 +37,21 @@ fn store_status(error: push_state::Error) -> StatusCode {
         push_state::Error::Invalid => StatusCode::BAD_REQUEST,
         push_state::Error::Unauthorized => StatusCode::UNAUTHORIZED,
         push_state::Error::Busy | push_state::Error::Unavailable => StatusCode::SERVICE_UNAVAILABLE,
+    }
+}
+fn delivery_failure(result: Result<StatusCode, push_transport::Error>) -> Option<StatusCode> {
+    match result {
+        Ok(status) if status.is_success() => None,
+        Ok(_) | Err(push_transport::Error::Invalid | push_transport::Error::Redirect) => {
+            Some(StatusCode::BAD_GATEWAY)
+        }
+        Err(push_transport::Error::Unauthorized) => Some(StatusCode::UNAUTHORIZED),
+        Err(push_transport::Error::Timeout) => Some(StatusCode::GATEWAY_TIMEOUT),
+        Err(
+            push_transport::Error::Busy
+            | push_transport::Error::Cancelled
+            | push_transport::Error::Unavailable,
+        ) => Some(StatusCode::SERVICE_UNAVAILABLE),
     }
 }
 impl Gateway {
@@ -176,11 +192,18 @@ impl Gateway {
                     workspaces: self.workspaces.clone(),
                     origin: self.origin.clone(),
                 };
-                if !push
+                let delivery = push
                     .send(&context, access.clone(), sub, payload, None, None)
-                    .await
-                {
-                    return boundary::error(StatusCode::BAD_GATEWAY);
+                    .await;
+                if let Some(status) = delivery_failure(delivery) {
+                    return if matches!(
+                        status,
+                        StatusCode::SERVICE_UNAVAILABLE | StatusCode::GATEWAY_TIMEOUT
+                    ) {
+                        boundary::retryable_error(status)
+                    } else {
+                        boundary::error(status)
+                    };
                 }
             }
             _ => return boundary::error(StatusCode::NOT_FOUND),
@@ -192,6 +215,33 @@ impl Gateway {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn push_delivery_distinguishes_local_limits_from_remote_failure() {
+        assert_eq!(delivery_failure(Ok(StatusCode::CREATED)), None);
+        assert_eq!(
+            delivery_failure(Ok(StatusCode::GONE)),
+            Some(StatusCode::BAD_GATEWAY)
+        );
+        for error in [
+            push_transport::Error::Busy,
+            push_transport::Error::Unavailable,
+            push_transport::Error::Cancelled,
+        ] {
+            assert_eq!(
+                delivery_failure(Err(error)),
+                Some(StatusCode::SERVICE_UNAVAILABLE)
+            );
+        }
+        assert_eq!(
+            delivery_failure(Err(push_transport::Error::Timeout)),
+            Some(StatusCode::GATEWAY_TIMEOUT)
+        );
+        assert_eq!(
+            delivery_failure(Err(push_transport::Error::Invalid)),
+            Some(StatusCode::BAD_GATEWAY)
+        );
+    }
 
     #[test]
     fn browser_subscription_dto_accepts_nullable_expiration_and_rejects_selectors() {

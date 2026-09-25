@@ -677,6 +677,12 @@ async fn busy_cancel_and_disconnect_keep_inspection_workers_bounded() {
         .await
         .unwrap();
         send(&mut g, protocol, conversation("busy", 1700000000)).await;
+        send(
+            &mut g,
+            protocol,
+            p::envelope::Body::Cancel(p::Reference { id: "busy".into() }),
+        )
+        .await;
         let r = reply(&mut g, protocol, "busy").await;
         assert!(!r.error.is_empty());
         assert!(r.result.is_none());
@@ -697,5 +703,67 @@ async fn busy_cancel_and_disconnect_keep_inspection_workers_bounded() {
             let child = rustix::process::Pid::from_raw(pid).unwrap();
             assert!(rustix::process::test_kill_process(child).is_err());
         }
+    }
+}
+
+#[tokio::test]
+async fn occupied_inspection_slot_releases_to_waiting_conversation() {
+    let _serial = SERIAL.lock().await;
+    for protocol in [Negotiated::JsonV1, Negotiated::ProtobufV2] {
+        let f = Fixture::new();
+        let record = f.codex("admission-private-id", "{\"type\":\"response_item\",\"payload\":{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"Recovered conversation\"}]}}\n");
+        f.put("lsof-data", &format!("p90\nn{}\n", record.display()));
+        let (stop, owner, mut g) = boot(&f, protocol).await;
+        f.put("slow", "yes");
+        send(&mut g, protocol, conversation("occupied", 1700000000)).await;
+        timeout(Duration::from_secs(2), async {
+            while !f.dir.join("ps-pid").exists() {
+                tokio::time::sleep(Duration::from_millis(5)).await;
+            }
+        })
+        .await
+        .unwrap();
+        send(&mut g, protocol, conversation("waiting", 1700000000)).await;
+        // The peer reader must continue to dispatch unrelated requests and Cancel.
+        send(
+            &mut g,
+            protocol,
+            p::envelope::Body::Request(Box::new(p::Request {
+                id: "profiles".into(),
+                operation: p::Operation::Profiles as i32,
+                session: None,
+                payload: Some(p::request::Payload::Empty(p::Empty {})),
+            })),
+        )
+        .await;
+        assert_eq!(reply(&mut g, protocol, "profiles").await.error, "");
+        fs::remove_file(f.dir.join("slow")).unwrap();
+        send(
+            &mut g,
+            protocol,
+            p::envelope::Body::Cancel(p::Reference {
+                id: "occupied".into(),
+            }),
+        )
+        .await;
+        let mut occupied = None;
+        let mut waiting = None;
+        timeout(Duration::from_secs(5), async {
+            while occupied.is_none() || waiting.is_none() {
+                match receive(&mut g, protocol).await {
+                    p::envelope::Body::Response(r) if r.id == "occupied" => occupied = Some(r),
+                    p::envelope::Body::Response(r) if r.id == "waiting" => waiting = Some(r),
+                    p::envelope::Body::Catalog(_) => {}
+                    _ => panic!("unexpected peer reply"),
+                }
+            }
+        })
+        .await
+        .unwrap();
+        assert!(!occupied.unwrap().error.is_empty());
+        let waiting = waiting.unwrap();
+        assert_eq!(waiting.error, "");
+        assert_eq!(texts(&waiting), ["Recovered conversation"]);
+        close(stop, owner).await;
     }
 }

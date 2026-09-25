@@ -1145,10 +1145,7 @@ async fn wrong_reply_kind_disconnects_home_for_both_codecs() {
         tokio::time::timeout(Duration::from_secs(2), home.wait())
             .await
             .unwrap();
-        assert!(matches!(
-            pending.await.unwrap(),
-            Err(Error::Offline) | Err(Error::Stale)
-        ));
+        assert!(matches!(pending.await.unwrap(), Err(Error::Invalid)));
         assert!(!hub.snapshot().connected);
     }
 }

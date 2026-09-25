@@ -69,13 +69,14 @@ async fn workspace_accounts_merge_restart_and_preserve_primary_home_routing() {
             .code,
         403
     );
-    assert_eq!(
-        server
-            .request("POST", "/api/action", &headers, Some(workspace(change(1))))
-            .await
-            .code,
-        502
-    );
+    let offline = server
+        .request("POST", "/api/action", &headers, Some(workspace(change(1))))
+        .await;
+    assert_eq!(offline.code, 503);
+    assert!(offline
+        .headers
+        .iter()
+        .any(|(name, value)| name == "retry-after" && value == "1"));
     let mut home = Home::new(&hub).await;
     catalog(&mut home, &hub).await;
     for invalid in [
@@ -302,7 +303,11 @@ async fn forwarded_actions_sanitize_fields_and_cancel_on_logout() {
     tokio::time::advance(Duration::from_secs(20)).await;
     let timed = timed.await.unwrap();
     tokio::time::resume();
-    assert_eq!(timed.code, 502);
+    assert_eq!(timed.code, 504);
+    assert!(timed
+        .headers
+        .iter()
+        .any(|(name, value)| name == "retry-after" && value == "1"));
     let p::envelope::Body::Cancel(cancel) = home.receive().await else {
         panic!("expected timed-out request cancellation")
     };
@@ -432,6 +437,7 @@ async fn home_action_failures_record_safe_causes_without_raw_remote_errors() {
     catalog(&mut home, &hub).await;
     for (error, expected) in [
         ("Home is busy", ActionFailure::HomeBusy),
+        ("Home operation timed out", ActionFailure::Deadline),
         (
             "private-path-and-token-must-not-be-logged",
             ActionFailure::HomeOperation,
@@ -451,7 +457,11 @@ async fn home_action_failures_record_safe_causes_without_raw_remote_errors() {
                             ("Origin", "https://hmux.example"),
                             ("X-CSRF-Token", csrf.as_str()),
                         ],
-                        Some(json!({"operation":"profiles"})),
+                        Some(if error == "Home is busy" {
+                            json!({"operation":"create","payload":{"profile":"shell","name":"synthetic"}})
+                        } else {
+                            json!({"operation":"profiles"})
+                        }),
                     )
                     .await
             }
@@ -459,27 +469,105 @@ async fn home_action_failures_record_safe_causes_without_raw_remote_errors() {
         let p::envelope::Body::Request(request) = home.receive().await else {
             panic!("expected request");
         };
+        let operation = if error == "Home is busy" {
+            p::Operation::Create
+        } else {
+            p::Operation::Profiles
+        };
+        assert_eq!(request.operation, operation as i32);
         home.send(p::envelope::Body::Response(p::Response {
             id: request.id,
             error: error.into(),
             result: None,
         }))
         .await;
-        assert_eq!(pending.await.unwrap().code, 502);
-        let events = events.lock().unwrap();
-        let event = events
-            .iter()
-            .rev()
-            .find(|event| event.stage == Stage::ActionFailed)
-            .unwrap();
-        assert_eq!(event.action_failure, Some(expected));
-        assert_eq!(event.http_status, Some(502));
-        assert!(event.operation == Some(p::Operation::Profiles));
-        assert!(event.connection > 0);
-        for event in events.iter() {
-            assert!(!event.to_string().contains("private-path-and-token"));
+        let reply = pending.await.unwrap();
+        let status = match error {
+            "Home is busy" => 503,
+            "Home operation timed out" => 504,
+            _ => 502,
+        };
+        assert_eq!(reply.code, status);
+        assert_eq!(
+            reply
+                .headers
+                .iter()
+                .find(|(name, _)| name == "retry-after")
+                .map(|(_, value)| value.as_str()),
+            (status == 503 || status == 504).then_some("1"),
+        );
+        {
+            let events = events.lock().unwrap();
+            let event = events
+                .iter()
+                .rev()
+                .find(|event| event.stage == Stage::ActionFailed)
+                .unwrap();
+            assert_eq!(event.action_failure, Some(expected));
+            assert_eq!(event.http_status, Some(status));
+            assert!(event.operation == Some(operation));
+            assert!(event.connection > 0);
+            for event in events.iter() {
+                assert!(!event.to_string().contains("private-path-and-token"));
+            }
+        }
+        if error == "Home is busy" {
+            assert!(
+                tokio::time::timeout(Duration::from_millis(150), home.receive())
+                    .await
+                    .is_err(),
+                "mutation was replayed"
+            );
         }
     }
+    home.stop().await;
+    Arc::try_unwrap(server).ok().unwrap().stop().await;
+}
+
+#[tokio::test]
+async fn wrong_home_reply_is_a_protocol_failure_not_a_retryable_shortage() {
+    let fixture = Fixture::new();
+    let (hub, _events) = Hub::new();
+    let server = Arc::new(fixture.start_with_home(Some(hub.clone())).await);
+    let cookie = server.login("primary").await;
+    let csrf = server.session(&cookie).await.json()["csrf"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let mut home = Home::new(&hub).await;
+    let pending = tokio::spawn({
+        let server = server.clone();
+        async move {
+            server
+                .request(
+                    "POST",
+                    "/api/action",
+                    &[
+                        ("Cookie", cookie.as_str()),
+                        ("Origin", "https://hmux.example"),
+                        ("X-CSRF-Token", csrf.as_str()),
+                    ],
+                    Some(json!({"operation":"profiles"})),
+                )
+                .await
+        }
+    });
+    let p::envelope::Body::Request(request) = home.receive().await else {
+        panic!("expected request");
+    };
+    home.send(p::envelope::Body::Response(p::Response {
+        id: request.id,
+        result: Some(p::response::Result::Created(p::CreatedResult {
+            id: "$1".into(),
+            created_at: 42,
+            reused: false,
+        })),
+        ..Default::default()
+    }))
+    .await;
+    let reply = pending.await.unwrap();
+    assert_eq!(reply.code, 502);
+    assert!(!reply.headers.iter().any(|(name, _)| name == "retry-after"));
     home.stop().await;
     Arc::try_unwrap(server).ok().unwrap().stop().await;
 }

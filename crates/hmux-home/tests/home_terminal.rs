@@ -321,6 +321,42 @@ impl Peer {
 }
 
 #[tokio::test]
+async fn full_terminal_capacity_preserves_action_slots() {
+    let _serial = SERIAL.lock().await;
+    for protocol in [Negotiated::JsonV1, Negotiated::ProtobufV2] {
+        let f = Fixture::new();
+        let mut peer = Peer::start_reported(&f, protocol, None).await;
+        f.mode("setup-wait");
+        for n in 0..hmux_protocol::wire::MAX_TERMINALS {
+            peer.send(p::envelope::Body::TerminalOpen(p::TerminalOpen {
+                id: format!("full-{n}"),
+                session: Some(p::Session {
+                    id: "$7".into(),
+                    created_at: 1700000000,
+                }),
+                cols: 80,
+                rows: 24,
+                capabilities: vec![flow::CAPABILITY.into()],
+            }))
+            .await;
+        }
+        timeout(Duration::from_secs(3), async {
+            while f.owners() != hmux_protocol::wire::MAX_TERMINALS {
+                tokio::time::sleep(Duration::from_millis(5)).await;
+            }
+        })
+        .await
+        .unwrap();
+        // Every startup is still waiting inside the synthetic tmux command.
+        // Before separate startup admission this query returned Home is busy.
+        peer.profiles().await;
+        peer.shutdown().await;
+        assert_eq!(f.owners(), 0);
+        f.reaped();
+    }
+}
+
+#[tokio::test]
 async fn cleanup_failure_is_reported_without_disconnecting_other_views() {
     // Quarantine intentionally lasts until process exit. Keep this fault in a
     // child so it cannot consume the capacity tested by other cases.
