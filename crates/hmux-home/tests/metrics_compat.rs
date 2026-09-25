@@ -3,7 +3,7 @@ use hmux_home::metrics_parsers::{
 };
 
 #[test]
-fn matches_actual_go_hostmetrics_oracle() {
+fn preserves_shared_go_metrics_and_rejects_retired_top_output() {
     let cases: serde_json::Value = serde_json::from_str(include_str!(
         "../../../tests/fixtures/hostmetrics-v1/go-oracle.json"
     ))
@@ -21,7 +21,11 @@ fn matches_actual_go_hostmetrics_oracle() {
             .and_then(serde_json::Value::as_u64)
             .zip(want.get("total").and_then(serde_json::Value::as_u64));
         match case["kind"].as_str().unwrap() {
-            "cpu_darwin" => assert_eq!(cpu_darwin(first), want_percent, "{name}"),
+            // The native collector now uses CPU-only iostat instead of top.
+            // Preserve the historical oracle, but do not require that retired
+            // command format to be accepted by the current iostat decoder.
+            // Current interval/invalid iostat cases live in metrics_parsers.
+            "cpu_darwin" => assert_eq!(cpu_darwin(first), None, "{name}"),
             "memory_darwin" => assert_eq!(memory_darwin(first, second), want_bytes, "{name}"),
             "cpu_linux" => assert_eq!(cpu_linux(first, second), want_percent, "{name}"),
             "memory_linux" => assert_eq!(memory_linux(first), want_bytes, "{name}"),
