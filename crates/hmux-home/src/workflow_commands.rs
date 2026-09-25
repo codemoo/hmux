@@ -120,7 +120,7 @@ pub fn views(sessions: &[Session], filter: &str) -> Result<Vec<SessionView>, Str
         .map(|s| SessionView {
             id: s.id.clone(),
             name: safe_text(&s.name, 512),
-            alias: safe_text(&s.alias, 128),
+            alias: safe_text(&s.alias, crate::sessionstate::MAX_ALIAS_BYTES),
             summary: s.workflow.clone(),
             workflows: s.workflows.clone().filter(|w| !w.is_empty()),
         })

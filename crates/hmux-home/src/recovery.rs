@@ -258,7 +258,7 @@ fn validate_snapshot(s: &Snapshot) -> Result<(), Error> {
             || !ids.insert(&x.identity.id)
             || x.windows.is_empty()
             || x.windows.len() > 512
-            || safe_text(&x.alias, 256) != x.alias
+            || safe_text(&x.alias, crate::sessionstate::MAX_ALIAS_BYTES) != x.alias
             || safe_text(&x.profile, 128) != x.profile
             || safe_text(&x.label, 256) != x.label
             || x.tags.len() > 128
@@ -1000,6 +1000,17 @@ mod tests {
         ] {
             assert_eq!(darwin_boot_id(raw), Err(Error::Invalid));
         }
+    }
+    #[test]
+    fn snapshot_preserves_full_creation_display_name() {
+        let mut shot = sample();
+        shot.sessions[0].alias = "🚀".repeat(80);
+        assert_eq!(validate_snapshot(&shot), Ok(()));
+        let encoded = serde_json::to_vec(&shot).unwrap();
+        let decoded: Snapshot = serde_json::from_slice(&encoded).unwrap();
+        assert_eq!(decoded.sessions[0].alias, shot.sessions[0].alias);
+        shot.sessions[0].alias.push('x');
+        assert_eq!(validate_snapshot(&shot), Err(Error::Invalid));
     }
     #[test]
     fn rejects_topology_and_unsafe_layout_without_panicking() {

@@ -481,6 +481,13 @@ See [Usage source fallback](PROVIDERS.md#usage-source-fallback).
 
 ## Session list latency
 
+The name entered in the new-session dialog is saved as the session's display
+alias and used for its tab and list title, preserving Unicode, spaces and
+punctuation (outer whitespace is trimmed). The workspace folder and unique tmux
+name still use the safe generated name. Leaving the name empty retains automatic
+naming. The alias is persisted with the launch profile on Home, so it survives
+browser refreshes and reconnects and can be changed later from session settings.
+
 Home polls tmux every five seconds, but operations that change tmux state
 (`create`, `alias`, `hidden`) and the end of a terminal view request an
 immediate catalog poll through the Home peer's change notification. The browser

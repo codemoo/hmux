@@ -138,6 +138,9 @@ impl Job {
                     &self.context.shell,
                 )
                 .map_err(|_| Error::Invalid)?;
+                let alias = q.name.as_deref().unwrap_or_default().trim();
+                // Validate display metadata before allocating or starting tmux.
+                sessionstate::validate_alias(alias).map_err(|_| Error::Invalid)?;
                 check(&self.stop, deadline)?;
                 let allocated = plan.allocate().map_err(|_| Error::Unavailable)?;
                 check(&self.stop, deadline)?;
@@ -167,6 +170,7 @@ impl Job {
                     id: result.id.clone(),
                     name: allocated.name,
                     created_at: result.created_at,
+                    alias: alias.to_owned(),
                     ..Session::default()
                 };
                 store

@@ -331,7 +331,7 @@ impl AgentSupport {
                         .collect(),
                 ),
                 label: safe_text(fields[5], 256),
-                alias: safe_text(fields[6], 128),
+                alias: safe_text(fields[6], crate::sessionstate::MAX_ALIAS_BYTES),
                 ..Session::default()
             });
         }

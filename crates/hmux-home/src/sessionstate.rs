@@ -27,6 +27,8 @@ const VISIBILITY_LIMIT: usize = 2 * 1024 * 1024;
 const ENTRY_LIMIT: usize = 10_000;
 const LOCK_WAIT: Duration = Duration::from_secs(2);
 const POLL: Duration = Duration::from_millis(25);
+// Creation accepts 80 Unicode scalars, each up to four UTF-8 bytes.
+pub(crate) const MAX_ALIAS_BYTES: usize = 320;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
@@ -210,8 +212,8 @@ fn validate_identity(id: &str, name: &str, created_at: i64) -> Result<(), Error>
     }
     Ok(())
 }
-fn validate_alias(alias: &str) -> Result<(), Error> {
-    if alias.len() > 128 || !valid_text(alias, 128) {
+pub(crate) fn validate_alias(alias: &str) -> Result<(), Error> {
+    if !valid_text(alias, MAX_ALIAS_BYTES) {
         Err(Error::Invalid)
     } else {
         Ok(())
@@ -437,6 +439,8 @@ impl Store {
             .map_err(|_| Error::Unavailable)
     }
 
+    /// Initialize a new lifetime with its display alias. Profile updates keep
+    /// an existing alias, including an explicitly cleared one.
     pub fn set_profile(
         &self,
         session: &Session,
@@ -445,6 +449,7 @@ impl Store {
         deadline: Instant,
     ) -> Result<(), Error> {
         validate_identity(&session.id, &session.name, session.created_at)?;
+        validate_alias(&session.alias)?;
         if validate_stable_id(&profile.id).is_err()
             || !valid_text(&profile.label, 256)
             || profile
@@ -461,7 +466,10 @@ impl Store {
                 .filter(|entry| {
                     entry.name == session.name && entry.created_at == session.created_at
                 })
-                .unwrap_or_default();
+                .unwrap_or_else(|| MetadataEntry {
+                    alias: session.alias.clone(),
+                    ..MetadataEntry::default()
+                });
             entry.id.clone_from(&session.id);
             entry.name.clone_from(&session.name);
             entry.created_at = session.created_at;

@@ -115,7 +115,8 @@ fn go_json_fixture_overlays_only_exact_lifetime() {
 fn profile_preserves_alias_for_lifetime_and_resets_on_reuse() {
     let dir = TestDir::new();
     let store = dir.store();
-    let old = session("$1", "alpha", 11);
+    let mut old = session("$1", "alpha", 11);
+    old.alias = "Creation name".into();
     store
         .set_alias_expected(
             &identity(&old),
@@ -137,6 +138,21 @@ fn profile_preserves_alias_for_lifetime_and_resets_on_reuse() {
     let mut c = catalog(vec![old.clone()]);
     store.apply(&mut c).unwrap();
     assert_eq!(c.sessions.unwrap()[0].alias, "Nice");
+    store
+        .set_alias_expected(
+            &identity(&old),
+            "",
+            CancellationToken::new(),
+            deadline(),
+            || Ok(old.clone()),
+        )
+        .unwrap();
+    store
+        .set_profile(&old, &profile, CancellationToken::new(), deadline())
+        .unwrap();
+    let mut c = catalog(vec![old.clone()]);
+    store.apply(&mut c).unwrap();
+    assert_eq!(c.sessions.unwrap()[0].alias, "");
     let replacement = session("$1", "alpha", 12);
     store
         .set_profile(&replacement, &profile, CancellationToken::new(), deadline())

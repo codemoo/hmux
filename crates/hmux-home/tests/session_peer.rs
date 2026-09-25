@@ -170,6 +170,7 @@ async fn boot(
     CancellationToken,
     tokio::task::JoinHandle<Result<(), Error>>,
     WebSocketStream<DuplexStream>,
+    hmux_model::Catalog,
 ) {
     f.inventory(&format!("schema_version=1\nrevision='synthetic'\n[[profiles]]\nid='codex'\nlabel='Codex'\ndefault_directory='{}'\ncommand=['codex','literal; $(false)']\ntags=['test']\n",f.dir.join("work").display()));
     fs::write(f.dir.join("codex"), "#!/bin/sh\nexit 0\n").unwrap();
@@ -211,11 +212,11 @@ async fn boot(
         receive(&mut gateway, protocol, None).await,
         p::envelope::Body::Hello(_)
     ));
-    assert!(matches!(
-        receive(&mut gateway, protocol, None).await,
-        p::envelope::Body::Catalog(_)
-    ));
-    (stop, owner, gateway)
+    let p::envelope::Body::Catalog(raw) = receive(&mut gateway, protocol, None).await else {
+        panic!("initial catalog expected");
+    };
+    let catalog = hmux_protocol::snapshots::catalog_from_proto(*raw).unwrap();
+    (stop, owner, gateway, catalog)
 }
 fn request(
     id: &str,
@@ -270,7 +271,7 @@ async fn both_codecs_create_unique_children_persist_metadata_and_check_fresh_ali
     let _serial = SERIAL.lock().await;
     for protocol in [Negotiated::JsonV1, Negotiated::ProtobufV2] {
         let f = Fixture::new(&tmux_script());
-        let (stop, owner, mut g) = boot(&f, protocol).await;
+        let (stop, owner, mut g, _) = boot(&f, protocol).await;
         for n in 1..=2 {
             send(
                 &mut g,
@@ -278,7 +279,7 @@ async fn both_codecs_create_unique_children_persist_metadata_and_check_fresh_ali
                 request(
                     &format!("create{n}"),
                     p::Operation::Create,
-                    serde_json::json!({"profile":"codex","name":"한글 ../ project"}),
+                    serde_json::json!({"profile":"codex","name":"  한글 ../ project  "}),
                     None,
                 ),
             )
@@ -308,6 +309,13 @@ async fn both_codecs_create_unique_children_persist_metadata_and_check_fresh_ali
         let m = metadata(&f, "sessions.json");
         assert_eq!(m["sessions"]["$1"]["profile"], "codex");
         assert_eq!(m["sessions"]["$1"]["tags"], serde_json::json!(["test"]));
+        for id in ["$1", "$2"] {
+            assert_eq!(m["sessions"][id]["alias"], "한글 ../ project");
+            assert!(m["sessions"][id]["name"]
+                .as_str()
+                .unwrap()
+                .starts_with("한글-project-"));
+        }
         send(
             &mut g,
             protocol,
@@ -405,14 +413,60 @@ async fn both_codecs_create_unique_children_persist_metadata_and_check_fresh_ali
 }
 
 #[tokio::test]
+async fn created_display_names_survive_reconnect_with_unicode_and_automatic_names() {
+    let _serial = SERIAL.lock().await;
+    for protocol in [Negotiated::JsonV1, Negotiated::ProtobufV2] {
+        let f = Fixture::new(&tmux_script());
+        let (stop, owner, mut g, _) = boot(&f, protocol).await;
+        let names = ["한".repeat(80), "🚀".repeat(80), String::new()];
+        for (i, name) in names.iter().enumerate() {
+            send(
+                &mut g,
+                protocol,
+                request(
+                    &format!("create{i}"),
+                    p::Operation::Create,
+                    serde_json::json!({"profile":"codex","name":name}),
+                    None,
+                ),
+            )
+            .await;
+            assert_eq!(
+                response(&mut g, protocol, p::Operation::Create).await.error,
+                ""
+            );
+        }
+        close(stop, owner).await;
+        // A new connection must load the display aliases from persistent state.
+        let (stop, owner, _g, catalog) = boot(&f, protocol).await;
+        let sessions = catalog.sessions.unwrap();
+        assert_eq!(sessions.len(), names.len());
+        for (i, name) in names.iter().enumerate() {
+            let s = sessions
+                .iter()
+                .find(|s| s.id == format!("${}", i + 1))
+                .unwrap();
+            assert_eq!(&s.alias, name);
+            assert_eq!(s.profile, "codex");
+            if name.is_empty() {
+                assert!(s.name.starts_with("codex-codex-"));
+            }
+        }
+        close(stop, owner).await;
+    }
+}
+
+#[tokio::test]
 async fn failed_create_keeps_new_session_and_directory_and_invalid_requests_have_no_side_effects() {
     let _serial = SERIAL.lock().await;
     let f = Fixture::new(&tmux_script());
     let protocol = Negotiated::ProtobufV2;
-    let (stop, owner, mut g) = boot(&f, protocol).await;
+    let (stop, owner, mut g, _) = boot(&f, protocol).await;
     for (i, value) in [
         serde_json::json!({"profile":"unknown"}),
         serde_json::json!({"profile":"codex","name":"bad\nname"}),
+        serde_json::json!({"profile":"codex","name":"bad\u{202e}name"}),
+        serde_json::json!({"profile":"codex","name":"한".repeat(81)}),
     ]
     .into_iter()
     .enumerate()
@@ -501,7 +555,7 @@ async fn cancel_busy_create_reaps_only_query_child_and_preserves_independent_pro
     let _serial = SERIAL.lock().await;
     let f = Fixture::new(&tmux_script());
     let protocol = Negotiated::JsonV1;
-    let (stop, owner, mut g) = boot(&f, protocol).await;
+    let (stop, owner, mut g, _) = boot(&f, protocol).await;
     fs::write(f.dir.join("slow"), "").unwrap();
     send(
         &mut g,
@@ -593,7 +647,7 @@ async fn real_tmux_provider_exit_and_ctrl_c_leave_owned_interactive_shells() {
     }
     let cleanup = Cleanup(f.command.clone());
     let protocol = Negotiated::ProtobufV2;
-    let (stop, owner, mut g) = boot(&f, protocol).await;
+    let (stop, owner, mut g, _) = boot(&f, protocol).await;
     let mut inventory = "schema_version=1\nrevision='synthetic'\n".to_owned();
     for provider in ["codex", "claude"] {
         inventory.push_str(&format!("[[profiles]]\nid='{provider}'\nlabel='{provider}'\ndefault_directory='{}'\ncommand=['{provider}','literal; $(false)']\n",f.dir.join("work").display()));
@@ -717,7 +771,7 @@ async fn shared_workspace_both_codecs_replay_reconnect_and_recycled_identity() {
     for protocol in [Negotiated::JsonV1, Negotiated::ProtobufV2] {
         let f = Fixture::new(&tmux_script());
         fs::write(f.dir.join("identities"), "$1|:hmux-sep-v1:|synthetic|:hmux-sep-v1:|1700000000|:hmux-sep-v1:|1700000000|:hmux-sep-v1:|0|:hmux-sep-v1:|1|:hmux-sep-v1:||:hmux-sep-v1:|\n").unwrap();
-        let (stop, owner, mut g) = boot(&f, protocol).await;
+        let (stop, owner, mut g, _) = boot(&f, protocol).await;
         let change = serde_json::json!({"change":{"operation_id":"synthetic-change-01","revision":0,"base":[],"tabs":[{"id":"$1","created_at":1700000000}]}});
         for id in ["first", "replay"] {
             send(
@@ -735,7 +789,7 @@ async fn shared_workspace_both_codecs_replay_reconnect_and_recycled_identity() {
             assert!(snapshot.conflict.is_empty());
         }
         close(stop, owner).await;
-        let (stop, owner, mut g) = boot(&f, protocol).await;
+        let (stop, owner, mut g, _) = boot(&f, protocol).await;
         send(
             &mut g,
             protocol,
@@ -778,7 +832,7 @@ async fn provider_actions_both_codecs_keep_keys_private_and_configured_workspace
         let f = Fixture::new(&tmux_script());
         fs::write(f.dir.join("claude"), "#!/bin/sh\nprintf '2.0.0\\n'\n").unwrap();
         fs::set_permissions(f.dir.join("claude"), fs::Permissions::from_mode(0o700)).unwrap();
-        let (stop, owner, mut g) = boot(&f, protocol).await;
+        let (stop, owner, mut g, _) = boot(&f, protocol).await;
         send(
             &mut g,
             protocol,
