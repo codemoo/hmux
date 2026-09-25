@@ -116,17 +116,22 @@ impl ProviderService {
                 }
             }
             "gemini" => {
+                let selected = self
+                    .private_task(|env| store::gemini_selected_auth(&env.home))
+                    .await
+                    .unwrap_or_default();
                 let key = self
                     .private_task(move |env| Ok(store::dotenv_value(&env.home, p.key_name)))
                     .await
                     .unwrap_or_default();
-                if !key.is_empty() {
+                if selected == "gemini-api-key" && !key.is_empty() {
                     s.auth = "api-key";
                     s.key_hint = store::hint(&key);
-                } else if self
-                    .private_task(|env| Ok(store::oauth_fingerprint(&env.home).is_some()))
-                    .await
-                    .unwrap_or(false)
+                } else if selected == "oauth-personal"
+                    && self
+                        .private_task(|env| Ok(store::oauth_fingerprint(&env.home).is_some()))
+                        .await
+                        .unwrap_or(false)
                 {
                     s.auth = "account";
                 }

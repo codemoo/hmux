@@ -138,26 +138,43 @@ export function startableProviders(providers: ProviderStatus[]) {
   );
 }
 
-// True until at least one provider is connected by account or API key.
+// Setup remains useful until an installed, authenticated CLI has a launch profile.
 export function needsProviderSetup(providers: ProviderStatus[]) {
-  return !providers.some((p) => p.auth !== "none");
+  return startableProviders(providers).length === 0;
 }
 
 export function providerSummary(p: ProviderStatus) {
-  if (!p.installed && p.auth === "none")
-    return t("Not installed", "설치되지 않음");
-  const parts = [];
-  if (!p.installed) parts.push(t("Not installed", "설치되지 않음"));
-  else if (p.version) parts.push(`v${p.version}`);
-  if (p.auth === "account") parts.push(t("Account connected", "계정 연결됨"));
-  else if (p.auth === "api-key")
-    parts.push(
-      p.key_hint
-        ? t(`API key ${p.key_hint}`, `API 키 ${p.key_hint}`)
-        : t("API key connected", "API 키 연결됨"),
+  if (!p.installed) return t("CLI not installed", "CLI 설치 안 됨");
+  if (p.auth === "account") return t("CLI account login", "CLI 계정 로그인");
+  if (p.auth === "api-key") return t("API key configured", "API 키 설정됨");
+  return t("Sign-in needed", "로그인 필요");
+}
+
+function providerGuidance(p: ProviderStatus) {
+  if (!p.installed)
+    return p.auth !== "none"
+      ? t(
+          "Credentials were found on Home. Install the CLI to use them.",
+          "Home에 인증 정보가 있습니다. CLI를 설치하면 사용할 수 있습니다.",
+        )
+      : t(
+          "Install the CLI on Home, then choose how to sign in.",
+          "Home에 CLI를 설치하고 사용할 계정으로 로그인하세요.",
+        );
+  if (p.auth === "account")
+    return t(
+      "Uses the CLI account already signed in on Home. No API key is needed.",
+      "Home의 CLI에 로그인된 계정을 그대로 사용합니다. API 키는 필요하지 않습니다.",
     );
-  else parts.push(t("Connection needed", "연결 필요"));
-  return parts.join(" · ");
+  if (p.auth === "api-key")
+    return t(
+      "An API key is configured on Home. API usage may be billed separately from a subscription.",
+      "Home에 API 키가 설정되어 있습니다. API 사용 요금은 구독과 별도로 청구될 수 있습니다.",
+    );
+  return t(
+    "Sign in to the CLI on Home. If you already signed in there, refresh status first.",
+    "Home의 CLI에 로그인하세요. 이미 로그인했다면 먼저 상태를 새로고침하세요.",
+  );
 }
 
 type API = (
@@ -225,14 +242,24 @@ export function installProviderSettings(
   let current: ProviderStatus[] = [];
   const jobs = new Map<ProviderID, JobView>();
   root.append(
-    make("h3", msg("AI connections", "AI 연결")),
+    make("h3", msg("AI tools on Home", "Home의 AI 도구")),
     make(
       "p",
       msg(
-        "Select Connect to install on Home and sign in. You can also use an API key. Connection details are stored only on Home and shared by all web accounts using this Home.",
-        "연결하기를 누르면 Home에 설치하고 계정 로그인까지 이어서 진행합니다. API 키로 연결할 수도 있습니다. 연결 정보는 Home에만 저장되며, 이 Home을 쓰는 모든 웹 계정이 함께 사용합니다.",
+        "HMux runs the CLIs installed on Home. Existing CLI logins work here without adding an API key.",
+        "HMux는 Home에 설치된 CLI를 실행합니다. 이미 CLI에 로그인했다면 API 키를 추가할 필요가 없습니다.",
       ),
       "muted",
+    ),
+  );
+  root.append(
+    make(
+      "p",
+      msg(
+        "Shared on Home · Authentication changes apply to everyone using this Home.",
+        "Home 공용 인증 · 변경 사항은 이 Home을 사용하는 모든 웹 계정에 적용됩니다.",
+      ),
+      "provider-scope",
     ),
   );
   const list = make("div", "", "provider-list");
@@ -390,6 +417,7 @@ export function installProviderSettings(
   function stopJob(id: ProviderID) {
     const view = jobs.get(id);
     if (view?.timer) clearTimeout(view.timer);
+    if (view) view.pendingKey = undefined;
     jobs.delete(id);
   }
   function watch(p: ProviderStatus, view: JobView, job: ProviderJob) {
@@ -444,7 +472,7 @@ export function installProviderSettings(
     action: "connect" | "update",
     pendingKey?: string,
   ) {
-    if (jobs.has(p.id) || controller.signal.aborted) return;
+    if (busy || jobs.has(p.id) || controller.signal.aborted) return;
     const view = jobView(p, action);
     view.pendingKey = pendingKey;
     jobs.set(p.id, view);
@@ -456,6 +484,7 @@ export function installProviderSettings(
         action,
       });
       if (controller.signal.aborted || jobs.get(p.id) !== view) return;
+      if (result.providers) current = result.providers;
       watch(
         p,
         view,
@@ -477,14 +506,20 @@ export function installProviderSettings(
   function row(p: ProviderStatus) {
     const item = make("div", "", "provider-row");
     item.dataset.provider = p.id;
+    item.setAttribute("role", "group");
+    item.setAttribute("aria-label", p.label);
     const heading = make("div", "", "provider-heading");
     const running = jobs.get(p.id);
+    const name = make("div", "", "provider-name");
+    name.append(make("strong", p.label));
+    if (p.installed && p.version)
+      name.append(make("span", `CLI v${p.version}`, "provider-version"));
     heading.append(
-      make("strong", p.label),
+      name,
       make(
         "span",
         () => (running ? t("In progress", "진행 중") : providerSummary(p)),
-        "muted",
+        "provider-auth-badge",
       ),
     );
     item.append(heading);
@@ -492,55 +527,171 @@ export function installProviderSettings(
       item.append(running.root);
       return item;
     }
-    const actions = make("div", "", "provider-actions");
-    if (p.installed && p.auth !== "none" && p.profile_id)
-      actions.append(
-        actionButton(
-          msg("Start", "시작"),
-          () => startProfile(p.profile_id),
-          true,
+    item.append(make("p", () => providerGuidance(p), "provider-guidance"));
+    const authenticated = p.auth !== "none";
+    if (authenticated) {
+      const actions = make("div", "", "provider-actions");
+      if (!p.installed) {
+        actions.append(
+          actionButton(
+            msg("Install CLI", "CLI 설치"),
+            () => void startJob(p, "update"),
+            true,
+          ),
+        );
+      } else if (p.profile_id) {
+        actions.append(
+          actionButton(
+            msg("Start new session", "새 세션 시작"),
+            () => startProfile(p.profile_id),
+            true,
+          ),
+        );
+      } else {
+        actions.append(
+          actionButton(
+            msg("Add to session menu", "세션 메뉴에 추가"),
+            () =>
+              void run(
+                msg("Adding the existing CLI…", "기존 CLI를 추가하는 중…"),
+                "provider-job-start",
+                { provider: p.id, action: "use-existing" },
+                msg(
+                  "Ready to start a new session. Your authentication settings were kept.",
+                  "새 세션을 시작할 수 있습니다. 기존 인증 설정은 그대로 유지했습니다.",
+                ),
+              ),
+            true,
+          ),
+        );
+        actions.append(
+          make(
+            "span",
+            msg(
+              "Keeps your current authentication.",
+              "현재 인증 설정을 그대로 유지합니다.",
+            ),
+            "muted",
+          ),
+        );
+      }
+      item.append(actions);
+    }
+
+    const methods = make("div", "", "provider-methods");
+    if (authenticated) {
+      const change = make("details", "", "provider-auth-options");
+      change.append(
+        make(
+          "summary",
+          p.auth === "api-key"
+            ? msg("Manage authentication", "인증 설정 관리")
+            : msg("Change sign-in method", "인증 방식 변경"),
         ),
-        actionButton(
-          msg("Sign in again", "다시 로그인"),
-          () => void startJob(p, "connect"),
+        methods,
+      );
+      item.append(change);
+    } else item.append(methods);
+
+    const account = make("section", "", "provider-method");
+    account.append(make("h4", msg("CLI account login", "CLI 계정 로그인")));
+    if (p.auth === "api-key") {
+      account.append(
+        make(
+          "p",
+          p.key_hint
+            ? msg(
+                "To use an account login, remove the saved API key below first. Then check the CLI sign-in status.",
+                "계정 로그인으로 사용하려면 아래에서 저장된 API 키를 먼저 제거하세요. 그다음 CLI 로그인 상태를 확인합니다.",
+              )
+            : msg(
+                "This key is reported by the CLI. Manage it on Home, then refresh status to use an account login.",
+                "CLI에서 감지한 키입니다. Home에서 인증 설정을 변경한 뒤 상태를 새로고침하세요.",
+              ),
         ),
       );
-    else
-      actions.append(
-        actionButton(
-          msg("Connect", "연결하기"),
-          () => void startJob(p, "connect"),
-          true,
+    } else {
+      account.append(
+        make(
+          "p",
+          msg(
+            "Continue with the provider’s account sign-in on Home.",
+            "Home에서 제공업체의 계정 로그인 절차를 진행합니다.",
+          ),
         ),
       );
-    if (p.installed)
-      actions.append(
+      account.append(
         actionButton(
-          msg("Update", "업데이트"),
-          () => void startJob(p, "update"),
+          p.auth === "account"
+            ? msg("Sign in to CLI again", "CLI 다시 로그인")
+            : p.installed
+              ? msg("Sign in to CLI", "CLI 로그인")
+              : msg("Install CLI and sign in", "CLI 설치 후 로그인"),
+          () => void startJob(p, "connect"),
+          !authenticated,
+        ),
+      );
+    }
+    const keyPanel = make("details", "", "provider-key-panel");
+    keyPanel.open = p.auth === "api-key";
+    keyPanel.append(
+      make(
+        "summary",
+        p.auth === "api-key"
+          ? msg("API key", "API 키")
+          : msg("Use an API key instead", "API 키로 사용하기"),
+      ),
+    );
+    keyPanel.append(
+      make(
+        "p",
+        msg(
+          "Optional · For API billing. Saving changes this CLI’s authentication on Home; it is not a separate HMux account.",
+          "선택 사항 · API 과금 방식입니다. 저장하면 Home의 CLI 인증 설정이 바뀌며, HMux 전용 계정이 추가되는 것은 아닙니다.",
+        ),
+      ),
+    );
+    if (p.auth === "api-key" && p.key_hint)
+      keyPanel.append(
+        make(
+          "p",
+          () => t(`Saved key: ${p.key_hint}`, `저장된 키: ${p.key_hint}`),
+          "provider-key-hint",
         ),
       );
     const form = make("form", "", "provider-key");
+    const label = make("label", () => keyLabels[p.id]());
     const input = make("input");
     input.type = "password";
     input.autocomplete = "off";
     input.spellcheck = false;
-    bindAttribute(input, "placeholder", () =>
-      t(`Or enter ${keyLabels[p.id]()}`, `또는 ${keyLabels[p.id]()} 입력`),
+    bindAttribute(
+      input,
+      "placeholder",
+      p.auth === "api-key"
+        ? msg("Enter a replacement key", "교체할 키 입력")
+        : msg("Enter API key", "API 키 입력"),
     );
     bindAttribute(input, "aria-label", () => `${p.label} ${keyLabels[p.id]()}`);
     input.maxLength = 512;
     input.disabled = busy;
-    const save = actionButton(msg("Save key", "키 저장"), () => {});
+    label.append(input);
+    const save = actionButton(
+      p.auth === "api-key"
+        ? msg("Replace API key", "API 키 교체")
+        : p.installed
+          ? msg("Use API key", "API 키로 전환")
+          : msg("Install CLI and use key", "CLI 설치 후 키 사용"),
+      () => {},
+    );
     save.type = "submit";
-    form.append(input, save);
+    form.append(label, save);
     form.onsubmit = (event) => {
       event.preventDefault();
+      if (busy || controller.signal.aborted) return;
       const key = input.value.trim();
-      // Keys are transient: never keep them in the DOM after submission.
       input.value = "";
       if (!key) return;
-      // A key is only useful with the CLI installed; install first if needed.
       if (!p.installed) void startJob(p, "update", key);
       else
         void run(
@@ -548,27 +699,39 @@ export function installProviderSettings(
           "provider-key",
           { provider: p.id, key },
           () =>
-            t(`${p.label} API key saved.`, `${p.label} API 키를 저장했습니다.`),
+            t(
+              `${p.label} API key saved on Home.`,
+              `${p.label} API 키를 Home에 저장했습니다.`,
+            ),
         );
     };
-    if (p.auth === "api-key" && p.key_hint)
-      form.append(
+    keyPanel.append(form);
+    if (p.auth === "api-key" && p.key_hint) {
+      keyPanel.append(
         actionButton(
-          msg("Delete key", "키 삭제"),
+          msg("Remove saved API key", "저장된 API 키 제거"),
           () =>
             void run(
-              msg("Deleting API key…", "API 키를 삭제하는 중…"),
+              msg("Removing API key…", "API 키를 제거하는 중…"),
               "provider-key",
               { provider: p.id, key: "" },
-              () =>
-                t(
-                  `${p.label} API key deleted.`,
-                  `${p.label} API 키를 삭제했습니다.`,
-                ),
+              msg(
+                "Saved API key removed. Check the detected sign-in method above.",
+                "저장된 API 키를 제거했습니다. 위에 표시된 인증 상태를 확인하세요.",
+              ),
             ),
         ),
       );
-    item.append(actions, form);
+    }
+    if (p.auth === "api-key") methods.append(keyPanel, account);
+    else methods.append(account, keyPanel);
+    if (p.installed)
+      methods.append(
+        actionButton(
+          msg("Update CLI", "CLI 업데이트"),
+          () => void startJob(p, "update"),
+        ),
+      );
     return item;
   }
   function render() {
@@ -620,6 +783,11 @@ export function installProviderSettings(
   void load();
   return () => {
     controller.abort();
-    for (const view of jobs.values()) if (view.timer) clearTimeout(view.timer);
+    for (const view of jobs.values()) {
+      if (view.timer) clearTimeout(view.timer);
+      view.pendingKey = undefined;
+    }
+    jobs.clear();
+    for (const input of root.querySelectorAll("input")) input.value = "";
   };
 }

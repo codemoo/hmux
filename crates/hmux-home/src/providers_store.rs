@@ -179,6 +179,16 @@ pub(super) fn dotenv_value(home: &Path, key: &str) -> String {
         })
         .unwrap_or_default()
 }
+pub(super) fn gemini_selected_auth(home: &Path) -> Result<String, ProviderError> {
+    let (settings, _) = json_object(home, ".gemini/settings.json", 1 << 20)?;
+    Ok(settings
+        .get("security")
+        .and_then(|v| v.get("auth"))
+        .and_then(|v| v.get("selectedType"))
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_owned())
+}
 fn set_claude_key(home: &Path, name: &str, key: &str) -> Result<(), ProviderError> {
     let (mut settings, _) = json_object(home, ".claude/settings.json", 1 << 20)?;
     let mut env = match settings.remove("env") {
@@ -266,9 +276,21 @@ pub(super) fn set_gemini_auth(
     if current == want || !replace(current) {
         return Ok(());
     }
-    auth.insert("selectedType".into(), Value::String(want.into()));
-    security.insert("auth".into(), Value::Object(auth));
-    settings.insert("security".into(), Value::Object(security));
+    if want.is_empty() {
+        auth.remove("selectedType");
+    } else {
+        auth.insert("selectedType".into(), Value::String(want.into()));
+    }
+    if auth.is_empty() {
+        security.remove("auth");
+    } else {
+        security.insert("auth".into(), Value::Object(auth));
+    }
+    if security.is_empty() {
+        settings.remove("security");
+    } else {
+        settings.insert("security".into(), Value::Object(security));
+    }
     save_json(home, ".gemini/settings.json", settings, 1 << 20)
 }
 pub(super) fn oauth_fingerprint(home: &Path) -> Option<String> {
@@ -424,10 +446,23 @@ impl ProviderService {
                 let key = key.to_owned();
                 let name = p.key_name;
                 self.private_task(move |env| {
-                    set_dotenv(&env.home, name, &key)?;
-                    if !key.is_empty() {
-                        set_gemini_auth(&env.home, "gemini-api-key", |_| true)?;
+                    if key.is_empty() {
+                        let selected = gemini_selected_auth(&env.home)?;
+                        let next = if oauth_fingerprint(&env.home).is_some() {
+                            "oauth-personal"
+                        } else {
+                            ""
+                        };
+                        set_dotenv(&env.home, name, "")?;
+                        if selected == "gemini-api-key" {
+                            set_gemini_auth(&env.home, next, |current| {
+                                current == "gemini-api-key"
+                            })?;
+                        }
+                        return Ok(());
                     }
+                    set_dotenv(&env.home, name, &key)?;
+                    set_gemini_auth(&env.home, "gemini-api-key", |_| true)?;
                     Ok(())
                 })
                 .await

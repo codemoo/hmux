@@ -323,6 +323,34 @@ impl ProviderService {
                 let q = job.ok_or_else(|| ProviderError::new("invalid provider job request"))?;
                 let p =
                     lookup(&q.provider).ok_or_else(|| ProviderError::new("unknown provider"))?;
+                if operation == "provider-job-start" && q.action == "use-existing" {
+                    if self.jobs.lock().await.contains_key(p.id) {
+                        return self.result(
+                            None,
+                            None,
+                            Some("provider setup already in progress".into()),
+                            false,
+                        );
+                    }
+                    let status = self.status(p, &cancel).await;
+                    if !status.installed || status.auth == "none" {
+                        return self.result(
+                            Some(self.statuses(&cancel).await),
+                            None,
+                            Some("provider is not installed and authenticated on Home".into()),
+                            false,
+                        );
+                    }
+                    if let Err(e) = self.ensure_profile(p).await {
+                        return self.result(None, None, Some(e.message), false);
+                    }
+                    return self.result(
+                        Some(self.statuses(&cancel).await),
+                        Some(JobStatus::done()),
+                        None,
+                        false,
+                    );
+                }
                 if operation == "provider-job-cancel" {
                     let _ = self.cancel_job(p, &cancel).await;
                     return self.result(None, Some(JobStatus::none()), None, false);
@@ -529,6 +557,12 @@ fn is_false(value: &bool) -> bool {
     !*value
 }
 impl JobStatus {
+    fn done() -> Self {
+        Self {
+            state: "done".into(),
+            ..Self::none()
+        }
+    }
     fn none() -> Self {
         Self {
             state: "none".into(),
@@ -763,6 +797,214 @@ mod tests {
                 .id,
             "gemini"
         );
+    }
+
+    #[tokio::test]
+    async fn typed_use_existing_reuses_account_login_without_running_auth_commands() {
+        let f = Fixture::new();
+        executable(
+            &f.root.join("bin/codex"),
+            "#!/bin/sh\ncase \"$1 $2\" in\n  '--version ') echo 'codex 1.2.3';;\n  'login status') echo 'Logged in using ChatGPT';;\n  *) echo unexpected > \"$HOME/unexpected-auth-command\"; exit 42;;\nesac\n",
+        );
+        fs::create_dir(f.root.join(".codex")).unwrap();
+        let auth = f.root.join(".codex/auth.json");
+        let original = b"{\"tokens\":{\"access_token\":\"synthetic-token\"}}\n";
+        fs::write(&auth, original).unwrap();
+        let result = f
+            .service
+            .action_typed(
+                p::Operation::ProviderJobStart,
+                p::request::Payload::ProviderJob(p::ProviderJobRequest {
+                    provider: "codex".into(),
+                    action: "use-existing".into(),
+                    text: String::new(),
+                }),
+                CancellationToken::new(),
+            )
+            .await
+            .unwrap();
+        assert!(!result.refresh_auth);
+        assert!(result.result.error.is_none());
+        assert_eq!(result.result.job.unwrap().state, "done");
+        assert_eq!(fs::read(auth).unwrap(), original);
+        assert!(!f.root.join("unexpected-auth-command").exists());
+        assert!(!f.root.join("tmux-argv").exists());
+        let inventory = crate::config::load_inventory(&f.service.env.inventory_path).unwrap();
+        assert!(inventory
+            .profiles
+            .unwrap()
+            .iter()
+            .any(|profile| profile.id == "codex"));
+    }
+
+    #[tokio::test]
+    async fn use_existing_registers_authenticated_cli_without_changing_credentials() {
+        let f = Fixture::new();
+        let settings = f.root.join(".claude/settings.json");
+        fs::create_dir(f.root.join(".claude")).unwrap();
+        let credential = b"{\"env\":{\"ANTHROPIC_API_KEY\":\"synthetic-key-123456\"}}\n";
+        fs::write(&settings, credential).unwrap();
+        let result = f
+            .act(
+                "provider-job-start",
+                serde_json::json!({"provider":"claude","action":"use-existing"}),
+            )
+            .await;
+        let body: serde_json::Value = serde_json::from_slice(&result.json).unwrap();
+        assert_eq!(body["job"]["state"], "done");
+        assert_eq!(body["providers"][1]["auth"], "api-key");
+        assert_eq!(body["providers"][1]["profile_id"], "claude");
+        assert_eq!(fs::read(&settings).unwrap(), credential);
+        assert!(!f.root.join("tmux-argv").exists());
+    }
+
+    #[tokio::test]
+    async fn use_existing_preserves_custom_profile_and_rejects_missing_setup() {
+        let f = Fixture::new();
+        fs::create_dir(f.root.join(".claude")).unwrap();
+        fs::write(
+            f.root.join(".claude/settings.json"),
+            "{\"env\":{\"ANTHROPIC_API_KEY\":\"synthetic-key-123456\"}}\n",
+        )
+        .unwrap();
+        let inventory = &f.service.env.inventory_path;
+        let custom = "schema_version=1\nrevision='synthetic'\n[[profiles]]\nid='shell'\nlabel='Shell'\ndefault_directory='~/work'\ncommand=['sh']\n[[profiles]]\nid='my-claude'\nlabel='Custom Claude'\ndefault_directory='~/custom'\ncommand=['/opt/example/claude','--model','example']\n";
+        fs::write(inventory, custom).unwrap();
+        let result = f
+            .act(
+                "provider-job-start",
+                serde_json::json!({"provider":"claude","action":"use-existing"}),
+            )
+            .await;
+        let body: serde_json::Value = serde_json::from_slice(&result.json).unwrap();
+        assert_eq!(body["providers"][1]["profile_id"], "my-claude");
+        assert_eq!(fs::read_to_string(inventory).unwrap(), custom);
+
+        let unauthenticated = f
+            .act(
+                "provider-job-start",
+                serde_json::json!({"provider":"codex","action":"use-existing"}),
+            )
+            .await;
+        let body: serde_json::Value = serde_json::from_slice(&unauthenticated.json).unwrap();
+        assert!(body["error"]
+            .as_str()
+            .unwrap()
+            .contains("not installed and authenticated"));
+        fs::remove_file(f.root.join("bin/claude")).unwrap();
+        let missing = f
+            .act(
+                "provider-job-start",
+                serde_json::json!({"provider":"claude","action":"use-existing"}),
+            )
+            .await;
+        let body: serde_json::Value = serde_json::from_slice(&missing.json).unwrap();
+        assert!(body["error"]
+            .as_str()
+            .unwrap()
+            .contains("not installed and authenticated"));
+        assert_eq!(fs::read_to_string(inventory).unwrap(), custom);
+    }
+
+    #[tokio::test]
+    async fn use_existing_does_not_interrupt_active_setup() {
+        let f = Fixture::new();
+        fs::create_dir(f.root.join(".claude")).unwrap();
+        fs::write(
+            f.root.join(".claude/settings.json"),
+            "{\"env\":{\"ANTHROPIC_API_KEY\":\"synthetic-key-123456\"}}\n",
+        )
+        .unwrap();
+        let started = f
+            .act(
+                "provider-job-start",
+                serde_json::json!({"provider":"claude","action":"update"}),
+            )
+            .await;
+        let started: serde_json::Value = serde_json::from_slice(&started.json).unwrap();
+        assert_eq!(started["job"]["state"], "installing");
+        let refused = f
+            .act(
+                "provider-job-start",
+                serde_json::json!({"provider":"claude","action":"use-existing"}),
+            )
+            .await;
+        let refused: serde_json::Value = serde_json::from_slice(&refused.json).unwrap();
+        assert_eq!(refused["error"], "provider setup already in progress");
+        assert!(f.service.jobs.lock().await.contains_key("claude"));
+        f.service
+            .cancel_job(PROVIDERS[1], &CancellationToken::new())
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn removing_gemini_key_restores_only_usable_selected_account() {
+        let f = Fixture::new();
+        let gemini = f.root.join(".gemini");
+        fs::create_dir(&gemini).unwrap();
+        let settings = gemini.join("settings.json");
+        let dotenv = gemini.join(".env");
+        fs::write(
+            &settings,
+            "{\"other\":7,\"security\":{\"auth\":{\"selectedType\":\"gemini-api-key\",\"other\":true}}}\n",
+        )
+        .unwrap();
+        fs::write(&dotenv, "GEMINI_API_KEY=synthetic-key-123456\n").unwrap();
+        fs::write(
+            gemini.join("oauth_creds.json"),
+            "{\"refresh_token\":\"synthetic-refresh-123\"}\n",
+        )
+        .unwrap();
+        let result = f
+            .act(
+                "provider-key",
+                serde_json::json!({"provider":"gemini","key":""}),
+            )
+            .await;
+        let body: serde_json::Value = serde_json::from_slice(&result.json).unwrap();
+        assert_eq!(body["providers"][2]["auth"], "account");
+        let after: serde_json::Value =
+            serde_json::from_slice(&fs::read(&settings).unwrap()).unwrap();
+        assert_eq!(after["security"]["auth"]["selectedType"], "oauth-personal");
+        assert_eq!(after["security"]["auth"]["other"], true);
+        assert_eq!(after["other"], 7);
+        assert!(!fs::read_to_string(&dotenv)
+            .unwrap()
+            .contains("GEMINI_API_KEY"));
+
+        fs::write(
+            &settings,
+            "{\"security\":{\"auth\":{\"selectedType\":\"custom\"}}}\n",
+        )
+        .unwrap();
+        fs::write(&dotenv, "GEMINI_API_KEY=synthetic-key-123456\n").unwrap();
+        let result = f
+            .act(
+                "provider-key",
+                serde_json::json!({"provider":"gemini","key":""}),
+            )
+            .await;
+        let body: serde_json::Value = serde_json::from_slice(&result.json).unwrap();
+        assert_eq!(body["providers"][2]["auth"], "none");
+        assert!(fs::read_to_string(&settings).unwrap().contains("custom"));
+
+        fs::remove_file(gemini.join("oauth_creds.json")).unwrap();
+        fs::write(
+            &settings,
+            "{\"security\":{\"auth\":{\"selectedType\":\"gemini-api-key\"}}}\n",
+        )
+        .unwrap();
+        fs::write(&dotenv, "GEMINI_API_KEY=synthetic-key-123456\n").unwrap();
+        let result = f
+            .act(
+                "provider-key",
+                serde_json::json!({"provider":"gemini","key":""}),
+            )
+            .await;
+        let body: serde_json::Value = serde_json::from_slice(&result.json).unwrap();
+        assert_eq!(body["providers"][2]["auth"], "none");
+        assert_eq!(store::gemini_selected_auth(&f.root).unwrap(), "");
     }
 
     #[tokio::test]

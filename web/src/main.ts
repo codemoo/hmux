@@ -1615,7 +1615,7 @@ function editDialog(s: Session) {
     ),
   );
 }
-// First-run hint in the empty workspace: point to Settings → AI 연결 until one
+// First-run hint in the empty workspace: point to Settings → AI tools until one
 // CLI is connected, then offer to start a session with each connected CLI.
 // Checked once per login, after Settings closes and when the last tab closes.
 const providerOnboardingKey = "hmux.ai-onboarding.dismissed";
@@ -1643,7 +1643,7 @@ async function checkProviderOnboarding(force = false) {
       }
       const open = text(
         "button",
-        msg("Connect AI", "AI 연결하기"),
+        msg("Set up AI tools", "AI 도구 설정"),
         "secondary",
       );
       open.type = "button";
@@ -1657,12 +1657,12 @@ async function checkProviderOnboarding(force = false) {
       const actions = text("div", "", "ai-onboarding-actions");
       actions.append(open, later);
       card.replaceChildren(
-        text("strong", msg("Connect an AI provider", "AI 연결이 필요합니다")),
+        text("strong", msg("Set up an AI tool", "AI 도구를 준비하세요")),
         text(
           "p",
           msg(
-            "Install Codex, Claude Code, or Gemini and connect an account or API key to start working.",
-            "Codex, Claude Code, Gemini 중 하나를 설치하고 계정이나 API 키로 연결하면 바로 작업을 시작할 수 있습니다.",
+            "Use a CLI already signed in on Home, or install one and sign in. An API key is optional.",
+            "Home에 로그인된 CLI를 사용하거나, CLI를 설치하고 로그인하세요. API 키는 선택 사항입니다.",
           ),
         ),
         actions,
@@ -1787,8 +1787,8 @@ async function createDialog() {
     save.disabled = !profiles.length;
     if (!profiles.length)
       error.textContent = tr(
-        "No profiles are registered on Home. Add one in Settings → AI connections.",
-        "Home에 등록된 프로파일이 없습니다. 설정 → AI 연결에서 추가하세요.",
+        "No session launchers are registered on Home. Add your CLI in Settings → AI tools.",
+        "Home에 등록된 실행 항목이 없습니다. 설정 → AI 도구에서 CLI를 추가하세요.",
       );
   } catch (e) {
     error.textContent = (e as Error).message;
@@ -1936,7 +1936,7 @@ function settingsDialog(initialTab?: string) {
       },
       {
         id: "providers",
-        label: msg("AI connections", "AI 연결"),
+        label: msg("AI tools", "AI 도구"),
         sections: [providerPanel],
       },
       { id: "usage", label: msg("Usage", "사용량"), sections: [usagePanel] },

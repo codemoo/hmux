@@ -710,8 +710,9 @@ kbd {
 }
 .provider-row {
   display: grid;
-  gap: 10px;
-  padding: 14px 0;
+  gap: 12px;
+  padding: 18px 0;
+  min-width: 0;
 }
 .provider-row + .provider-row {
   border-top: 1px solid var(--border);
@@ -727,8 +728,73 @@ kbd {
   font-size: 13px;
   font-weight: 500;
 }
-.provider-heading .muted {
+.provider-name {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.provider-version {
+  color: var(--muted);
+  font-size: 11px;
+}
+.provider-auth-badge {
+  padding: 3px 7px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 11px;
+}
+#dialog-body .provider-guidance,
+#dialog-body .provider-method p,
+#dialog-body .provider-key-panel p {
+  margin: 0;
   font-size: 12px;
+}
+#dialog-body .provider-scope {
+  margin: 12px 0 4px;
+  padding-left: 10px;
+  border-left: 2px solid var(--border);
+  font-size: 11px;
+}
+.provider-methods,
+.provider-method,
+.provider-key-panel[open] {
+  display: grid;
+  gap: 10px;
+}
+.provider-methods {
+  margin-top: 4px;
+}
+.provider-auth-options > .provider-methods {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.provider-method h4 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+.provider-auth-options summary,
+.provider-key-panel summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.provider-key-panel {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.provider-key-panel:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.provider-key-hint {
+  font-family: var(--mono, monospace);
 }
 .provider-actions,
 .provider-key {
@@ -737,12 +803,22 @@ kbd {
   gap: 8px;
   flex-wrap: wrap;
 }
-.provider-key input {
+#dialog-body .provider-key label {
   flex: 1 1 180px;
   min-width: 0;
+  margin: 0;
+  font-size: 11px;
+}
+.provider-key input {
+  width: 100%;
+  min-width: 0;
+}
+.provider-key {
+  align-items: end;
 }
 #dialog-body .provider-row button {
   width: auto;
+  justify-self: start;
   min-height: 34px;
   padding: 8px 12px;
   font-size: 12px;

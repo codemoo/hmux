@@ -20,14 +20,38 @@ source is always used as chosen.
 
 ## AI provider setup
 
-Settings → AI 연결 lists Codex, Claude Code and Gemini on Home: installed version,
+Settings → **AI tools** (한국어: **AI 도구**) lists Codex, Claude Code and Gemini on
+Home: installed version,
 connection state (`account`, `api-key` or none) and whether the new-session menu
 already launches the CLI. Status comes from each CLI's own files and commands
 (`codex login status`, `claude auth status --json`, `~/.claude/settings.json`,
-`~/.gemini/.env`, `~/.gemini/oauth_creds.json`), each bounded by a five-second
-timeout.
+`~/.gemini/settings.json`, `~/.gemini/.env`, `~/.gemini/oauth_creds.json`), each bounded by a five-second
+timeout. These are detected CLI settings, not a guarantee that a provider will accept
+its credentials or that a project-specific environment uses the same method.
 
-- **연결하기** runs `crates/hmux-home/src/provider_setup.sh connect` for that provider in a
+The screen separates the detected method from optional changes:
+
+- A signed-in CLI shows **CLI account login**, explains that no API key is needed,
+  and offers **Start new session** when a launch profile is available.
+- An authenticated CLI without a launch profile offers **Add to session menu**.
+  Home rechecks installation and authentication, refuses an active setup job, and
+  registers the CLI without installing, logging in again or changing credentials.
+  Existing custom launch profiles and paths remain unchanged.
+- API key authentication shows **API key configured** and the separate API billing
+  context. Key entry lives inside **Change sign-in method** / **Manage authentication**,
+  rather than beside an already working CLI login. Opening these controls does not
+  change credentials. **Use API key** or **Replace API key** is the explicit save action.
+- While an API key is configured, account sign-in is not offered as a simultaneous
+  alternative action. A removable CLI-file key can be removed explicitly, then the
+  refreshed state determines whether sign-in is needed. A CLI-reported key without
+  a file hint points users to Home settings; HMux does not claim it can remove
+  arbitrary environment-managed keys.
+- Missing CLI installation, missing authentication and a missing launch profile
+  have distinct actions. The empty workspace keeps its setup shortcut until a CLI
+  is both authenticated and ready to launch.
+
+- **Sign in to CLI** (or **Install CLI and sign in**) runs
+  `crates/hmux-home/src/provider_setup.sh connect` for that provider in a
   private tmux server (`tmux -L hmux-setup`, session `connect-<provider>`), so it
   never appears in the session list. It installs the CLI when missing and then
   starts the CLI's own login flow: `codex login --device-auth`, `claude auth login`
@@ -64,21 +88,25 @@ timeout.
   are validated to `[A-Za-z0-9._-]{16,512}`, cleared from the input after submit
   and never returned; responses carry only a `…abcd` suffix hint. Clearing a Codex
   key logs out only an API-key login, never a ChatGPT account. Saving a Gemini key
-  also selects `gemini-api-key` auth. Gemini reads `~/.gemini/.env` only in
+  also selects `gemini-api-key` auth. Removing that key changes this selected method
+  to `oauth-personal` only when a usable OAuth credential exists; otherwise it clears
+  the key selection. A custom selected auth method is preserved. Gemini status
+  respects the selected method instead of treating any old OAuth file as active.
+  Gemini reads `~/.gemini/.env` only in
   folders the user has trusted in Gemini's first-run prompt.
 - **Launch profiles**: after an explicit install, login or API-key save succeeds,
   an installed CLI with no launch profile is appended to the Home inventory after
   a timestamped backup. It inherits the configured workspace base (`~/.hmux` for
   a new install, or the administrator's chosen path); status checks are read-only
   and concurrent additions are serialized. Existing profiles are never rewritten.
-  Connected providers show **시작**, which creates and opens a session with that
-  profile.
+  Connected providers show **Start new session**, which creates and opens a session
+  with that profile. **Add to session menu** is also an explicit registration action
+  and retains an existing matching profile, including its custom ID.
 
-The empty workspace shows a provider card. Until one provider is connected it
-reads "AI 연결이 필요합니다" and opens Settings directly on AI 연결 ("나중에" hides
-it on that device). Once a provider is connected it offers "<provider> 시작"
-buttons instead. The card is refreshed once per login, when Settings closes and
-when the last tab closes.
+The empty workspace shows **Set up an AI tool** until an installed, authenticated
+CLI has a launch profile. It opens Settings directly on AI tools; **Later** hides
+it on that device. Ready providers offer **Start <provider>** instead. The card is
+refreshed once per login, when Settings closes and when the last tab closes.
 
 Provider credentials are Home-wide: every web account on this Home uses the same
 CLI logins and keys. The feature requires the Home role. Gemini tabs are ordinary

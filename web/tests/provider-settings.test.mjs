@@ -136,23 +136,23 @@ test("provider summary describes install and connection state", () => {
     key_hint: "",
     profile: false,
   };
-  assert.equal(providerSummary(base), "Not installed");
+  assert.equal(providerSummary(base), "CLI not installed");
   assert.equal(
     providerSummary({ ...base, installed: true, version: "2.1.278" }),
-    "v2.1.278 · Connection needed",
+    "Sign-in needed",
   );
   assert.equal(
     providerSummary({ ...base, installed: true, auth: "account" }),
-    "Account connected",
+    "CLI account login",
   );
   assert.equal(
     providerSummary({ ...base, auth: "api-key", key_hint: "…abcd" }),
-    "Not installed · API key …abcd",
+    "CLI not installed",
   );
 });
 
-test("onboarding is needed until one provider is connected", () => {
-  const p = (id, auth) => ({ id, auth, installed: true, profile: false });
+test("onboarding stays available until an authenticated CLI can launch", () => {
+  const p = (id, auth) => ({ id, auth, installed: true, profile_id: id });
   assert.equal(needsProviderSetup([]), true);
   assert.equal(
     needsProviderSetup([p("codex", "none"), p("gemini", "none")]),
@@ -163,6 +163,14 @@ test("onboarding is needed until one provider is connected", () => {
     false,
   );
   assert.equal(needsProviderSetup([p("gemini", "api-key")]), false);
+  assert.equal(
+    needsProviderSetup([{ ...p("codex", "account"), profile_id: "" }]),
+    true,
+  );
+  assert.equal(
+    needsProviderSetup([{ ...p("claude", "api-key"), installed: false }]),
+    true,
+  );
 });
 
 test("only installed, connected providers with a profile can be started", () => {

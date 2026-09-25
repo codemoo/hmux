@@ -224,6 +224,27 @@ garbage-collected after its view was removed. These checks used synthetic accoun
 and local assets. They did not deploy maintained services,
 register OS startup services or establish physical-device acceptance.
 
+## Provider authentication clarity
+
+Settings → AI tools separates existing Home CLI authentication from optional API
+key changes. A signed-in CLI without a launch profile can be registered without
+another login. Gemini key removal also updates its selected authentication method;
+an unrelated custom method is preserved.
+
+The Home library suite passed 215 tests (three opt-in checks ignored). The final
+11 focused provider checks include JSON and Protobuf registration, credential-byte
+preservation, refusal during an active setup job, custom-profile preservation and
+Gemini key/account transitions. Strict Home Clippy passed. All 188 web tests,
+TypeScript, formatting and the web build passed.
+
+Synthetic Chromium checks at desktop and 390×844 widths verified collapsed API
+key entry for existing CLI logins, registration without login/key mutations,
+explicit key removal before account sign-in, and language switching without losing
+an API-key draft. English and Korean layouts were reviewed. This used mocked
+browser responses and isolated native fixtures; real credentials and maintained
+services were unchanged. These results do not establish physical-device acceptance
+or a deployment.
+
 ## Maintained deployment
 
 Private deployment checks verified initial connectivity, catalog and usage
