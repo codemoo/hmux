@@ -3,6 +3,7 @@
 pub mod admission;
 pub mod auth;
 pub mod auth_store;
+pub mod bootstrap;
 mod browser_control;
 pub mod browser_terminal;
 pub mod browser_upload;

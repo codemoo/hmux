@@ -732,7 +732,11 @@ dependencies = [
  "hmux-home",
  "hmux-install",
  "hmux-service",
+ "libc",
  "rustix",
+ "serde",
+ "serde_json",
+ "sha2",
  "tokio",
  "tokio-util",
 ]

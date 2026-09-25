@@ -53,6 +53,23 @@ The compatibility names `rust-check`, `rust-build`, `rust-package`,
 `rust-bundle-check`, `rust-native-cli` and `rust-native-matrix` invoke current Rust
 checks/builds. They do not compile the retired Go implementation.
 
+## Unified installation and first-login setup
+
+`hmux-web install` chooses role (Gateway/Home/both) and target (local/SSH).
+Focused native CLI/PTY checks cover role selection, cancellation, conflicting
+options, private connection import, opt-out from Home startup, and noninteractive
+`init-web` token preservation. Unit tests check transfer manifests, path/host
+injection rejection, Gateway managed-file rollback and secret-state validation.
+Gateway HTTP tests cover origin/token denial, TOTP and non-TOTP setup, atomic
+account creation, normal login after setup and restart with setup retired.
+
+These fixtures do not provision an actual Linux host, call production SSH,
+install packages, issue public certificates or activate a real user service.
+Before a release promises automatic provisioning on a distribution, exercise
+managed/external HTTPS, repeat installation, failed activation/rollback and SSH
+cancellation on disposable Linux/macOS hosts. Keep existing maintained services
+and original tmux/provider sessions outside those tests.
+
 ## Optional historical comparisons
 
 Frozen JSON fixtures remain normal Rust tests. A few ignored Rust cross-language

@@ -205,6 +205,77 @@ class NativeWebCLI(unittest.TestCase):
         self.assertFalse((self.root / "Library/LaunchAgents").exists())
         self.assertFalse((self.root / ".config/systemd").exists())
 
+    def test_unified_role_and_local_target_install_only_home(self):
+        args = self.install_args()
+        process, master, _ = self.start_terminal(["install", *args[2:]])
+        self.read_until(master, b"Installation role [1/2/3]: ")
+        os.write(master, b"3\n")
+        self.read_until(master, b"Installation target [1/2]: ")
+        os.write(master, b"1\n")
+        self.read_until(master, b"Gateway connection file [")
+        os.write(master, b"\n")
+        self.read_until(master, b"New-session base directory [~/.hmux]: ")
+        os.write(master, b"\n")
+        self.read_until(master, b"Set up automatic startup now? [y/N]: ")
+        os.write(master, b"n\n")
+        self.read_until(master, b"Home installed")
+        self.assertEqual(process.wait(timeout=10), 0)
+        self.assertTrue((self.root / ".local/bin/hmux-web").exists())
+        self.assertFalse((self.root / "Library/LaunchAgents").exists())
+        self.assertFalse((self.root / ".config/systemd").exists())
+
+    def test_unified_pairing_retained_but_not_activated_when_declined(self):
+        args = self.install_args()
+        private = self.root / "private"
+        private.mkdir(mode=0o700)
+        pairing = private / "pairing.json"
+        token = base64.urlsafe_b64encode(bytes(range(32))).rstrip(b"=").decode()
+        pairing.write_text(json.dumps({"schema": 1, "endpoint": "wss://hmux.example/connect", "token": token}))
+        pairing.chmod(0o600)
+        process, master, _ = self.start_terminal(["install", "--local", "--role", "home", "--connection-file", str(pairing), *args[2:]])
+        output = self.read_until(master, b"New-session base directory [~/.hmux]: ")
+        os.write(master, b"\n")
+        output += self.read_until(master, b"Set up automatic startup now? [y/N]: ")
+        os.write(master, b"n\n")
+        output += self.read_until(master, b"Home installed")
+        self.assertEqual(process.wait(timeout=10), 0)
+        copies = list((self.root / ".config/hmux/connections").glob("import-*/home-connection.json"))
+        self.assertEqual(len(copies), 1)
+        self.assertEqual(json.loads(copies[0].read_text())["token"], token)
+        self.assertEqual(copies[0].stat().st_mode & 0o777, 0o600)
+        self.assertFalse((self.root / ".config/hmux/web/connector.token").exists())
+        self.assertNotIn(token.encode(), output)
+
+    def test_unified_cancel_before_target_and_reject_conflicting_options(self):
+        args = self.install_args()
+        process, master, _ = self.start_terminal(["install", *args[2:]])
+        self.read_until(master, b"Installation role [1/2/3]: ")
+        os.write(master, b"1\n")
+        self.read_until(master, b"Installation target [1/2]: ")
+        process.send_signal(signal.SIGHUP)
+        self.assertNotEqual(process.wait(timeout=5), 0)
+        self.assertFalse((self.root / ".config").exists())
+        for flags in [["--local", "--remote", "server"],
+                      ["--role", "gateway", "--connection-file", "/private/example"],
+                      ["--remote", "-oProxyCommand=bad"],
+                      ["--role", "home", "--connection-output", "/private/example"]]:
+            self.assertNotEqual(self.command("install", *flags).returncode, 0)
+
+    def test_init_web_is_noninteractive_private_and_never_resets(self):
+        result = self.command("init-web", "--credentials", str(self.cred), "--token-file", str(self.token))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        bootstrap = Path(str(self.cred) + ".bootstrap")
+        self.assertFalse(self.cred.exists())
+        old_token, old_setup = self.token.read_bytes(), bootstrap.read_bytes()
+        self.assertNotEqual(old_token, old_setup)
+        for path in [self.token, bootstrap]:
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+            self.assertNotIn(path.read_bytes().strip(), result.stdout + result.stderr)
+        again = self.command("init-web", "--credentials", str(self.cred), "--token-file", str(self.token))
+        self.assertEqual(again.returncode, 0, again.stderr)
+        self.assertEqual(self.token.read_bytes(), old_token)
+        self.assertEqual(bootstrap.read_bytes(), old_setup)
+
 
 if __name__ == "__main__":
     unittest.main()

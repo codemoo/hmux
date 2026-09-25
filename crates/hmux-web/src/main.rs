@@ -1,9 +1,14 @@
 //! Native gateway, Home connector and user-service entrypoint.
 mod args;
 mod enroll;
+mod gateway_install;
 mod install;
+mod install_process;
 mod install_ui;
 mod logging;
+mod pairing;
+mod remote_install;
+mod setup;
 use args::{absolute, invalid, Options};
 use hmux_gateway::runtime::{GatewayRuntime, Options as GatewayOptions};
 use hmux_home::runtime::{HomeRuntime, Options as HomeOptions};
@@ -31,7 +36,14 @@ async fn run(arguments: Vec<OsString>) -> io::Result<()> {
     };
     if !matches!(
         command,
-        "init" | "serve" | "connect" | "service" | "install-home"
+        "init"
+            | "init-web"
+            | "serve"
+            | "connect"
+            | "service"
+            | "install-home"
+            | "install"
+            | "install-gateway"
     ) {
         return Err(invalid("unknown command"));
     }
@@ -39,12 +51,14 @@ async fn run(arguments: Vec<OsString>) -> io::Result<()> {
     // service mutation. Cancellation always joins the command being cancelled.
     let mut terminate = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
     let mut interrupt = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt())?;
+    let mut hangup = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::hangup())?;
     let stop = CancellationToken::new();
     let running = dispatch(command, &arguments[1..], stop.clone());
     tokio::pin!(running);
     tokio::select! {
         biased;
         _ = terminate.recv() => { stop.cancel(); running.await },
+        _ = hangup.recv() => { stop.cancel(); running.await },
         _ = interrupt.recv() => { stop.cancel(); running.await },
         result = &mut running => result,
     }
@@ -54,6 +68,16 @@ async fn dispatch(
     arguments: &[OsString],
     stop: CancellationToken,
 ) -> io::Result<()> {
+    if command == "init-web" && (arguments == ["--help"] || arguments == ["-h"]) {
+        println!("usage: hmux-web init-web --credentials FILE --token-file FILE\n\nPrepare private first-login setup. Create the account and configure TOTP in the browser.\nThe one-time setup token is stored at <credentials-file>.bootstrap; existing accounts are never replaced.");
+        return Ok(());
+    }
+    if command == "install" {
+        return setup::run(arguments, stop).await;
+    }
+    if command == "install-gateway" {
+        return gateway_install::run(arguments, stop).await;
+    }
     if command == "install-home" {
         return install::run(arguments, stop).await;
     }
@@ -72,6 +96,23 @@ async fn dispatch(
     }
     let options = args::parse(arguments)?;
     match command {
+        "init-web" => {
+            if options.credentials.is_empty() || options.token.is_empty() {
+                return Err(invalid("--credentials and --token-file required"));
+            }
+            let credentials = absolute(&options.credentials)?;
+            let token = absolute(&options.token)?;
+            if stop.is_cancelled() {
+                return Err(invalid("initialization cancelled"));
+            }
+            tokio::task::spawn_blocking(move || {
+                hmux_gateway::bootstrap::initialize(&credentials, &token)
+            })
+            .await
+            .map_err(io::Error::other)??;
+            println!("Private web setup prepared. Start the Gateway and open its HTTPS site to create the first account.");
+            Ok(())
+        }
         "init" => tokio::task::spawn_blocking(move || enroll::initialize(options, stop))
             .await
             .map_err(io::Error::other)?,

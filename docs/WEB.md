@@ -82,6 +82,15 @@ Source rollout files are unchanged; reopen the reader to fetch the filtered view
 
 ## Accounts, tabs and continuity
 
+New Gateway installations use a one-time web setup flow. `init-web` creates a
+private connector token and a separate `<credentials-path>.bootstrap` setup token;
+passwords and TOTP are entered in the browser. Until setup completes the Gateway
+serves only static assets and bounded setup endpoints, not protected APIs or Home
+connections. Setup requires the private token and the configured same-origin HTTPS
+boundary. Creating credentials atomically retires setup; normal login is still
+required. Existing credentials never reopen setup. The legacy interactive `init`
+command remains available for manual administration.
+
 The primary credential is the configured `--credentials` file. Up to eight extra
 credential files live in `<credentials-path>.users/`; duplicate names are rejected.
 Restart the gateway after administrative credential-file changes. Changing an account's password,
@@ -174,7 +183,7 @@ Home installation selects each profile's workspace base (new-install default:
 child folder from its name and a unique folder/profile-prefixed tmux name. Repeated
 names never attach to existing work or reuse existing directories. Codex/Claude
 exit returns to an interactive shell, including for resumed sessions. See
-[Operations](OPERATIONS.md#build-and-install-home) for naming and installation flags.
+[Operations](OPERATIONS.md#build-and-install) for naming and installation flags.
 
 ## Fast workspace restoration
 

@@ -20,8 +20,9 @@ struct Options {
     endpoint: Option<OsString>,
     token: Option<PathBuf>,
     guided: bool,
+    connection_file: Option<PathBuf>,
 }
-const USAGE: &str = "usage: hmux-web install-home [--guided] [--source-dir DIR] [--bin-dir DIR] [--config-dir DIR] [--workspace-dir DIR] [--binaries-only | --enable-service [--url wss://host/connect --token-file FILE]]";
+const USAGE: &str = "usage: hmux-web install-home [--guided] [--connection-file FILE] [--source-dir DIR] [--bin-dir DIR] [--config-dir DIR] [--workspace-dir DIR] [--binaries-only | --enable-service [--url wss://host/connect --token-file FILE]]";
 fn parse(args: &[OsString]) -> io::Result<Options> {
     if args.len() > 64 || args.iter().map(|v| v.len()).sum::<usize>() > 65536 {
         return Err(invalid("installation arguments exceed limit"));
@@ -61,6 +62,7 @@ fn parse(args: &[OsString]) -> io::Result<Options> {
                     "--workspace-dir" => options.workspace = Some(value.clone()),
                     "--url" => options.endpoint = Some(value.clone()),
                     "--token-file" => options.token = Some(value.into()),
+                    "--connection-file" => options.connection_file = Some(value.into()),
                     _ => return Err(invalid(USAGE)),
                 }
             }
@@ -80,6 +82,13 @@ fn parse(args: &[OsString]) -> io::Result<Options> {
     }
     if options.endpoint.is_some() && !options.enable_service {
         return Err(invalid("--url and --token-file require --enable-service"));
+    }
+    if options.connection_file.is_some()
+        && (options.binaries_only
+            || options.endpoint.is_some()
+            || !(options.guided || options.enable_service))
+    {
+        return Err(invalid("--connection-file requires --guided or --enable-service and cannot combine with --binaries-only or explicit connection options"));
     }
     Ok(options)
 }
@@ -103,7 +112,7 @@ fn active(stop: &CancellationToken) -> io::Result<()> {
         Ok(())
     }
 }
-fn validate_candidate(source: &Path) -> io::Result<()> {
+pub(crate) fn validate_candidate(source: &Path) -> io::Result<()> {
     // The helper runs before publication, so retain the installer's trusted
     // directory and owner-controlled executable checks at this earlier point.
     hmux_core::PrivateDir::open_existing_trusted(source)?;
@@ -140,8 +149,13 @@ async fn command(binary: &Path, args: Vec<OsString>, stop: &CancellationToken) -
 }
 pub async fn run(args: &[OsString], stop: CancellationToken) -> io::Result<()> {
     if args == ["--help"] || args == ["-h"] {
-        println!("{USAGE}\n\nInstall the native Home connector and helper.\n\n  --guided          Walk through workspace and connection setup\n  --enable-service  Register automatic startup; adopt a running connector\n                    when --url and --token-file are omitted\n  --binaries-only   Update executables without changing configuration\n\nExamples:\n  hmux-web install-home --guided\n  hmux-web install-home --enable-service --url wss://hmux.example/connect --token-file ~/.config/hmux/web/connector.token\n\nAutomatic startup is opt-in. Existing workspace paths are preserved.");
+        println!("{USAGE}\n\nInstall the native Home connector and helper.\n\n  --connection-file Import a private Gateway connection JSON with --guided\n                    or --enable-service; existing different tokens are refused\n  --guided          Walk through workspace and connection setup\n  --enable-service  Register automatic startup; adopt a running connector\n                    when --url and --token-file are omitted\n  --binaries-only   Update executables without changing configuration\n\nExamples:\n  hmux-web install-home --guided\n  hmux-web install-home --enable-service --url wss://hmux.example/connect --token-file ~/.config/hmux/web/connector.token\n\nAutomatic startup is opt-in. Existing workspace paths are preserved.");
         return Ok(());
+    }
+    if rustix::process::geteuid().as_raw() == 0 {
+        return Err(invalid(
+            "run Home installation as the tmux/provider user without sudo",
+        ));
     }
     let mut options = parse(args)?;
     if options.guided && !(io::stdin().is_terminal() && io::stdout().is_terminal()) {
@@ -168,6 +182,19 @@ pub async fn run(args: &[OsString], stop: CancellationToken) -> io::Result<()> {
     ui.welcome(options.binaries_only);
     ui.step(1, "Check installation files");
     validate_candidate(&source)?;
+    let pairing_path = options
+        .connection_file
+        .as_ref()
+        .map(|p| resolved(p, &home))
+        .transpose()?;
+    let pairing = pairing_path
+        .as_ref()
+        .map(|p| crate::pairing::ConnectionFile::read(p))
+        .transpose()?;
+    if let Some(ref file) = pairing {
+        file.check_target(&config)?;
+        println!("  Private Gateway connection file validated. Token contents stay hidden.");
+    }
     if !options.binaries_only {
         let mut existing = false;
         for name in ["home.toml", "client.toml", "inventory.toml"] {
@@ -195,7 +222,8 @@ pub async fn run(args: &[OsString], stop: CancellationToken) -> io::Result<()> {
             ui.step(3, "Connect your Home");
             let stop = stop.clone();
             let enable_service = options.enable_service;
-            let explicit_connection = options.endpoint.is_some();
+            let imported_connection = pairing.is_some();
+            let explicit_connection = options.endpoint.is_some() || imported_connection;
             let home = home.clone();
             let config = config.clone();
             let choice = tokio::task::spawn_blocking(move || {
@@ -203,6 +231,7 @@ pub async fn run(args: &[OsString], stop: CancellationToken) -> io::Result<()> {
                     &stop,
                     enable_service,
                     explicit_connection,
+                    imported_connection,
                     &home,
                     &config,
                 )
@@ -240,6 +269,11 @@ pub async fn run(args: &[OsString], stop: CancellationToken) -> io::Result<()> {
     println!("Home configured; existing paths are preserved unless --workspace-dir is supplied.");
     let enable_service = options.enable_service;
     if enable_service {
+        active(&stop)?;
+        if let Some(ref file) = pairing {
+            options.endpoint = Some(file.endpoint.clone().into());
+            options.token = Some(file.install_token(&config)?);
+        }
         let binary = bin.join("hmux-web");
         let mut service = vec![
             "service".into(),
@@ -285,6 +319,9 @@ pub async fn run(args: &[OsString], stop: CancellationToken) -> io::Result<()> {
         println!("Installed hmux-web and hmux-agent");
     }
     ui.complete(&bin, &config, enable_service, false);
+    if !enable_service && pairing_path.is_some() {
+        println!("Keep your private connection file. Pass --connection-file to a later guided installation to connect without retyping its settings.");
+    }
     Ok(())
 }
 #[cfg(test)]
@@ -300,6 +337,13 @@ mod tests {
             vec!["--guided", "--binaries-only"],
             vec!["--enable-service=false"],
             vec!["--guided=no"],
+            vec!["--connection-file", "/private/connection.json"],
+            vec![
+                "--guided",
+                "--binaries-only",
+                "--connection-file",
+                "/private/connection.json",
+            ],
         ] {
             assert!(parse(&args.into_iter().map(Into::into).collect::<Vec<_>>()).is_err());
         }

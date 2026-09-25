@@ -168,6 +168,34 @@ and 992–1,130 ms child CPU time, versus `iostat` at 1.006–1.016 seconds wall
 and 4–7 ms child CPU time. This is a local collector-command measurement, not a
 whole-application benchmark. Authenticated browser rendering remains unverified.
 
+## Unified installer and web enrollment
+
+The unified guide separates Gateway, Home and combined roles, plus local or SSH
+installation. Native fixtures cover role/argument boundaries, private pairing,
+Home startup opt-out and installer cancellation. Browser enrollment fixtures cover
+TOTP and non-TOTP account creation, same-origin/setup-token rejection, enrollment
+replacement, normal login and setup retirement across restart. Synthetic Chromium
+checks exercised account creation, TOTP verification and return to normal login;
+a mobile-sized viewport was reviewed. This is not physical-device acceptance.
+
+Release-mode Rust formatting, workspace Clippy and the non-opt-in native suites
+passed, as did 176 web tests, 12 CLI/PTY checks and five native bundle checks.
+The synthetic production Gateway/Home pair passed login, catalog, terminal ACK,
+disconnect and reconnect. Its first sandboxed run could not start the Home child;
+the same isolated test passed with normal host process permissions.
+
+Gateway provisioning is checked through isolated file/HTTP fixtures and source
+review, including bounded manifest verification, swapped-directory rejection,
+private release staging, managed-file rollback and readiness probes. Live Linux
+package installation, public ACME issuance, real SSH deployment
+and OS service activation with the new unified installer remain unverified. No
+maintained Gateway/Home service was reinstalled by these installer checks.
+
+The full native suite also exposed an obsolete Go metric-oracle assertion for
+Darwin `top` output. The historical fixture is retained; current compatibility
+checks reject that retired input while native parser tests cover the replacement
+`iostat` interval format. No collector behavior was changed for this test repair.
+
 ## Maintained deployment
 
 Private deployment checks verified initial connectivity, catalog and usage

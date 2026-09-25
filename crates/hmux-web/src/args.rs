@@ -4,7 +4,8 @@ use std::{
     path::{Component, Path, PathBuf},
 };
 
-pub const USAGE: &str = "usage: hmux-web <init|serve|connect|service|install-home>";
+pub const USAGE: &str =
+    "usage: hmux-web <install|init|init-web|serve|connect|service|install-home|install-gateway>";
 
 #[derive(Default)]
 pub struct Options {

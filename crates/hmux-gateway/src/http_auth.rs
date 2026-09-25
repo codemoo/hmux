@@ -1,4 +1,4 @@
-//! Candidate authentication routes. Unported protected routes fail closed.
+//! Gateway authentication and protected HTTP routes.
 
 use crate::{
     auth_store::{
@@ -98,17 +98,7 @@ impl Gateway {
         listener: TcpListener,
         shutdown: CancellationToken,
     ) -> io::Result<()> {
-        let push_worker = self.push.as_ref().and_then(|push| {
-            self.home.as_ref().and_then(|home| {
-                push.start(
-                    self.auth.clone(),
-                    home.clone(),
-                    self.workspaces.clone(),
-                    self.origin.clone(),
-                    shutdown.clone(),
-                )
-            })
-        });
+        let push_worker = self.start_push(shutdown.clone());
         let gateway = self.clone();
         let result = boundary::serve(
             listener,
@@ -124,10 +114,30 @@ impl Gateway {
         result
     }
 
+    pub(crate) fn start_push(
+        &self,
+        shutdown: CancellationToken,
+    ) -> Option<tokio::task::JoinHandle<()>> {
+        self.push.as_ref().and_then(|push| {
+            self.home.as_ref().and_then(|home| {
+                push.start(
+                    self.auth.clone(),
+                    home.clone(),
+                    self.workspaces.clone(),
+                    self.origin.clone(),
+                    shutdown.clone(),
+                )
+            })
+        })
+    }
+
     pub(crate) async fn shutdown_services(&self) {
         self.shutdown_services_with_push(None).await;
     }
-    async fn shutdown_services_with_push(&self, push_worker: Option<tokio::task::JoinHandle<()>>) {
+    pub(crate) async fn shutdown_services_with_push(
+        &self,
+        push_worker: Option<tokio::task::JoinHandle<()>>,
+    ) {
         if let Some(locations) = &self.locations {
             locations.shutdown();
         }
@@ -149,7 +159,24 @@ impl Gateway {
         self.auth.shutdown().await;
     }
 
-    async fn handle(&self, request: Request<Incoming>, context: RequestContext) -> Reply {
+    pub(crate) async fn handle(
+        &self,
+        request: Request<Incoming>,
+        context: RequestContext,
+    ) -> Reply {
+        if request.uri().path() == "/api/setup/status" {
+            return if request.method() == Method::GET {
+                boundary::json(&json!({"required": false}))
+            } else {
+                crate::bootstrap::setup_error(StatusCode::METHOD_NOT_ALLOWED)
+            };
+        }
+        if matches!(
+            request.uri().path(),
+            "/api/setup/begin" | "/api/setup/complete"
+        ) {
+            return crate::bootstrap::setup_error(StatusCode::CONFLICT);
+        }
         if request.uri().path() == "/connect" {
             return match &self.home {
                 Some(hub) => crate::http_home::connect(&self.policy, hub, request, context),

@@ -356,6 +356,42 @@ strong {
   color: var(--dim);
   margin-top: 20px;
 }
+.setup-totp-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  align-items: center;
+  color: var(--ink);
+}
+.login-panel .setup-totp-option input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--button);
+}
+.setup-totp-option small {
+  grid-column: 2;
+  color: var(--muted);
+}
+.login-panel .setup-secret {
+  font-family: var(--font-mono);
+  font-size: clamp(10px, 3.1vw, 14px);
+  letter-spacing: 0.02em;
+}
+.setup-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr;
+  gap: 10px;
+}
+.setup-actions .secondary,
+.setup-actions .primary {
+  padding-inline: 10px;
+}
+.setup-status {
+  min-height: 18px;
+  margin: 12px 0 0;
+  font-size: 12px;
+}
 .workspace {
   display: grid;
   grid-template-columns: 250px minmax(0, 1fr);

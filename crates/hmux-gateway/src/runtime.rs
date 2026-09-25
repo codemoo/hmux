@@ -1,8 +1,7 @@
-//! Experimental full gateway assembly. This owns startup and cleanup but does
-//! not install, deploy, or replace either Go `hmux-web` role.
+//! Native Gateway assembly, including one-time web enrollment and bounded cleanup.
 use crate::{
     auth_store::AuthStore,
-    diagnostics,
+    bootstrap, diagnostics,
     http_auth::Gateway,
     http_boundary::{loopback_address, Policy},
     hub::Hub,
@@ -110,7 +109,7 @@ fn sibling_name(base: &OsStr, suffix: &str) -> OsString {
     name.push(suffix);
     name
 }
-fn asset_boundary(options: &Options) -> io::Result<Vec<PathBuf>> {
+pub(crate) fn asset_boundary(options: &Options) -> io::Result<Vec<PathBuf>> {
     // The administrator chooses public release files. Reject an accidental
     // root containing either private bearer file at startup. Assets itself
     // still reopens a trusted deployment symlink for every request.
@@ -119,10 +118,25 @@ fn asset_boundary(options: &Options) -> io::Result<Vec<PathBuf>> {
         .canonicalize()
         .map_err(|_| unavailable("public assets unavailable"))?;
     let mut protected = Vec::new();
-    for private in [&options.credentials, &options.token_file] {
-        let private = private
-            .canonicalize()
-            .map_err(|_| unavailable("private gateway input unavailable"))?;
+    for private in [
+        &options.credentials,
+        &options.token_file,
+        &bootstrap::token_path(&options.credentials),
+    ] {
+        let private = match private.canonicalize() {
+            Ok(path) => path,
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {
+                let parent = private
+                    .parent()
+                    .ok_or_else(|| invalid("invalid private path"))?;
+                parent.canonicalize()?.join(
+                    private
+                        .file_name()
+                        .ok_or_else(|| invalid("invalid private name"))?,
+                )
+            }
+            Err(_) => return Err(unavailable("private gateway input unavailable")),
+        };
         if private.starts_with(&assets) {
             return Err(invalid("public assets include private gateway state"));
         }
@@ -175,8 +189,12 @@ impl Startup {
 }
 
 pub struct GatewayRuntime {
-    gateway: Arc<Gateway>,
+    gateway: RuntimeGateway,
     listener: TcpListener,
+}
+enum RuntimeGateway {
+    Normal(Arc<Gateway>),
+    Bootstrap(Arc<bootstrap::BootstrapGateway>),
 }
 impl GatewayRuntime {
     /// Validate trust and bind before opening private state. Any later failure
@@ -209,66 +227,31 @@ impl GatewayRuntime {
     ) -> io::Result<Self> {
         Policy::new(&options.origin, DUMMY_TOKEN).map_err(|_| invalid("invalid HTTPS origin"))?;
         loopback_address(&options.listen.to_string())?;
-        let (credential_dir, credential_name) = credential_location(&options.credentials)?;
+        credential_location(&options.credentials)?;
         credential_location(&options.token_file)?;
         let protected = asset_boundary(&options)?;
         let assets = Assets::open_excluding(&options.assets, protected)?;
         let listener = TcpListener::bind(options.listen).await?;
-        let token = read_token(options.token_file).await?;
+        let token = read_token(options.token_file.clone()).await?;
         Policy::new(&options.origin, &token).map_err(|_| invalid("invalid gateway policy"))?;
-        let auth = Arc::new(AuthStore::open(&options.credentials).await?);
-        let mut startup = Startup {
-            auth,
-            diagnostics: None,
-            push: None,
-            preferences: None,
-            workspaces: None,
+        if !options.credentials.exists() {
+            let setup =
+                bootstrap::BootstrapGateway::open(options, token, assets, client, reporter)?;
+            return Ok(Self {
+                gateway: RuntimeGateway::Bootstrap(Arc::new(setup)),
+                listener,
+            });
+        }
+        let gateway = match build_gateway(&options, &token, assets, client.clone(), reporter).await
+        {
+            Ok(gateway) => gateway,
+            Err(error) => {
+                client.shutdown();
+                return Err(error);
+            }
         };
-        let result: io::Result<()> = async {
-            let name = sibling_name(credential_name, ".diagnostics.json");
-            startup.diagnostics = Some(
-                diagnostics::Store::open(PrivateDir::open(credential_dir)?, name)
-                    .await
-                    .map_err(|_| unavailable("private diagnostics unavailable"))?,
-            );
-            startup.push = Some(
-                push_state::Store::open(PrivateDir::open(credential_dir)?, credential_name)
-                    .await
-                    .map_err(|_| unavailable("private push storage unavailable"))?,
-            );
-            let preferences_dir = PrivateDir::open(credential_dir)?
-                .create_private_child(&sibling_name(credential_name, ".usage-preferences"))?;
-            startup.preferences = Some(usage_preferences::Store::new(preferences_dir));
-            let workspaces_dir = PrivateDir::open(credential_dir)?
-                .create_private_child(OsStr::new("web-profiles"))?;
-            startup.workspaces = Some(workspace::Store::new(workspaces_dir));
-            Ok(())
-        }
-        .await;
-        if let Err(error) = result {
-            client.shutdown();
-            startup.shutdown().await;
-            assets.shutdown().await;
-            return Err(error);
-        }
-        let (hub, receiver) = Hub::with_reporter(reporter);
-        let locations = crate::session_location::Locator::new(client.clone());
-        let push = Push::new(
-            startup.push.take().expect("push initialized"),
-            client,
-            receiver,
-        );
-        let gateway = Gateway::new(&options.origin, &token, startup.auth.clone())
-            .expect("validated gateway policy")
-            .with_locations(locations)
-            .with_home(hub)
-            .with_assets(assets)
-            .with_diagnostics(startup.diagnostics.take().expect("diagnostics initialized"))
-            .with_preferences(startup.preferences.take().expect("preferences initialized"))
-            .with_workspaces(startup.workspaces.take().expect("workspaces initialized"))
-            .with_push(push);
         Ok(Self {
-            gateway: Arc::new(gateway),
+            gateway: RuntimeGateway::Normal(Arc::new(gateway)),
             listener,
         })
     }
@@ -277,18 +260,87 @@ impl GatewayRuntime {
         self.listener.local_addr()
     }
     pub async fn serve(self, shutdown: CancellationToken) -> io::Result<()> {
-        self.gateway.serve(self.listener, shutdown).await
+        match self.gateway {
+            RuntimeGateway::Normal(gateway) => gateway.serve(self.listener, shutdown).await,
+            RuntimeGateway::Bootstrap(gateway) => gateway.serve(self.listener, shutdown).await,
+        }
     }
     /// For callers that opened the candidate but did not start its listener.
     pub async fn shutdown(self) {
-        self.gateway.shutdown_services().await;
+        match self.gateway {
+            RuntimeGateway::Normal(gateway) => gateway.shutdown_services().await,
+            RuntimeGateway::Bootstrap(gateway) => gateway.shutdown().await,
+        }
     }
+}
+
+pub(crate) async fn build_gateway(
+    options: &Options,
+    token: &str,
+    assets: Assets,
+    client: push_transport::Client,
+    reporter: Option<crate::observation::Reporter>,
+) -> io::Result<Gateway> {
+    let (credential_dir, credential_name) = credential_location(&options.credentials)?;
+    let auth = Arc::new(AuthStore::open(&options.credentials).await?);
+    let mut startup = Startup {
+        auth,
+        diagnostics: None,
+        push: None,
+        preferences: None,
+        workspaces: None,
+    };
+    let result: io::Result<()> = async {
+        let name = sibling_name(credential_name, ".diagnostics.json");
+        startup.diagnostics = Some(
+            diagnostics::Store::open(PrivateDir::open(credential_dir)?, name)
+                .await
+                .map_err(|_| unavailable("private diagnostics unavailable"))?,
+        );
+        startup.push = Some(
+            push_state::Store::open(PrivateDir::open(credential_dir)?, credential_name)
+                .await
+                .map_err(|_| unavailable("private push storage unavailable"))?,
+        );
+        let preferences_dir = PrivateDir::open(credential_dir)?
+            .create_private_child(&sibling_name(credential_name, ".usage-preferences"))?;
+        startup.preferences = Some(usage_preferences::Store::new(preferences_dir));
+        let workspaces_dir =
+            PrivateDir::open(credential_dir)?.create_private_child(OsStr::new("web-profiles"))?;
+        startup.workspaces = Some(workspace::Store::new(workspaces_dir));
+        Ok(())
+    }
+    .await;
+    if let Err(error) = result {
+        startup.shutdown().await;
+        assets.shutdown().await;
+        return Err(error);
+    }
+    let (hub, receiver) = Hub::with_reporter(reporter);
+    let locations = crate::session_location::Locator::new(client.clone());
+    let push = Push::new(
+        startup.push.take().expect("push initialized"),
+        client,
+        receiver,
+    );
+    let gateway = Gateway::new(&options.origin, token, startup.auth.clone())
+        .expect("validated gateway policy")
+        .with_locations(locations)
+        .with_home(hub)
+        .with_assets(assets)
+        .with_diagnostics(startup.diagnostics.take().expect("diagnostics initialized"))
+        .with_preferences(startup.preferences.take().expect("preferences initialized"))
+        .with_workspaces(startup.workspaces.take().expect("workspaces initialized"))
+        .with_push(push);
+    Ok(gateway)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::auth::{self, Credentials};
+    use hmac::{Hmac, Mac};
+    use sha1::Sha1;
     use std::{
         fs,
         os::unix::fs::{DirBuilderExt, PermissionsExt},
@@ -382,6 +434,282 @@ mod tests {
     }
     fn code(response: &str) -> &str {
         response.split_whitespace().nth(1).unwrap()
+    }
+    fn setup_post(path: &str, body: &str, origin: &str) -> String {
+        format!("POST {path} HTTP/1.1\r\nHost: hmux.example\r\nOrigin: {origin}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len())
+    }
+    fn body_json(response: &str) -> serde_json::Value {
+        serde_json::from_str(response.split("\r\n\r\n").nth(1).unwrap()).unwrap()
+    }
+    fn totp_code(secret: &str) -> String {
+        let secret = auth::decode_totp_secret(secret).unwrap();
+        let step = chrono::Utc::now().timestamp() / 30;
+        let mut mac = Hmac::<Sha1>::new_from_slice(&secret).unwrap();
+        mac.update(&(step as u64).to_be_bytes());
+        let digest = mac.finalize().into_bytes();
+        let offset = (digest[19] & 15) as usize;
+        let number = (u32::from_be_bytes(digest[offset..offset + 4].try_into().unwrap())
+            & 0x7fff_ffff)
+            % 1_000_000;
+        format!("{number:06}")
+    }
+
+    #[tokio::test]
+    async fn browser_setup_without_totp_switches_to_regular_and_survives_restart() {
+        let fixture = Fixture::new();
+        fs::remove_file(&fixture.credentials).unwrap();
+        fs::remove_file(&fixture.token).unwrap();
+        bootstrap::initialize(&fixture.credentials, &fixture.token).unwrap();
+        bootstrap::initialize(&fixture.credentials, &fixture.token).unwrap();
+        let setup_meta = fs::metadata(bootstrap::token_path(&fixture.credentials)).unwrap();
+        let connector_meta = fs::metadata(&fixture.token).unwrap();
+        assert_eq!(setup_meta.permissions().mode() & 0o777, 0o600);
+        assert_eq!(connector_meta.permissions().mode() & 0o777, 0o600);
+        let setup_token =
+            hmux_core::token::load(&bootstrap::token_path(&fixture.credentials)).unwrap();
+        let connector_token = hmux_core::token::load(&fixture.token).unwrap();
+        assert_ne!(setup_token, connector_token);
+        private_file(
+            &bootstrap::token_path(&fixture.credentials),
+            connector_token.as_bytes(),
+        );
+        assert!(bootstrap::initialize(&fixture.credentials, &fixture.token).is_err());
+        assert!(
+            GatewayRuntime::open_with_client(fixture.options(), synthetic_client())
+                .await
+                .is_err()
+        );
+        private_file(
+            &bootstrap::token_path(&fixture.credentials),
+            setup_token.as_bytes(),
+        );
+        let runtime = GatewayRuntime::open_with_client(fixture.options(), synthetic_client())
+            .await
+            .unwrap();
+        let addr = runtime.local_addr().unwrap();
+        let stop = CancellationToken::new();
+        let serving = tokio::spawn(runtime.serve(stop.clone()));
+        let status = request(
+            addr,
+            "GET /api/setup/status HTTP/1.1\r\nHost: hmux.example\r\nConnection: close\r\n\r\n",
+        )
+        .await;
+        assert_eq!(body_json(&status)["required"], true);
+        let session = request(
+            addr,
+            "GET /api/session HTTP/1.1\r\nHost: hmux.example\r\nConnection: close\r\n\r\n",
+        )
+        .await;
+        assert_eq!(code(&session), "401");
+        let assets = request(
+            addr,
+            "GET / HTTP/1.1\r\nHost: hmux.example\r\nConnection: close\r\n\r\n",
+        )
+        .await;
+        assert_eq!(code(&assets), "200");
+        let connect = request(addr, &format!("GET /connect HTTP/1.1\r\nHost: hmux.example\r\nAuthorization: Bearer {connector_token}\r\nConnection: close\r\n\r\n")).await;
+        assert_eq!(code(&connect), "503");
+        let login = request(
+            addr,
+            &setup_post("/api/login", "{}", "https://hmux.example"),
+        )
+        .await;
+        assert_eq!(code(&login), "503");
+        let start = serde_json::json!({"token": setup_token, "username":"owner", "password":"synthetic-password", "password_confirm":"synthetic-password", "totp_enabled":false}).to_string();
+        let foreign = request(
+            addr,
+            &setup_post("/api/setup/begin", &start, "https://evil.example"),
+        )
+        .await;
+        assert_eq!(code(&foreign), "403");
+        let wrong = start.replace(&setup_token, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+        let denied = request(
+            addr,
+            &setup_post("/api/setup/begin", &wrong, "https://hmux.example"),
+        )
+        .await;
+        assert_eq!(code(&denied), "401");
+        let finished = request(
+            addr,
+            &setup_post("/api/setup/begin", &start, "https://hmux.example"),
+        )
+        .await;
+        assert_eq!(code(&finished), "200");
+        assert_eq!(body_json(&finished)["complete"], true);
+        assert!(finished
+            .to_ascii_lowercase()
+            .contains("cache-control: no-store"));
+        assert!(!bootstrap::token_path(&fixture.credentials).exists());
+        let status = request(
+            addr,
+            "GET /api/setup/status HTTP/1.1\r\nHost: hmux.example\r\nConnection: close\r\n\r\n",
+        )
+        .await;
+        assert_eq!(body_json(&status)["required"], false);
+        let retry = request(
+            addr,
+            &setup_post("/api/setup/begin", &start, "https://hmux.example"),
+        )
+        .await;
+        assert_eq!(code(&retry), "409");
+        let login = request(
+            addr,
+            &setup_post(
+                "/api/login",
+                "{\"username\":\"owner\",\"password\":\"synthetic-password\",\"code\":\"\"}",
+                "https://hmux.example",
+            ),
+        )
+        .await;
+        assert_eq!(code(&login), "200");
+        stop.cancel();
+        serving.await.unwrap().unwrap();
+        let restarted = GatewayRuntime::open_with_client(fixture.options(), synthetic_client())
+            .await
+            .unwrap();
+        let addr = restarted.local_addr().unwrap();
+        let stop = CancellationToken::new();
+        let serving = tokio::spawn(restarted.serve(stop.clone()));
+        let status = request(
+            addr,
+            "GET /api/setup/status HTTP/1.1\r\nHost: hmux.example\r\nConnection: close\r\n\r\n",
+        )
+        .await;
+        assert_eq!(body_json(&status)["required"], false);
+        stop.cancel();
+        serving.await.unwrap().unwrap();
+    }
+
+    #[tokio::test]
+    async fn browser_setup_requires_totp_and_retires_enrollment() {
+        let fixture = Fixture::new();
+        fs::remove_file(&fixture.credentials).unwrap();
+        fs::remove_file(&fixture.token).unwrap();
+        bootstrap::initialize(&fixture.credentials, &fixture.token).unwrap();
+        let setup_token =
+            hmux_core::token::load(&bootstrap::token_path(&fixture.credentials)).unwrap();
+        let runtime = GatewayRuntime::open_with_client(fixture.options(), synthetic_client())
+            .await
+            .unwrap();
+        let addr = runtime.local_addr().unwrap();
+        let stop = CancellationToken::new();
+        let serving = tokio::spawn(runtime.serve(stop.clone()));
+        let start = serde_json::json!({"token": setup_token, "username":"owner", "password":"synthetic-password", "password_confirm":"synthetic-password", "totp_enabled":true}).to_string();
+        let begun = request(
+            addr,
+            &setup_post("/api/setup/begin", &start, "https://hmux.example"),
+        )
+        .await;
+        assert_eq!(code(&begun), "200");
+        let body = body_json(&begun);
+        assert_eq!(body["complete"], false);
+        assert!(body["totp_uri"]
+            .as_str()
+            .unwrap()
+            .contains(body["totp_secret"].as_str().unwrap()));
+        assert!(!fixture.credentials.exists());
+        let old_id = body["enrollment_id"].as_str().unwrap().to_owned();
+        let replaced = request(
+            addr,
+            &setup_post("/api/setup/begin", &start, "https://hmux.example"),
+        )
+        .await;
+        assert_eq!(code(&replaced), "200");
+        let body = body_json(&replaced);
+        let id = body["enrollment_id"].as_str().unwrap();
+        assert_ne!(id, old_id);
+        let obsolete = serde_json::json!({"token":setup_token,"enrollment_id":old_id,"code":totp_code(body["totp_secret"].as_str().unwrap())}).to_string();
+        let denied_old = request(
+            addr,
+            &setup_post("/api/setup/complete", &obsolete, "https://hmux.example"),
+        )
+        .await;
+        assert_eq!(code(&denied_old), "401");
+        assert!(!fixture.credentials.exists());
+        let invalid =
+            serde_json::json!({"token":setup_token,"enrollment_id":id,"code":"00000"}).to_string();
+        let denied = request(
+            addr,
+            &setup_post("/api/setup/complete", &invalid, "https://hmux.example"),
+        )
+        .await;
+        assert_eq!(code(&denied), "401");
+        let correct = serde_json::json!({"token":setup_token,"enrollment_id":id,"code":totp_code(body["totp_secret"].as_str().unwrap())}).to_string();
+        let finished = request(
+            addr,
+            &setup_post("/api/setup/complete", &correct, "https://hmux.example"),
+        )
+        .await;
+        assert_eq!(code(&finished), "200");
+        assert_eq!(body_json(&finished)["complete"], true);
+        let credential = auth::parse_credentials(&fs::read(&fixture.credentials).unwrap()).unwrap();
+        assert!(!credential.totp_disabled);
+        assert!(credential.last_step > 0);
+        assert!(!bootstrap::token_path(&fixture.credentials).exists());
+        stop.cancel();
+        serving.await.unwrap().unwrap();
+    }
+
+    #[tokio::test]
+    async fn browser_setup_limits_token_guesses_without_kdf_work() {
+        let fixture = Fixture::new();
+        fs::remove_file(&fixture.credentials).unwrap();
+        fs::remove_file(&fixture.token).unwrap();
+        bootstrap::initialize(&fixture.credentials, &fixture.token).unwrap();
+        let runtime = GatewayRuntime::open_with_client(fixture.options(), synthetic_client())
+            .await
+            .unwrap();
+        let addr = runtime.local_addr().unwrap();
+        let stop = CancellationToken::new();
+        let serving = tokio::spawn(runtime.serve(stop.clone()));
+        let wrong = serde_json::json!({"token":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "username":"owner", "password":"synthetic-password", "password_confirm":"synthetic-password", "totp_enabled":false}).to_string();
+        for _ in 0..10 {
+            let denied = request(
+                addr,
+                &setup_post("/api/setup/begin", &wrong, "https://hmux.example"),
+            )
+            .await;
+            assert_eq!(code(&denied), "401");
+        }
+        let limited = request(
+            addr,
+            &setup_post("/api/setup/begin", &wrong, "https://hmux.example"),
+        )
+        .await;
+        assert_eq!(code(&limited), "429");
+        assert!(!fixture.credentials.exists());
+        stop.cancel();
+        serving.await.unwrap().unwrap();
+    }
+
+    #[test]
+    fn init_web_rejects_unsafe_partial_state_and_existing_accounts() {
+        let fixture = Fixture::new();
+        let old = fs::read(&fixture.credentials).unwrap();
+        assert_eq!(
+            bootstrap::initialize(&fixture.credentials, &fixture.token)
+                .unwrap_err()
+                .kind(),
+            io::ErrorKind::AlreadyExists
+        );
+        assert_eq!(fs::read(&fixture.credentials).unwrap(), old);
+        fs::remove_file(&fixture.credentials).unwrap();
+        fs::remove_file(&fixture.token).unwrap();
+        let setup = bootstrap::token_path(&fixture.credentials);
+        private_file(&setup, b"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n");
+        assert!(bootstrap::initialize(&fixture.credentials, &fixture.token).is_err());
+        assert!(!fixture.token.exists());
+        fs::remove_file(&setup).unwrap();
+        bootstrap::initialize(&fixture.credentials, &fixture.token).unwrap();
+        assert!(hmux_core::token::load(&setup).is_ok());
+        let original_connector = hmux_core::token::load(&fixture.token).unwrap();
+        fs::remove_file(&setup).unwrap();
+        bootstrap::initialize(&fixture.credentials, &fixture.token).unwrap();
+        assert!(hmux_core::token::load(&setup).is_ok());
+        assert_eq!(
+            hmux_core::token::load(&fixture.token).unwrap(),
+            original_connector
+        );
     }
 
     #[test]

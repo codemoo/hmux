@@ -80,19 +80,24 @@ This packages the native host bundle under `dist/web-<platform>/`, such as
 `dist/web-darwin-arm64/` or `dist/web-linux-amd64/`. It does not deploy or alter
 existing sessions. Build another supported target only when its Rust target, linker
 and platform SDK are available, for example through `HMUX_RUST_TARGETS`; see
-[Operations](docs/OPERATIONS.md#build-and-install-home).
+[Operations](docs/OPERATIONS.md#build-and-install).
 
-Run the guided Home installer from the bundle for your platform:
+Run the installer from the bundle for your platform:
 
 ```sh
-./dist/web-darwin-arm64/hmux-web install-home --guided
+./dist/web-darwin-arm64/hmux-web install
 ```
 
-The guide checks local tools, asks for a workspace (default `~/.hmux`) and offers
-automatic startup. Enter your Gateway's HTTPS address and private token-file path
-to connect now, or skip that step and connect later. Existing workspace paths are
-preserved. The completion screen gives the next command with your install paths.
-For scripts, omit `--guided` and use the [explicit options](docs/OPERATIONS.md#build-and-install-home).
+Choose **Gateway**, **Home**, or **both**, then **this machine** or an **SSH server**.
+Gateway requires Linux/systemd; Home supports macOS and Linux. Remote setup checks
+the target OS/CPU and transfers a matching native bundle. Gateway HTTPS can use
+managed Nginx/Let's Encrypt or your existing reverse proxy. Create the first account
+and configure TOTP in the browser using the private one-time setup token.
+
+Same-host setup passes connection details automatically. Split-host setup uses a
+private connection file. Home asks for a workspace (default `~/.hmux`) and optional
+automatic startup; existing paths and agent sessions are preserved. See
+[installation options and prerequisites](docs/OPERATIONS.md#build-and-install).
 
 macOS here refers to the host running tmux. An optional
 [native Home service](docs/OPERATIONS.md#automatic-home-startup-macos-and-linux)

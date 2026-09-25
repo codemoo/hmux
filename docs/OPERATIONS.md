@@ -1,10 +1,10 @@
 # Operations
 
-The supported setup has a macOS Home running tmux/providers and a Linux HTTPS
-gateway. Browsers/PWAs are the only clients. Use your own credentials and domain.
+Gateway runs on Linux with systemd; Home runs on macOS or Linux. Install both on
+one Linux machine or split them across hosts. Browsers/PWAs are the only clients. Use your own credentials and domain.
 Detailed gateway/authentication settings are in [WEB.md](WEB.md).
 
-## Build and install Home
+## Build and install
 
 Install the pinned Rust toolchain, Node.js 22+, Python 3, tmux and the desired provider CLIs.
 Contributor checks additionally require ShellCheck and jq; see [CONTRIBUTING.md](../CONTRIBUTING.md).
@@ -20,26 +20,107 @@ notices and a SHA-256 manifest. Build does not deploy. To build a non-host suppo
 target, set `HMUX_RUST_TARGETS` only after installing its Rust target, linker and any
 required platform SDK. The target's binary is not portable across platforms.
 
-For a guided installation, run the Home pair's installer from its built bundle:
+Start the unified installer from the bundle built for the machine running it:
 
 ```sh
-./dist/web-darwin-arm64/hmux-web install-home --guided
+./dist/web-darwin-arm64/hmux-web install
 ```
 
-The terminal guide shows installation steps and local tmux/provider availability,
-then asks whether to configure automatic startup. The default is **No**. To connect
-now, supply an existing HTTPS Gateway address and a private connector token file
-copied from that Gateway. HTTPS site addresses are converted to the strict WSS
-connector endpoint; invalid addresses or token files can be corrected at the prompt.
-Token contents are never printed. The guide does not install packages, authenticate
-provider CLIs, provision a Gateway or configure HTTPS.
+Choose a role and an installation target. Only the selected role is installed:
 
-Prompts support cancellation before setup starts. Existing workspace configuration
-is preserved unless an explicit `--workspace-dir` is supplied. `--guided` requires
-a terminal; omit it for scripts using explicit flags. A supported terminal gets
-restrained color headings; `NO_COLOR` or `TERM=dumb` keeps plain output. Both modes
-show installed paths and the next command. Automatic startup registration is
-reported separately from a verified Gateway connection.
+| Role | Target | Setup performed |
+| --- | --- | --- |
+| Gateway + Home | Linux/systemd | Gateway first, then Home as the current SSH/local user |
+| Gateway | Linux/systemd | HTTPS entry point and unprivileged Gateway service |
+| Home | macOS or Linux | Host configuration, native binaries and optional user service |
+
+The target can be this machine or an SSH server. Run Home/combined installation
+as the account that owns tmux and provider authentication, without `sudo`; the
+installer elevates only Gateway provisioning. Gateway-only installation may run
+as root. Provider CLIs, authentication and workspaces remain on the Home host.
+
+### Gateway and HTTPS
+
+Gateway setup asks for a domain and one of two HTTPS configurations:
+
+- **Managed Nginx + Let's Encrypt:** checks the domain inputs, optionally installs
+  missing Nginx/Certbot packages with apt, configures only HMux's include, obtains
+  a certificate and enables renewal. The domain must resolve to the server and
+  ports 80/443 must be reachable. ACME terms acceptance is explicit.
+- **Existing HTTPS proxy:** installs the Gateway on `127.0.0.1:8088` without
+  changing the proxy or installing proxy packages. Configure the existing proxy
+  for HTTP and WebSocket upgrades, including `/connect`, using
+  [the reverse-proxy requirements](#linuxnginx-deployment).
+
+The Gateway uses a dedicated unprivileged `hmux-web` service account. Releases
+live below `/opt/hmux-web/releases/`, with an atomic `current` link; private state
+is in `/var/lib/hmux-web`. The installer owns marked HMux service/proxy files,
+backs up replaced files privately, and refuses unmanaged collisions. Failed
+activation restores its prior configuration and release pointer; it never rolls
+back credentials or user data. Packages, issued certificates and newly created
+private setup files are retained for recovery.
+
+**Create the first account in the browser.** Open the configured HTTPS site and
+enter the one-time setup token from the private
+`/var/lib/hmux-web/credentials.json.bootstrap` file (read it with administrative
+access, for example `sudo cat /var/lib/hmux-web/credentials.json.bootstrap`).
+Choose a username/password and set up TOTP, or skip TOTP and enable it later in
+account settings. The setup token is distinct from the Home connector token;
+it cannot be used to log in after account creation. It is never in a URL, command
+argument or application log. Existing installations keep their accounts and do
+not reopen setup. A partial or unsafe private state fails closed.
+
+For same-host installation, Home receives the Gateway address/token automatically.
+For split hosts, Gateway setup writes a private connection JSON; transfer only
+that file over a trusted channel. It contains connector authority, never a login
+password or TOTP secret. Select Home and supply the file:
+
+```sh
+./dist/web-darwin-arm64/hmux-web install --local --role home \
+  --connection-file /PRIVATE/home-connection.json
+```
+
+### Remote installation
+
+The installer uses the system SSH/SCP client with host-key verification and agent
+forwarding disabled. First verify the server's key with your usual SSH client;
+configure nondefault ports, identities or jump hosts in SSH config. Use an alias
+or `user@hostname` in the installer:
+
+```sh
+./dist/web-darwin-arm64/hmux-web install --role gateway --remote server-alias
+```
+
+It checks the target OS/CPU, selects a matching extracted bundle beside the local
+bundle (for example `web-linux-amd64`) or asks for its local path, verifies its
+manifest, uploads to a private temporary directory, verifies it again and runs
+setup over an SSH terminal. Cross-platform installation needs the target's built
+bundle; it does not run a macOS executable on Linux or silently download binaries.
+The remote server needs SSH/SFTP and SHA-256 verification (`sha256sum` or `shasum`).
+
+Gateway connection files are retrieved into private local storage after remote
+setup. They can be passed to a separate local or remote Home installation. Remote
+Home setup runs under the SSH account and follows the same opt-in user-service
+rules. On macOS the user's GUI login domain must be available for a LaunchAgent;
+Linux needs a usable systemd user manager. SSH does not change login/sleep policy.
+Successful transfer staging is removed. On failure the installer reports the
+retained private staging directory for inspection/retry; it does not remove
+installed roles or original tmux/provider work.
+
+### Home configuration
+
+Home asks for the workspace (default `~/.hmux`), checks local tmux/provider tools,
+and offers automatic startup with a default of **No**. With a connection file,
+there is no need to type the address/token again. Otherwise enter an existing
+Gateway HTTPS address and a private connector token path, or connect later.
+Token contents are never printed. The Home-only guide does not provision HTTPS,
+install provider CLIs or authenticate providers.
+
+Existing workspace paths are preserved unless `--workspace-dir` is explicit.
+`install` and `install-home --guided` require a terminal. For scripts use
+`install-home` or `install-gateway` with explicit flags; see each command's
+`--help`. Automatic startup registration is reported separately from a verified
+Gateway connection. `NO_COLOR` and `TERM=dumb` select plain terminal output.
 
 The native installer preflights both source/target binaries, rejects symlinks and
 unsafe ownership/permissions, configures Home through `hmux-agent setup-home`, and
@@ -95,9 +176,9 @@ compatible; follow [MIGRATION.md](MIGRATION.md) before replacing it. Keep the sa
 
 ## Start the gateway and connector
 
-Initialize private credentials with `hmux-web init`; configure HTTPS and the
-unprivileged gateway service using [gateway deployment](#linuxnginx-deployment).
-Copy only the connector token to private Home storage over a trusted channel.
+Use the unified installer above to configure Gateway and Home. For manual service
+administration, see [gateway deployment](#linuxnginx-deployment). Copy only the
+connector token/connection file to private Home storage over a trusted channel.
 
 ```sh
 ~/.local/bin/hmux-web connect --url wss://YOUR_HOST/connect --token-file /PRIVATE/connector.token
@@ -306,16 +387,17 @@ it does not need a Rust toolchain. `HMUX_RUST_TARGETS` requires the selected tar
 linkers and SDKs. `npm audit --prefix web` checks frontend dependencies; it is not a
 full security guarantee.
 
-On the trusted Linux host, run the interactive initializer with private paths:
+For manual provisioning, prepare private first-login setup with:
 
 ```sh
-hmux-web init --credentials /PRIVATE/credentials.json --token-file /PRIVATE/connector.token
+hmux-web init-web --credentials /PRIVATE/credentials.json --token-file /PRIVATE/connector.token
 ```
 
-It asks for a password without echoing it, displays a TOTP seed/URI for enrollment,
-checks an actual code and refuses to overwrite existing files. Copy only the
-connector token to private Home storage using the established trusted SSH channel.
-Never commit either file or include them in a public release archive.
+This prepares distinct private connector and one-time setup tokens, without asking
+for a password or TOTP in the terminal. Start the Gateway with these paths, then
+finish account setup in the browser. The legacy `init` command still supports
+interactive terminal enrollment when explicitly chosen. Never publish credential,
+connector or bootstrap files.
 
 
 ## Linux/Nginx deployment

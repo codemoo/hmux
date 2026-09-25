@@ -122,6 +122,7 @@ pub fn connection(
     stop: &CancellationToken,
     requested: bool,
     explicit: bool,
+    imported: bool,
     home: &Path,
     config: &Path,
 ) -> io::Result<Choice> {
@@ -148,6 +149,13 @@ pub fn connection(
     if !enabled {
         return Ok(Choice {
             enable_service: false,
+            connection: None,
+        });
+    }
+    if imported {
+        println!("  Using the address and private token from your Gateway connection file.");
+        return Ok(Choice {
+            enable_service: true,
             connection: None,
         });
     }
