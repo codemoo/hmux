@@ -110,7 +110,8 @@ Local verification of the integrated changes passed:
   Home WSS with both codecs, CLI/hooks and isolated real-tmux lifecycle checks.
 - `make build` and all five bundle checks on macOS ARM64; `make shfmt-check`.
 
-This source review does not change the maintained deployment recorded below.
+Source checks alone do not establish deployment. Native deployment validation
+is summarized below; identifying receipts remain private.
 
 ### Usage collector recovery
 
@@ -138,28 +139,49 @@ filesystem information before the BSD-to-GNU fallback. The installer and its
 permission assertions now choose flags explicitly by OS; isolated hook checks
 passed on both Linux and macOS.
 
+[CI for `b581a96`](https://github.com/codemoo/hmux/actions/runs/36047586025) passed
+Linux, web, Protobuf and dependency checks. macOS exposed an action/catalog test
+ordering race: the test discarded an updated catalog received before the action
+reply, then waited less than the unchanged-catalog renewal interval. The harness
+now retains both observations in either order without extending its deadline;
+all five enabled session-peer tests passed locally (one real-tmux test ignored).
+
+A bounded source check covered a full refresh interval for the supported usage
+collectors. Health assertions passed; account data and live quota values are not
+part of the public evidence.
+
+### macOS CPU and disk sampling
+
+The reported partial metrics display led to a reproduced failure cascade: `top`
+exhausting the shared three-second command budget omitted CPU and skipped the
+subsequent filesystem sample. The regression failed against the previous code.
+CPU now uses the second interval sample from the built-in CPU-only `iostat`
+report, and command timeouts no longer suppress the separate `statfs` read.
+The existing single-worker limit, child cancellation/reaping and fresh-field
+semantics remain in place; no resident process or dependency was added.
+
+All 16 focused sampler/parser tests passed, including timeout isolation,
+cancellation and initial catalog readiness with both codecs. Strict Home Clippy
+passed. An opt-in native check returned three fresh CPU/RAM/disk samples on macOS.
+A three-run command comparison measured `top` at 2.005–2.139 seconds wall time
+and 992–1,130 ms child CPU time, versus `iostat` at 1.006–1.016 seconds wall time
+and 4–7 ms child CPU time. This is a local collector-command measurement, not a
+whole-application benchmark. Authenticated browser rendering remains unverified.
+
 ## Maintained deployment
 
-The stability update replaced the maintained Linux Gateway and macOS Home/helper
-on 2026-09-24 UTC (2026-09-25 KST). The maintained combination is **Rust Gateway +
-Rust Home + Rust helper**. The earlier source retirement alone did not deploy.
+Private deployment checks verified initial connectivity, catalog and usage
+publication, configuration preservation, original-session preservation and
+rollback readiness. These checks are separate from local builds and automated
+fixtures. Deployment timestamps, installed binary hashes, release identifiers,
+process/session identities, personal configuration and raw logs are kept out of
+public documentation.
 
-| Component | Recorded activation (UTC) | Executable SHA-256 |
-| --- | --- | --- |
-| Linux Gateway | 2026-09-24 17:47 | `e48eeca9313cec1b2f699889ae9b02cbd85a59128c7e64017afd2fde49445eea` |
-| macOS helper | 2026-09-24 17:51 | `d5165c04f19dcfd26044b05181e3489abd6877d910757175285a656c94c99af5` |
-| macOS Home | 2026-09-24 17:51 | `e2217a5a606277d532b2fa654d8149411f67c12a42df423ad990449411ceed61` |
-
-Gateway release: `rust-stability-20260924T173000Z`. The existing web assets were
-retained byte-for-byte. Public asset hashes, no-store/PWA CSP and five anonymous
-API 401 barriers passed. Home first catalog publication, subsequent authenticated
-workspace requests and original tmux preservation were verified. Detailed service,
-configuration and session receipts remain private.
-
-Timestamped rollback artifacts remain available. Binary rollback must keep current
-configuration, credentials, account policy and session state; an older state snapshot
-can revive revoked access. See [Rollback](ROLLBACK.md). Initial live connectivity
-does not establish physical reboot/login, full browser/TOTP or long-running acceptance.
+Binary rollback must retain current configuration, credentials, account policy
+and session state; restoring an older state snapshot can revive revoked access.
+See [Rollback](ROLLBACK.md). Initial connectivity does not establish physical
+reboot/login, full browser/TOTP or long-running acceptance. Authenticated browser
+rendering of the latest metrics change remains unverified.
 
 ## Browser and device evidence
 
