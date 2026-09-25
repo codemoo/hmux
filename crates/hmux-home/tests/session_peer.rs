@@ -334,10 +334,37 @@ async fn both_codecs_create_unique_children_persist_metadata_and_check_fresh_ali
             ),
         )
         .await;
-        assert_eq!(
-            response(&mut g, protocol, p::Operation::Hidden).await.error,
-            ""
-        );
+        timeout(Duration::from_secs(8), async {
+            // The catalog notification and action reply have independent senders.
+            // Keep both observations regardless of which reaches the socket first.
+            let mut replied = false;
+            let mut observed = false;
+            while !replied || !observed {
+                match receive(
+                    &mut g,
+                    protocol,
+                    Some(ResponseContext::Operation(p::Operation::Hidden)),
+                )
+                .await
+                {
+                    p::envelope::Body::Response(reply) => {
+                        assert!(!replied);
+                        assert_eq!(reply.id, "hide");
+                        assert_eq!(reply.error, "");
+                        replied = true;
+                    }
+                    p::envelope::Body::Catalog(raw) => {
+                        let c = hmux_protocol::snapshots::catalog_from_proto(*raw).unwrap();
+                        observed |= c.sessions.unwrap().iter().any(|s| {
+                            s.id == "$1" && s.alias == "별칭" && s.hidden && s.profile == "codex"
+                        });
+                    }
+                    _ => panic!("response or catalog expected"),
+                }
+            }
+        })
+        .await
+        .unwrap();
         assert_eq!(
             metadata(&f, "sessions.json")["sessions"]["$1"]["alias"],
             "별칭"
@@ -346,21 +373,6 @@ async fn both_codecs_create_unique_children_persist_metadata_and_check_fresh_ali
             metadata(&f, "session-visibility.json")["hidden"]["$1"]["id"],
             "$1"
         );
-        timeout(Duration::from_secs(8), async {
-            loop {
-                if let p::envelope::Body::Catalog(raw) = receive(&mut g, protocol, None).await {
-                    let c: hmux_model::Catalog =
-                        hmux_protocol::snapshots::catalog_from_proto(*raw).unwrap();
-                    if c.sessions.unwrap().iter().any(|s| {
-                        s.id == "$1" && s.alias == "별칭" && s.hidden && s.profile == "codex"
-                    }) {
-                        break;
-                    }
-                }
-            }
-        })
-        .await
-        .unwrap();
         let original = fs::read(f.dir.join("sessions/session-visibility.json")).unwrap();
         let replaced = fs::read_to_string(f.dir.join("identities"))
             .unwrap()
