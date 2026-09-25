@@ -27,7 +27,7 @@ class NativeWebCLI(unittest.TestCase):
         self.root = Path(self.temp.name).resolve()
         self.cred = self.root / "credentials.json"
         self.token = self.root / "connector.token"
-        self.env = {**os.environ, "HOME": str(self.root)}
+        self.env = {**os.environ, "HOME": str(self.root), "HMUX_LANG": "en"}
 
     def command(self, *args):
         return subprocess.run([BINARY, *args], env=self.env, input=b"", capture_output=True, timeout=10)
@@ -223,6 +223,52 @@ class NativeWebCLI(unittest.TestCase):
         self.assertTrue((self.root / ".local/bin/hmux-web").exists())
         self.assertFalse((self.root / "Library/LaunchAgents").exists())
         self.assertFalse((self.root / ".config/systemd").exists())
+
+    def test_unified_language_choice_reprompts_and_routes_korean_home(self):
+        self.env.pop("HMUX_LANG")
+        args = self.install_args()
+        process, master, _ = self.start_terminal(["install", "--local", "--role", "home", *args[2:]])
+        output = self.read_until(master, "Language / 언어 [1 English (default) / 2 한국어]: ".encode())
+        os.write(master, b"invalid\n")
+        output += self.read_until(master, "Language / 언어 [1 English (default) / 2 한국어]: ".encode())
+        self.assertIn("1 또는 2를 선택하세요".encode(), output)
+        os.write(master, b"2\n")
+        output += self.read_until(master, "Gateway 연결 파일 [나중에 연결하려면 Enter]: ".encode())
+        os.write(master, b"\n")
+        output += self.read_until(master, "새 세션 기본 디렉터리 [~/.hmux]: ".encode())
+        os.write(master, b"\n")
+        output += self.read_until(master, "지금 자동 시작을 설정할까요? [y/N]: ".encode())
+        os.write(master, b"n\n")
+        output += self.read_until(master, "Home 설치 완료".encode())
+        self.assertEqual(process.wait(timeout=10), 0)
+        self.assertIn("AI 에이전트를 위한 저메모리".encode(), output)
+        self.assertTrue((self.root / ".local/bin/hmux-web").exists())
+
+    def test_locale_flag_overrides_environment_and_rejects_invalid_value(self):
+        self.env["HMUX_LANG"] = "ko"
+        english = self.command("install-home", "--lang=en", "--help")
+        self.assertIn(b"Install the native Home connector", english.stdout)
+        korean = self.command("install-home", "--help")
+        self.assertIn("네이티브 Home 연결".encode(), korean.stdout)
+        self.assertIn("첫 로그인용".encode(), self.command("init-web", "--lang=ko", "--help").stdout)
+        invalid = self.command("install-home", "--lang=fr", "--binaries-only")
+        self.assertNotEqual(invalid.returncode, 0)
+        self.assertIn(b"en or ko", invalid.stderr)
+        self.assertNotEqual(self.command("install-home", "--lang=en", "--lang=ko", "--help").returncode, 0)
+        self.assertFalse((self.root / ".local").exists())
+
+    def test_language_prompt_enter_defaults_english_without_os_locale_detection(self):
+        self.env.pop("HMUX_LANG")
+        self.env["LANG"] = "ko_KR.UTF-8"
+        self.assertIn(b"Install the native Home connector", self.command("install-home", "--help").stdout)
+        args = self.install_args()
+        process, master, _ = self.start_terminal(["install", "--local", "--role", "home", *args[2:]])
+        self.read_until(master, "Language / 언어 [1 English (default) / 2 한국어]: ".encode())
+        os.write(master, b"\n")
+        output = self.read_until(master, b"Gateway connection file [Enter to enter connection details later]: ")
+        self.assertIn(b"Low memory, web terminal for AI agents.", output)
+        process.send_signal(signal.SIGHUP)
+        self.assertNotEqual(process.wait(timeout=5), 0)
 
     def test_unified_pairing_retained_but_not_activated_when_declined(self):
         args = self.install_args()

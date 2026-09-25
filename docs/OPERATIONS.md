@@ -26,6 +26,14 @@ Start the unified installer from the bundle built for the machine running it:
 ./dist/web-darwin-arm64/hmux-web install
 ```
 
+The interactive guide first offers **English** (the default) or **한국어**.
+Pass `--lang en` or `--lang ko` to skip that choice. `HMUX_LANG=en|ko` provides
+an environment default; an explicit flag takes precedence. These language options
+also apply to `install-home`, `install-gateway` and `init-web`, and are forwarded
+through Gateway privilege elevation and SSH installation. Other OS/provider tools
+retain their own output language. CLI flags, machine output, paths and
+configuration values are not translated.
+
 Choose a role and an installation target. Only the selected role is installed:
 
 | Role | Target | Setup performed |

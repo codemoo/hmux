@@ -1,3 +1,4 @@
+import { t } from "./i18n.ts";
 export type DisconnectKind =
   | "network"
   | "timeout"
@@ -33,13 +34,26 @@ export function createConnectionRecovery(now = Date.now, random = Math.random) {
   let retryAt = 0;
   let connectedAt: number | undefined;
   let issue: DisconnectKind | undefined;
-  const descriptions: Record<DisconnectKind, string> = {
-    network: "네트워크 연결이 끊겼습니다",
-    timeout: "터미널 연결 시간이 초과되었습니다",
-    limit: "동시 터미널 연결 한도에 도달했습니다",
-    unavailable: "터미널을 열 수 없습니다",
-    "output-overflow": "출력 처리량이 많아 잠시 후 다시 연결합니다",
-    protocol: "연결 응답을 확인하지 못했습니다",
+  const descriptions: Record<DisconnectKind, () => string> = {
+    network: () => t("Network connection lost", "네트워크 연결이 끊겼습니다"),
+    timeout: () =>
+      t("Terminal connection timed out", "터미널 연결 시간이 초과되었습니다"),
+    limit: () =>
+      t(
+        "Concurrent terminal connection limit reached",
+        "동시 터미널 연결 한도에 도달했습니다",
+      ),
+    unavailable: () => t("Cannot open terminal", "터미널을 열 수 없습니다"),
+    "output-overflow": () =>
+      t(
+        "High output volume; reconnecting shortly",
+        "출력 처리량이 많아 잠시 후 다시 연결합니다",
+      ),
+    protocol: () =>
+      t(
+        "Could not verify connection response",
+        "연결 응답을 확인하지 못했습니다",
+      ),
   };
   return {
     ready() {
@@ -88,6 +102,6 @@ export function createConnectionRecovery(now = Date.now, random = Math.random) {
       };
     },
     delay: () => Math.max(0, retryAt - now()),
-    description: () => (issue ? descriptions[issue] : ""),
+    description: () => (issue ? descriptions[issue]() : ""),
   };
 }

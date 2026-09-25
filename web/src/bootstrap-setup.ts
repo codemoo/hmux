@@ -1,3 +1,4 @@
+import { t, msg, bindAttribute, bindText, type TextValue } from "./i18n.ts";
 import { createTextFactory } from "./dom.ts";
 import { withRequestDeadline } from "./request-deadline.ts";
 
@@ -16,8 +17,11 @@ type BeginResult =
       totp_uri?: string;
     };
 
-const setupFailure =
-  "설정을 완료하지 못했습니다. 코드를 확인하고 다시 시도하세요.";
+const setupFailure = () =>
+  t(
+    "Could not complete setup. Check the code and try again.",
+    "설정을 완료하지 못했습니다. 코드를 확인하고 다시 시도하세요.",
+  );
 
 // Only the unauthenticated login view calls this. Older servers retain their
 // normal login behavior when the endpoint is absent or temporarily unavailable.
@@ -83,43 +87,59 @@ export function installBootstrapSetup(
     error.textContent = "";
     status.textContent = "";
     root.replaceChildren();
-    const heading = make("p", "처음 설정", "eyebrow");
-    const title = make("h2", "관리자 계정 만들기");
+    const heading = make("p", msg("Initial setup", "처음 설정"), "eyebrow");
+    const title = make(
+      "h2",
+      msg("Create administrator account", "관리자 계정 만들기"),
+    );
     const help = make(
       "p",
-      "서버의 일회용 설정 코드로 첫 계정을 만드세요.",
+      msg(
+        "Create the first account with the server’s one-time setup code.",
+        "서버의 일회용 설정 코드로 첫 계정을 만드세요.",
+      ),
       "muted",
     );
     const form = make("form");
     const field = (
       name: string,
-      labelText: string,
+      labelText: TextValue,
       type: string,
-      placeholder = "",
+      placeholder: TextValue = "",
     ) => {
       const label = make("label", labelText);
       const input = make("input");
       input.name = name;
       input.type = type;
       input.required = true;
-      if (placeholder) input.placeholder = placeholder;
+      if (placeholder) bindAttribute(input, "placeholder", placeholder);
       label.append(input);
       return { label, input };
     };
-    const token = field("token", "설정 코드", "password");
+    const token = field("token", msg("Setup code", "설정 코드"), "password");
     token.input.autocomplete = "off";
     token.input.maxLength = 512;
-    const username = field("username", "계정", "text", "계정 이름");
+    const username = field(
+      "username",
+      msg("Account", "계정"),
+      "text",
+      msg("Account name", "계정 이름"),
+    );
     username.input.autocomplete = "username";
     username.input.maxLength = 80;
-    const password = field("password", "비밀번호", "password", "8자 이상");
+    const password = field(
+      "password",
+      msg("Password", "비밀번호"),
+      "password",
+      msg("At least 8 characters", "8자 이상"),
+    );
     password.input.autocomplete = "new-password";
     password.input.maxLength = 128;
     const confirm = field(
       "password_confirm",
-      "비밀번호 확인",
+      msg("Confirm password", "비밀번호 확인"),
       "password",
-      "비밀번호를 다시 입력",
+      msg("Re-enter password", "비밀번호를 다시 입력"),
     );
     confirm.input.autocomplete = "new-password";
     confirm.input.maxLength = 128;
@@ -130,10 +150,23 @@ export function installBootstrapSetup(
     totp.checked = true;
     totpLabel.append(
       totp,
-      make("span", "인증 앱으로 추가 확인"),
-      make("small", "권장 · 다음 단계에서 6자리 코드를 확인합니다."),
+      make(
+        "span",
+        msg("Add authenticator verification", "인증 앱으로 추가 확인"),
+      ),
+      make(
+        "small",
+        msg(
+          "Recommended · Verify a six-digit code in the next step.",
+          "권장 · 다음 단계에서 6자리 코드를 확인합니다.",
+        ),
+      ),
     );
-    const submit = make("button", "계정 만들기", "primary");
+    const submit = make(
+      "button",
+      msg("Create account", "계정 만들기"),
+      "primary",
+    );
     submit.type = "submit";
     form.append(
       heading,
@@ -158,11 +191,20 @@ export function installBootstrapSetup(
         password.input.value,
       ).length;
       if (passwordBytes < 8 || passwordBytes > 128) {
-        error.textContent = "비밀번호는 8~128바이트여야 합니다.";
+        bindText(
+          error,
+          msg(
+            "Password must be 8–128 bytes.",
+            "비밀번호는 8~128바이트여야 합니다.",
+          ),
+        );
         return;
       }
       if (password.input.value !== confirm.input.value) {
-        error.textContent = "비밀번호가 일치하지 않습니다.";
+        bindText(
+          error,
+          msg("Passwords do not match.", "비밀번호가 일치하지 않습니다."),
+        );
         return;
       }
       lock(form, true);
@@ -207,7 +249,7 @@ export function installBootstrapSetup(
         busy = false;
         showVerification();
       } catch (cause) {
-        if (alive()) error.textContent = fail(cause);
+        if (alive()) bindText(error, fail(cause));
       } finally {
         if (alive() && form.isConnected) lock(form, false);
       }
@@ -218,14 +260,21 @@ export function installBootstrapSetup(
     if (!alive()) return;
     root.replaceChildren();
     const form = make("form");
-    const heading = make("p", "인증 앱 등록", "eyebrow");
-    const title = make("h2", "인증 코드를 확인하세요");
+    const heading = make(
+      "p",
+      msg("Authenticator setup", "인증 앱 등록"),
+      "eyebrow",
+    );
+    const title = make("h2", msg("Verify the code", "인증 코드를 확인하세요"));
     const help = make(
       "p",
-      "인증 앱에 설정 키를 추가한 뒤 표시된 6자리 코드를 입력하세요.",
+      msg(
+        "Add the setup key to your authenticator app, then enter its six-digit code.",
+        "인증 앱에 설정 키를 추가한 뒤 표시된 6자리 코드를 입력하세요.",
+      ),
       "muted",
     );
-    const secretLabel = make("label", "설정 키");
+    const secretLabel = make("label", msg("Setup key", "설정 키"));
     const secretInput = make("input");
     secretInput.value = secret;
     secretInput.readOnly = true;
@@ -233,7 +282,7 @@ export function installBootstrapSetup(
     secretInput.spellcheck = false;
     secretInput.className = "setup-secret";
     secretLabel.append(secretInput);
-    const codeLabel = make("label", "인증 코드");
+    const codeLabel = make("label", msg("Verification code", "인증 코드"));
     const code = make("input");
     code.name = "code";
     code.required = true;
@@ -244,9 +293,17 @@ export function installBootstrapSetup(
     code.placeholder = "000000";
     code.className = "code-input";
     codeLabel.append(code);
-    const cancel = make("button", "처음부터 다시", "secondary");
+    const cancel = make(
+      "button",
+      msg("Start over", "처음부터 다시"),
+      "secondary",
+    );
     cancel.type = "button";
-    const submit = make("button", "인증 후 계속", "primary");
+    const submit = make(
+      "button",
+      msg("Verify and continue", "인증 후 계속"),
+      "primary",
+    );
     submit.type = "submit";
     const actions = make("div", "", "setup-actions");
     actions.append(cancel, submit);
@@ -283,7 +340,7 @@ export function installBootstrapSetup(
         clear();
         onComplete();
       } catch (cause) {
-        if (alive()) error.textContent = fail(cause);
+        if (alive()) bindText(error, fail(cause));
       } finally {
         if (alive() && form.isConnected) lock(form, false);
       }

@@ -1,3 +1,4 @@
+import { msg } from "./i18n.ts";
 import { createTextFactory } from "./dom.ts";
 import { terminalThemes, type TerminalTheme } from "./theme.ts";
 
@@ -8,7 +9,7 @@ export function installThemePicker(
 ) {
   const text = createTextFactory(parent.ownerDocument);
   const fieldset = text("fieldset", "", "theme-picker");
-  fieldset.append(text("legend", "색상 테마"));
+  fieldset.append(text("legend", msg("Color theme", "색상 테마")));
   const grid = text("div", "", "theme-grid");
   for (const theme of terminalThemes) {
     const label = text("label", "", "theme-option");

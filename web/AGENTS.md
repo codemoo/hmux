@@ -55,6 +55,12 @@ logs are not current implementation instructions. Web/PWA is the only UI.
 - `theme.ts` owns the validated device-local terminal palette. Apply changes to
   all xterms without reconnect/reset, keep native pending-input colors in sync,
   and retain pinned upstream palette notices. UI chrome remains independently dark.
+- `i18n.ts` owns the device-local English/Korean interface preference; English is
+  the default. Bind only application-owned text/attributes explicitly. Preserve
+  input values, child controls, terminal instances and connections during language
+  changes. Never translate provider output, transcripts, session names or paths.
+  The service worker's allowlisted registration language controls offline/push copy
+  without caching account data or changing push identity checks.
 - `fonts.ts` owns font loading. Keep Monatendard Regular/Bold, Korean coverage,
   WOFF2/TTF compatibility and included licenses.
 - CSS order is `style.css` (base/viewport), `ios-native-input.css` (iOS input),

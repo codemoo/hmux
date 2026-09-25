@@ -1,3 +1,4 @@
+import { msg, bindText, bindAttribute } from "./i18n.ts";
 import { Lexer, type MarkedToken, type Token } from "marked";
 import { decodeHTMLStrict } from "entities";
 import { createTextFactory } from "./dom.ts";
@@ -56,7 +57,13 @@ export function renderMarkdown(
           break;
         case "code": {
           if (!includeCode) {
-            parent.append(text("p", "[코드 숨김]", "markdown-code-hidden"));
+            parent.append(
+              text(
+                "p",
+                msg("[code hidden]", "[코드 숨김]"),
+                "markdown-code-hidden",
+              ),
+            );
             break;
           }
           const pre = text("pre");
@@ -74,7 +81,13 @@ export function renderMarkdown(
           check.type = "checkbox";
           check.checked = token.checked;
           check.disabled = true;
-          check.setAttribute("aria-label", token.checked ? "완료" : "미완료");
+          bindAttribute(
+            check,
+            "aria-label",
+            token.checked
+              ? msg("Complete", "완료")
+              : msg("Incomplete", "미완료"),
+          );
           parent.append(check);
           break;
         }
@@ -94,7 +107,7 @@ export function renderMarkdown(
           const wrap = text("div", "", "markdown-table");
           wrap.tabIndex = 0;
           wrap.setAttribute("role", "region");
-          wrap.setAttribute("aria-label", "표");
+          bindAttribute(wrap, "aria-label", msg("Table", "표"));
           const table = text("table");
           const head = text("thead");
           const body = text("tbody");
@@ -143,7 +156,8 @@ export function renderMarkdown(
           if (token.title) node.title = decodeHTMLStrict(token.title);
           // Images are explicit links, never automatic third-party requests.
           if (token.type === "image")
-            node.textContent = decodeHTMLStrict(token.text) || "이미지";
+            node.textContent = decodeHTMLStrict(token.text);
+          if (!node.textContent) bindText(node, msg("Image", "이미지"));
           else render(node, token.tokens);
           parent.append(node);
           break;

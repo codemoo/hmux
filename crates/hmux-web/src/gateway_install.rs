@@ -1,6 +1,6 @@
 //! Bounded, root-only Linux Gateway provisioning. No configuration is accepted from
 //! environment variables and no credential material is passed in command arguments.
-use crate::args::invalid;
+use crate::{args::invalid, locale};
 use sha2::{Digest, Sha256};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -23,7 +23,7 @@ use tokio::{
 use tokio_util::sync::CancellationToken;
 
 const MARK: &str = "# Managed by hmux-web install-gateway; do not edit in place.\n";
-const USAGE: &str = "usage: hmux-web install-gateway --domain DNS_NAME --https managed|external [--source-dir ABS] [--email EMAIL --accept-acme-terms] [--install-packages] [--connection-file ABS]";
+const USAGE: &str = "usage: hmux-web install-gateway [--lang en|ko] --domain DNS_NAME --https managed|external [--source-dir ABS] [--email EMAIL --accept-acme-terms] [--install-packages] [--connection-file ABS]";
 const MAX_BUNDLE_FILES: usize = 2048;
 const MAX_BUNDLE_BYTES: u64 = 384 * 1024 * 1024;
 const ROOT: &str = "/opt/hmux-web";
@@ -572,6 +572,8 @@ async fn runuser_init_web(binary: &Path, stop: &CancellationToken) -> io::Result
             "--",
             program,
             "init-web",
+            "--lang",
+            locale::current().code(),
             "--credentials",
             "/var/lib/hmux-web/credentials.json",
             "--token-file",
@@ -1372,7 +1374,7 @@ async fn await_gateway_ready_at(
 
 pub async fn run(args: &[OsString], stop: CancellationToken) -> io::Result<()> {
     if args == ["--help"] || args == ["-h"] {
-        println!("{USAGE}");
+        println!("{USAGE}\n{}", locale::tr("Provision the Linux Gateway service. Use --lang en|ko to select installer messages."));
         return Ok(());
     }
     if !cfg!(target_os = "linux") {
@@ -1569,23 +1571,33 @@ pub async fn run(args: &[OsString], stop: CancellationToken) -> io::Result<()> {
             Err(e)
         } else {
             Err(io::Error::other(format!(
-                "gateway installation failed and rollback is incomplete: {e}"
+                "{}: {e}",
+                locale::tr("gateway installation failed and rollback is incomplete")
             )))
         };
     }
     txn.commit();
     println!(
-        "Gateway service active on 127.0.0.1:8088. Configured public URL: https://{}",
+        "{} https://{}",
+        locale::tr("Gateway service active on 127.0.0.1:8088. Configured public URL:"),
         options.domain
     );
     if enrollment == SecretState::Pending {
-        println!("Finish administrator and TOTP setup in your browser at https://{}; the one-time setup token is stored privately at /var/lib/hmux-web/credentials.json.bootstrap.", options.domain);
+        if locale::korean() {
+            println!("브라우저에서 https://{}에 접속하여 관리자 및 TOTP 설정을 마치세요. 일회용 설정 토큰은 /var/lib/hmux-web/credentials.json.bootstrap에 비공개로 저장됩니다.", options.domain);
+        } else {
+            println!("Finish administrator and TOTP setup in your browser at https://{}; the one-time setup token is stored privately at /var/lib/hmux-web/credentials.json.bootstrap.", options.domain);
+        }
     }
     if options.https == Https::External {
-        println!("Configure the existing HTTPS reverse proxy to forward HTTP and WebSocket upgrades to 127.0.0.1:8088; forward Host, X-Real-IP and X-Forwarded-Proto=https; expose /connect over WSS. Keep the upstream loopback-only.");
+        println!("{}", locale::tr("Configure the existing HTTPS reverse proxy to forward HTTP and WebSocket upgrades to 127.0.0.1:8088; forward Host, X-Real-IP and X-Forwarded-Proto=https; expose /connect over WSS. Keep the upstream loopback-only."));
     }
     if let Some(path) = &options.connection {
-        println!("Private Home connection file created at {}", path.display());
+        println!(
+            "{} {}",
+            locale::tr("Private Home connection file created at"),
+            path.display()
+        );
     }
     Ok(())
 }

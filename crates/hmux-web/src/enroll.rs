@@ -206,7 +206,10 @@ fn secret(
 
 /// Optional new-install workspace prompt; existing installations never prompt.
 pub fn workspace_prompt(stop: &CancellationToken) -> io::Result<String> {
-    let line = line_prompt(stop, "New-session base directory [~/.hmux]: ")?;
+    let line = line_prompt(
+        stop,
+        crate::locale::tr("New-session base directory [~/.hmux]: "),
+    )?;
     Ok(if line.is_empty() {
         "~/.hmux".into()
     } else {

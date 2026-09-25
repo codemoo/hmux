@@ -1,3 +1,4 @@
+import { t, msg, bindAttribute, bindText } from "./i18n.ts";
 import { createTextFactory } from "./dom.ts";
 import type { Usage, Snapshot } from "./types.ts";
 import { validUsage } from "./usage.ts";
@@ -103,8 +104,15 @@ export function installUsagePreferences(
     select: HTMLSelectElement;
   }[] = [];
   root.append(
-    make("h3", "사용량 표시"),
-    make("p", "표시할 서비스와 조회 방식을 선택하세요.", "muted"),
+    make("h3", msg("Show usage", "사용량 표시")),
+    make(
+      "p",
+      msg(
+        "Choose which services to show and how to check usage.",
+        "표시할 서비스와 조회 방식을 선택하세요.",
+      ),
+      "muted",
+    ),
   );
   for (const provider of ["codex", "claude"] as const) {
     const row = make("div", "", "usage-preference-row");
@@ -113,13 +121,17 @@ export function installUsagePreferences(
     const toggle = make("button", "", "security-switch");
     toggle.type = "button";
     toggle.setAttribute("role", "switch");
-    toggle.setAttribute("aria-label", `${name} 사용량 표시`);
+    bindAttribute(toggle, "aria-label", () =>
+      t(`${name} usage display`, `${name} 사용량 표시`),
+    );
     toggle.setAttribute("aria-checked", "false");
     toggle.append(make("span"));
     heading.append(make("strong", name), toggle);
-    const label = make("label", "조회 방식");
+    const label = make("label", msg("Usage source", "조회 방식"));
     const select = make("select");
-    select.setAttribute("aria-label", `${name} 사용량 소스`);
+    bindAttribute(select, "aria-label", () =>
+      t(`${name} usage source`, `${name} 사용량 소스`),
+    );
     for (const source of [
       "cli",
       provider === "claude" ? "cswap" : "codex-lb",
@@ -151,7 +163,11 @@ export function installUsagePreferences(
   }
   const status = make("p", "", "muted");
   status.setAttribute("role", "status");
-  const reload = make("button", "다시 불러오기", "subtle-button");
+  const reload = make(
+    "button",
+    msg("Reload", "다시 불러오기"),
+    "subtle-button",
+  );
   reload.type = "button";
   reload.hidden = true;
   reload.onclick = () => void load();
@@ -170,7 +186,13 @@ export function installUsagePreferences(
   }
   function accept(value: unknown) {
     const parsed = parseUsagePreferences(value);
-    if (!parsed) throw new Error("사용량 설정을 확인하지 못했습니다.");
+    if (!parsed)
+      throw new Error(
+        t(
+          "Could not verify usage settings.",
+          "사용량 설정을 확인하지 못했습니다.",
+        ),
+      );
     current = parsed;
     onChanged(parsed);
   }
@@ -178,7 +200,7 @@ export function installUsagePreferences(
     if (busy || controller.signal.aborted) return;
     busy = true;
     reload.hidden = true;
-    status.textContent = "불러오는 중…";
+    bindText(status, msg("Loading…", "불러오는 중…"));
     render();
     try {
       const value = await api(
@@ -191,7 +213,10 @@ export function installUsagePreferences(
       status.textContent = "";
     } catch {
       if (!controller.signal.aborted) {
-        status.textContent = "설정을 불러오지 못했습니다.";
+        bindText(
+          status,
+          msg("Could not load settings.", "설정을 불러오지 못했습니다."),
+        );
         reload.hidden = false;
       }
     } finally {
@@ -202,19 +227,19 @@ export function installUsagePreferences(
   async function save(next: UsagePreferences) {
     busy = true;
     reload.hidden = true;
-    status.textContent = "저장 중…";
+    bindText(status, msg("Saving…", "저장 중…"));
     render();
     try {
       const value = await api("/api/account/usage", next, controller.signal);
       if (controller.signal.aborted) return;
       accept(value);
-      status.textContent = "저장했습니다.";
+      bindText(status, msg("Saved.", "저장했습니다."));
     } catch (error) {
       if (!controller.signal.aborted) {
         status.textContent =
           error instanceof Error
             ? error.message
-            : "설정을 저장하지 못했습니다.";
+            : t("Could not save settings.", "설정을 저장하지 못했습니다.");
         reload.hidden = false;
       }
     } finally {

@@ -5,6 +5,7 @@ mod gateway_install;
 mod install;
 mod install_process;
 mod install_ui;
+mod locale;
 mod logging;
 mod pairing;
 mod remote_install;
@@ -12,7 +13,12 @@ mod setup;
 use args::{absolute, invalid, Options};
 use hmux_gateway::runtime::{GatewayRuntime, Options as GatewayOptions};
 use hmux_home::runtime::{HomeRuntime, Options as HomeOptions};
-use std::{ffi::OsString, io, path::Path, process::ExitCode};
+use std::{
+    ffi::OsString,
+    io::{self, IsTerminal},
+    path::Path,
+    process::ExitCode,
+};
 use tokio_util::sync::CancellationToken;
 
 fn main() -> ExitCode {
@@ -68,8 +74,31 @@ async fn dispatch(
     arguments: &[OsString],
     stop: CancellationToken,
 ) -> io::Result<()> {
+    let installer = matches!(
+        command,
+        "install" | "install-home" | "install-gateway" | "init-web"
+    );
+    let (owned_arguments, explicit_language) = if installer {
+        locale::configure(arguments)?
+    } else {
+        (arguments.to_vec(), false)
+    };
+    let arguments = owned_arguments.as_slice();
+    if command == "install"
+        && !explicit_language
+        && arguments != ["--help"]
+        && arguments != ["-h"]
+        && io::stdin().is_terminal()
+        && io::stdout().is_terminal()
+    {
+        let cancel = stop.clone();
+        tokio::task::spawn_blocking(move || locale::choose(&cancel))
+            .await
+            .map_err(io::Error::other)??;
+    }
     if command == "init-web" && (arguments == ["--help"] || arguments == ["-h"]) {
-        println!("usage: hmux-web init-web --credentials FILE --token-file FILE\n\nPrepare private first-login setup. Create the account and configure TOTP in the browser.\nThe one-time setup token is stored at <credentials-file>.bootstrap; existing accounts are never replaced.");
+        println!("usage: hmux-web init-web [--lang en|ko] --credentials FILE --token-file FILE");
+        println!("{}", locale::tr("Prepare private first-login setup. Create the account and configure TOTP in the browser. The one-time setup token is stored at <credentials-file>.bootstrap; existing accounts are never replaced."));
         return Ok(());
     }
     if command == "install" {
@@ -110,7 +139,7 @@ async fn dispatch(
             })
             .await
             .map_err(io::Error::other)??;
-            println!("Private web setup prepared. Start the Gateway and open its HTTPS site to create the first account.");
+            println!("{}", locale::tr("Private web setup prepared. Start the Gateway and open its HTTPS site to create the first account."));
             Ok(())
         }
         "init" => tokio::task::spawn_blocking(move || enroll::initialize(options, stop))

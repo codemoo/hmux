@@ -1,5 +1,5 @@
 //! SSH is installation transport only. Home runtime remains a native connector.
-use crate::{args::invalid, enroll::line_prompt, install_process};
+use crate::{args::invalid, enroll::line_prompt, install_process, locale};
 use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeSet,
@@ -28,6 +28,28 @@ pub fn valid_host(value: &str) -> bool {
 }
 pub fn quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\\''"))
+}
+fn remote_arguments(
+    bundle: &str,
+    role: &str,
+    export: &str,
+    language: locale::Language,
+) -> Vec<String> {
+    let mut arguments = vec![
+        format!("{bundle}/hmux-web"),
+        "install".into(),
+        "--local".into(),
+        "--lang".into(),
+        language.code().into(),
+        "--role".into(),
+        role.into(),
+        "--source-dir".into(),
+        bundle.into(),
+    ];
+    if role != "home" {
+        arguments.extend(["--connection-output".into(), export.into()]);
+    }
+    arguments
 }
 fn trusted_program(path: &str) -> io::Result<()> {
     let metadata = fs::metadata(path)?;
@@ -272,14 +294,17 @@ pub async fn run(
     }
     trusted_program("/usr/bin/ssh")?;
     trusted_program("/usr/bin/scp")?;
-    println!("\nChecking SSH target. Its host key must already be verified in known_hosts.");
+    println!(
+        "\n{}",
+        locale::tr("Checking SSH target. Its host key must already be verified in known_hosts.")
+    );
     let remote = platform(&call(host, false, "uname -s; uname -m", true, &stop).await?)?;
     if remote.starts_with("darwin") && role != "home" {
         return Err(invalid(
             "macOS remote hosts support Home only; Gateway requires Linux/systemd",
         ));
     }
-    println!("Remote platform: {remote}");
+    println!("{} {remote}", locale::tr("Remote platform:"));
     let source = if matches_platform(&source, remote) {
         source
     } else {
@@ -294,7 +319,11 @@ pub async fn run(
             tokio::task::spawn_blocking(move || {
                 let answer = line_prompt(
                     &stop,
-                    &format!("Local path to the extracted {remote} bundle: "),
+                    &format!(
+                        "{} {remote} {}",
+                        locale::tr("Local path to the extracted"),
+                        locale::tr("bundle:")
+                    ),
                 )?;
                 crate::args::absolute(Path::new(&answer).as_os_str())
             })
@@ -328,13 +357,9 @@ pub async fn run(
     .await?;
     let result = async {
         let bundle = format!("{staging}/bundle");
-        println!("Transferring verified installation files…");
+        println!("{}", locale::tr("Transferring verified installation files…"));
         copy(host, &source, &bundle, true, &stop).await?;
-        let mut arguments = vec![format!("{bundle}/hmux-web"), "install".into(), "--local".into(),
-            "--role".into(), role.into(), "--source-dir".into(), bundle.clone()];
-        if role != "home" {
-            arguments.extend(["--connection-output".into(), export.clone()]);
-        }
+        let mut arguments = remote_arguments(&bundle, role, &export, locale::current());
         if let Some(file) = connection {
             let destination = format!("{staging}/connection.json");
             copy(host, &file, &destination, false, &stop).await?;
@@ -345,7 +370,8 @@ pub async fn run(
         }
         let arguments = arguments.iter().map(|a| quote(a)).collect::<Vec<_>>().join(" ");
         let script = format!("cd {} && if [ -x /usr/bin/sha256sum ]; then /usr/bin/sha256sum -c SHA256SUMS >/dev/null; elif [ -x /usr/bin/shasum ]; then /usr/bin/shasum -a 256 -c SHA256SUMS >/dev/null; else exit 1; fi && exec {arguments}", quote(&bundle));
-        println!("Starting installer on {host}. All following setup choices apply to that host.");
+        if locale::korean() { println!("{host}에서 설치를 시작합니다. 이후 설정은 모두 해당 호스트에 적용됩니다."); }
+        else { println!("Starting installer on {host}. All following setup choices apply to that host."); }
         call(host, true, &script, false, &stop).await?;
         Ok(())
     }.await;
@@ -367,7 +393,11 @@ pub async fn run(
         }
     }
     if result.is_err() || transferred.is_err() {
-        eprintln!("Remote installation files retained at {staging}. The installed roles, if any, were not removed. Check the error before retrying.");
+        if locale::korean() {
+            eprintln!("원격 설치 파일을 {staging}에 보관했습니다. 설치된 역할은 제거하지 않았습니다. 오류를 확인한 뒤 다시 시도하세요.");
+        } else {
+            eprintln!("Remote installation files retained at {staging}. The installed roles, if any, were not removed. Check the error before retrying.");
+        }
         return result.and(transferred);
     }
     // Remove only the create-exclusive nonce directory, never installed files.
@@ -380,7 +410,11 @@ pub async fn run(
     )
     .await;
     if cleanup.is_err() {
-        eprintln!("Remote staging files were retained at {staging}; remove that directory after checking the target.");
+        if locale::korean() {
+            eprintln!("원격 임시 파일이 {staging}에 남아 있습니다. 대상 장치를 확인한 뒤 해당 디렉터리를 삭제하세요.");
+        } else {
+            eprintln!("Remote staging files were retained at {staging}; remove that directory after checking the target.");
+        }
     }
     result
 }
@@ -418,10 +452,11 @@ async fn retrieve(host: &str, remote: &str, stop: &CancellationToken) -> io::Res
     install_process::run(&mut command, false, Duration::from_secs(120), stop).await?;
     crate::pairing::ConnectionFile::read(&local)?;
     println!(
-        "\nPrivate Home connection file saved locally: {}",
+        "\n{} {}",
+        locale::tr("Private Home connection file saved locally:"),
         local.display()
     );
-    println!("Use it with install --role home --connection-file FILE on the Home host. It grants connector access; do not publish it.");
+    println!("{}", locale::tr("Use it with install --role home --connection-file FILE on the Home host. It grants connector access; do not publish it."));
     Ok(())
 }
 
@@ -451,6 +486,21 @@ mod tests {
         for path in ["../x", "/absolute", "a//b", "a/./b", "a\nx", "a b"] {
             assert!(!safe_name(path));
         }
+    }
+
+    #[test]
+    fn remote_installer_argv_carries_allowlisted_locale() {
+        let argv = remote_arguments(
+            "/tmp/bundle",
+            "home",
+            "/tmp/connection",
+            locale::Language::Korean,
+        );
+        assert_eq!(argv[3..5], ["--lang", "ko"]);
+        assert_eq!(argv[5..7], ["--role", "home"]);
+        assert!(!argv.iter().any(|a| a == "--connection-output"));
+        let script_args = argv.iter().map(|a| quote(a)).collect::<Vec<_>>().join(" ");
+        assert!(script_args.contains("'--lang' 'ko'"));
     }
 
     #[test]

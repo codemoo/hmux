@@ -196,6 +196,34 @@ Darwin `top` output. The historical fixture is retained; current compatibility
 checks reject that retired input while native parser tests cover the replacement
 `iostat` interval format. No collector behavior was changed for this test repair.
 
+## English and Korean interface
+
+The web/PWA and native installer default to English and support an explicit Korean
+choice. The web preference is browser-local; the installer accepts `--lang` and
+`HMUX_LANG`, including explicit forwarding through SSH and privilege elevation.
+Both README editions link to each other at the top.
+
+Local validation covered:
+
+- TypeScript, formatting and all 184 web tests, including blocked preference
+  storage, localized DOM ownership, stale bindings, service-worker language
+  fallback and notification identity checks.
+- Strict workspace release Clippy, 24 native entry-point unit tests, three native
+  integration tests, 15 CLI/PTY checks and five macOS ARM64 bundle checks.
+- Synthetic Chromium login, settings and first-account/TOTP forms at desktop and
+  390×844 widths. Switching retained mounted inputs, setup drafts and TOTP state;
+  a mounted xterm stayed the same instance and no new WebSocket was created.
+  Language persisted across reload and the active worker URL matched the choice.
+  English/Korean screenshots were reviewed for layout and horizontal overflow.
+
+Independent review caught a non-UTF-8 installer path regression; the locale parser
+now preserves Unix path bytes, with a regression assertion. Review also found a
+pre-existing PWA install-button callback retention issue. Install events now query
+mounted controls; a synthetic browser prompt worked and the retired button was
+garbage-collected after its view was removed. These checks used synthetic accounts
+and local assets. They did not deploy maintained services,
+register OS startup services or establish physical-device acceptance.
+
 ## Maintained deployment
 
 Private deployment checks verified initial connectivity, catalog and usage

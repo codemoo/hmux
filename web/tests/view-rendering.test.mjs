@@ -187,9 +187,11 @@ test("reader preserves safe text, question/code toggles and return action", () =
   assert.equal(articles(reader).length, 2);
   assert.ok(articles(reader)[0].textContent.includes("echo example"));
   assert.ok(articles(reader)[1].textContent.includes(unsafe));
-  assert.ok(articles(reader)[1].textContent.includes("[코드 숨김]"));
+  assert.ok(articles(reader)[1].textContent.includes("[code hidden]"));
   assert.ok(!all(reader).some((n) => n.tagName === "img"));
-  assert.ok(reader.textContent.includes("최근 대화 일부"));
+  assert.ok(
+    reader.textContent.includes("Only part of the recent conversation"),
+  );
   const [include, code] = all(reader).filter((n) => n.tagName === "input");
   include.checked = false;
   include.onchange();
@@ -218,7 +220,7 @@ test("usage panel keeps missing data distinct from zero remaining capacity", () 
   const panel = root();
   renderUsagePanel(panel, { online: false }, "");
   assert.equal(all(panel).filter((n) => n.attrs.role === "meter").length, 0);
-  assert.ok(panel.textContent.includes("현재 사용량을 확인할 수 없습니다."));
+  assert.ok(panel.textContent.includes("Current usage is unavailable."));
   const now = new Date().toISOString();
   const usage = {
     provider: "codex",
@@ -274,7 +276,7 @@ test("footer replaces stale metrics and animation when host goes offline", () =>
   assert.ok(elements.metrics.textContent.includes("RAM 50%"));
   elements.dog.className = "running";
   renderUsageFooter({ online: false }, elements);
-  assert.equal(elements.metrics.textContent, "Home · 사용량 대기 중");
+  assert.equal(elements.metrics.textContent, "Home · Waiting for usage");
   assert.equal(elements.dog.className, "");
   assert.equal(elements.usageButton.children.length, 5);
 });
@@ -339,8 +341,8 @@ test("both providers show weekly reset, absent 5h is hidden and Codex plans stay
   const providers = all(panel).filter((n) => n.className === "usage-provider");
   assert.equal(providers.length, 2);
   for (const provider of providers) {
-    assert.ok(provider.textContent.includes("2일 후 초기화"));
-    assert.ok(!provider.textContent.includes("5시간"));
+    assert.ok(provider.textContent.includes("Resets in 2 days"));
+    assert.ok(!provider.textContent.includes("5 hours"));
   }
   assert.ok(!providers[1].textContent.includes("Plus"));
   assert.deepEqual(
@@ -354,11 +356,11 @@ test("both providers show weekly reset, absent 5h is hidden and Codex plans stay
   renderUsagePanel(withFive, snapshot, "");
   assert.equal(
     all(withFive).filter(
-      (n) => n.className === "usage-gauge" && n.textContent.includes("5시간"),
+      (n) => n.className === "usage-gauge" && n.textContent.includes("5 hours"),
     ).length,
     1,
   );
-  assert.ok(withFive.textContent.includes("5시간0%"));
+  assert.ok(withFive.textContent.includes("5 hours0%"));
 });
 
 test("unavailable quota keeps concise reset time without redundant stale wording", () => {
@@ -383,9 +385,9 @@ test("unavailable quota keeps concise reset time without redundant stale wording
     { online: true, usage: { claude: { sources: { cswap: usage } } } },
     "",
   );
-  assert.ok(panel.textContent.includes("1일 후 초기화"));
+  assert.ok(panel.textContent.includes("Resets in 1 day"));
   assert.ok(!panel.textContent.includes("80%"));
-  assert.ok(panel.textContent.includes("갱신 대기"));
+  assert.ok(panel.textContent.includes("Refresh pending"));
 });
 
 test("usage footer shows Codex then Claude with compact provider labels", () => {
@@ -439,9 +441,9 @@ test("cswap last-good measurements render despite decision-status failures", () 
   renderUsagePanel(panel, state, "");
   assert.ok(panel.textContent.includes("73%"));
   assert.ok(panel.textContent.includes("79%"));
-  assert.ok(panel.textContent.includes("3분 전 업데이트"));
-  assert.ok(panel.textContent.includes("갱신 지연"));
-  assert.ok(panel.textContent.includes("6일 23시간 후 초기화"));
+  assert.ok(panel.textContent.includes("Updated 3 minutes ago"));
+  assert.ok(panel.textContent.includes("Refresh delayed"));
+  assert.ok(panel.textContent.includes("Resets in 6 days 23 hours"));
   assert.ok(!panel.textContent.includes("최근 조회 기준"));
   const footer = { dog: root(), usageButton: root(), metrics: root() };
   renderUsageFooter(state, footer);
@@ -505,9 +507,9 @@ test("codex-lb details use account-list observation, never credential or aggrega
   assert.ok(accounts[1].textContent.includes("79%"));
   assert.ok(accounts[1].textContent.includes("Pro"));
   for (const row of accounts) {
-    assert.ok(row.textContent.includes("2분 전 업데이트"));
-    assert.ok(row.textContent.includes("1일 후 초기화"));
-    assert.ok(!row.textContent.includes("96시간"));
+    assert.ok(row.textContent.includes("Updated 2 minutes ago"));
+    assert.ok(row.textContent.includes("Resets in 1 day"));
+    assert.ok(!row.textContent.includes("96 hours"));
   }
   assert.equal(
     all(panel)
@@ -516,7 +518,7 @@ test("codex-lb details use account-list observation, never credential or aggrega
           n.className === "usage-summary" ||
           n.className.includes("usage-summary"),
       )[0]
-      .textContent.includes("5시간"),
+      .textContent.includes("5 hours"),
     false,
   );
   // The independent aggregate and token timestamps cannot freshen an old list.
@@ -565,12 +567,12 @@ test("conversation loading follows known provider and has neutral fallback", () 
   for (const [runtime, expected] of [
     ["codex", "Codex"],
     ["claude", "Claude"],
-    [undefined, "대화"],
-    ["<script>secret</script>", "대화"],
+    [undefined, "Conversation"],
+    ["<script>secret</script>", "Conversation"],
   ]) {
     const view = root();
     renderConversationLoading(view, runtime);
-    assert.ok(view.textContent.includes("대화를 불러오는 중"));
+    assert.ok(view.textContent.includes("Loading conversation"));
     assert.equal(
       all(view).find((n) => n.className === "conversation-loading-provider")
         .textContent,

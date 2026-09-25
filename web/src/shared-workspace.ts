@@ -1,3 +1,4 @@
+import { t } from "./i18n.ts";
 import type { Identity } from "./types";
 export type SharedWorkspace = {
   conflict?: "workspace_conflict";
@@ -24,7 +25,9 @@ export function validateWorkspace(value: SharedWorkspace): SharedWorkspace {
     !Array.isArray(value.tabs) ||
     value.tabs.length > 32
   )
-    throw new Error("공용 탭 응답이 올바르지 않습니다.");
+    throw new Error(
+      t("Invalid shared tab response.", "공용 탭 응답이 올바르지 않습니다."),
+    );
   const ids = new Set<string>();
   for (const id of value.tabs) {
     if (
@@ -34,14 +37,21 @@ export function validateWorkspace(value: SharedWorkspace): SharedWorkspace {
       id.created_at < 1 ||
       ids.has(id.id)
     )
-      throw new Error("공용 탭 식별자가 올바르지 않습니다.");
+      throw new Error(
+        t(
+          "Invalid shared tab identifier.",
+          "공용 탭 식별자가 올바르지 않습니다.",
+        ),
+      );
     ids.add(id.id);
   }
   if (
     value.selected &&
     !value.tabs.some((id) => sameIdentity(id, value.selected!))
   )
-    throw new Error("공용 선택 탭이 없습니다.");
+    throw new Error(
+      t("No shared tab is selected.", "공용 선택 탭이 없습니다."),
+    );
   return value;
 }
 export function sameIdentity(a: Identity, b: Identity) {

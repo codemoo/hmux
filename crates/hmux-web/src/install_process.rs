@@ -1,5 +1,5 @@
 //! Owned installer children, with inherited terminal and bounded capture.
-use crate::args::invalid;
+use crate::{args::invalid, locale};
 use std::{io, process::Stdio, time::Duration};
 use tokio::{io::AsyncReadExt, process::Command};
 use tokio_util::sync::CancellationToken;
@@ -60,7 +60,7 @@ pub async fn run(
         {
             let _ = child.start_kill();
             let _ = tokio::time::timeout(Duration::from_secs(5), child.wait()).await;
-            eprintln!("Installer cleanup exceeded its deadline. Check the target installation before retrying.");
+            eprintln!("{}", locale::tr("Installer cleanup exceeded its deadline. Check the target installation before retrying."));
         }
     }
     result

@@ -1,3 +1,4 @@
+import { localeTag, t } from "./i18n.ts";
 import type { Quota, Usage } from "./types";
 // Home normalizes every quota as a fraction in [0,1]. The codex-lb pool's
 // weighted weekly quota is authoritative; never sum per-account percentages.
@@ -60,22 +61,37 @@ export function diskCapacity(used?: number, total?: number): string {
     return "—";
   const unit = total! >= 1e12 ? 1e12 : 1e9;
   const suffix = unit === 1e12 ? "TB" : "GB";
-  return `${(used! / unit).toFixed(1)} / ${(total! / unit).toFixed(1)} ${suffix}`;
+  const format = new Intl.NumberFormat(localeTag(), {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+  return `${format.format(used! / unit)} / ${format.format(total! / unit)} ${suffix}`;
 }
 
 // Reset timestamps come from the selected source; never invent a weekly cycle.
 export function weeklyResetLabel(resetsAt?: string, now = Date.now()): string {
   const reset = Date.parse(resetsAt || "");
-  if (!Number.isFinite(reset)) return "초기화 일정 없음";
-  if (reset <= now) return "초기화 확인 중";
+  if (!Number.isFinite(reset))
+    return t("No reset scheduled", "초기화 일정 없음");
+  if (reset <= now) return t("Checking reset", "초기화 확인 중");
   const minutes = Math.ceil((reset - now) / 60000);
   const days = Math.floor(minutes / 1440);
   const hours = Math.floor((minutes % 1440) / 60);
   const parts = [];
-  if (days) parts.push(`${days}일`);
-  if (hours) parts.push(`${hours}시간`);
-  if (!days && (minutes % 60 || !parts.length)) parts.push(`${minutes % 60}분`);
-  return `${parts.join(" ")} 후 초기화`;
+  if (days)
+    parts.push(t(`${days} ${days === 1 ? "day" : "days"}`, `${days}일`));
+  if (hours)
+    parts.push(t(`${hours} ${hours === 1 ? "hour" : "hours"}`, `${hours}시간`));
+  if (!days && (minutes % 60 || !parts.length)) {
+    const remainingMinutes = minutes % 60;
+    parts.push(
+      t(
+        `${remainingMinutes} ${remainingMinutes === 1 ? "minute" : "minutes"}`,
+        `${remainingMinutes}분`,
+      ),
+    );
+  }
+  return t(`Resets in ${parts.join(" ")}`, `${parts.join(" ")} 후 초기화`);
 }
 
 export function codexPlanLabel(plan?: string): string | undefined {
@@ -108,10 +124,13 @@ export function observationLabel(
   if (!Number.isFinite(age) || age < -60000) return;
   const minutes = Math.floor(Math.max(0, age) / 60000);
   return minutes < 1
-    ? "방금 업데이트"
+    ? t("Updated just now", "방금 업데이트")
     : minutes < 60
-      ? `${minutes}분 전 업데이트`
-      : `${Math.floor(minutes / 60)}시간 전 업데이트`;
+      ? t(`Updated ${minutes} minutes ago`, `${minutes}분 전 업데이트`)
+      : t(
+          `Updated ${Math.floor(minutes / 60)} hours ago`,
+          `${Math.floor(minutes / 60)}시간 전 업데이트`,
+        );
 }
 
 export function validAccountMeasurement(

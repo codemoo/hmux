@@ -1,3 +1,4 @@
+import { t, msg, bindText, bindAttribute, type TextValue } from "./i18n.ts";
 import { createTextFactory } from "./dom.ts";
 
 type SecurityAPI = (
@@ -18,33 +19,40 @@ export function installAccountSecurity(
   let enabled: boolean | undefined;
   let busy = false;
   const heading = make("div", "", "security-heading");
-  heading.append(make("h3", "계정 보안"));
+  heading.append(make("h3", msg("Account security", "계정 보안")));
   const row = make("div", "", "security-toggle-row");
   const label = make("div");
-  const state = make("span", "확인 중", "muted");
-  label.append(make("strong", "TOTP 로그인"), state);
+  const state = make("span", msg("Checking", "확인 중"), "muted");
+  label.append(make("strong", msg("TOTP sign-in", "TOTP 로그인")), state);
   const toggle = make("button", "", "security-switch");
   toggle.type = "button";
   toggle.setAttribute("role", "switch");
-  toggle.setAttribute("aria-label", "TOTP 로그인");
+  bindAttribute(toggle, "aria-label", msg("TOTP sign-in", "TOTP 로그인"));
   toggle.setAttribute("aria-checked", "false");
   toggle.disabled = true;
   toggle.append(make("span"));
   row.append(label, toggle);
   const description = make(
     "p",
-    "로그인할 때 인증 앱의 6자리 코드를 추가로 확인합니다.",
+    msg(
+      "Require a six-digit code from your authenticator app at sign-in.",
+      "로그인할 때 인증 앱의 6자리 코드를 추가로 확인합니다.",
+    ),
     "muted",
   );
   const status = make("p", "", "security-status muted");
   status.setAttribute("role", "status");
-  const reload = make("button", "다시 불러오기", "subtle-button");
+  const reload = make(
+    "button",
+    msg("Reload", "다시 불러오기"),
+    "subtle-button",
+  );
   reload.type = "button";
   reload.hidden = true;
   const form = make("form", "", "security-confirm");
   form.hidden = true;
   const title = make("strong");
-  const field = (name: string, text: string, type: string) => {
+  const field = (name: string, text: TextValue, type: string) => {
     const label = make("label", text);
     const input = make("input");
     input.name = name;
@@ -53,10 +61,14 @@ export function installAccountSecurity(
     label.append(input);
     return { label, input };
   };
-  const password = field("password", "현재 비밀번호", "password");
+  const password = field(
+    "password",
+    msg("Current password", "현재 비밀번호"),
+    "password",
+  );
   password.input.autocomplete = "current-password";
   password.input.maxLength = 128;
-  const code = field("code", "인증 앱 코드", "text");
+  const code = field("code", msg("Authenticator code", "인증 앱 코드"), "text");
   code.input.autocomplete = "one-time-code";
   code.input.inputMode = "numeric";
   code.input.pattern = "[0-9]{6}";
@@ -65,7 +77,7 @@ export function installAccountSecurity(
   const error = make("p", "", "error");
   error.setAttribute("role", "alert");
   const actions = make("div", "", "dialog-actions");
-  const cancel = make("button", "취소", "secondary");
+  const cancel = make("button", msg("Cancel", "취소"), "secondary");
   cancel.type = "button";
   const save = make("button", "", "primary");
   save.type = "submit";
@@ -74,14 +86,20 @@ export function installAccountSecurity(
     title,
     make(
       "p",
-      "본인 확인 후 변경됩니다. 이 브라우저는 유지되고, 내 계정의 다른 기기는 로그아웃됩니다.",
+      msg(
+        "Confirm your identity to change this setting. This browser stays signed in; your other devices sign out.",
+        "본인 확인 후 변경됩니다. 이 브라우저는 유지되고, 내 계정의 다른 기기는 로그아웃됩니다.",
+      ),
       "muted",
     ),
     password.label,
     code.label,
     make(
       "small",
-      "기존 인증 앱을 그대로 사용합니다. 이미 사용한 코드는 다음 코드로 바뀐 뒤 입력하세요.",
+      msg(
+        "Keep using your existing authenticator app. If a code was already used, wait for the next one.",
+        "기존 인증 앱을 그대로 사용합니다. 이미 사용한 코드는 다음 코드로 바뀐 뒤 입력하세요.",
+      ),
       "muted",
     ),
     error,
@@ -105,13 +123,28 @@ export function installAccountSecurity(
       typeof value !== "object" ||
       typeof (value as { totp_enabled?: unknown }).totp_enabled !== "boolean"
     )
-      throw new Error("보안 설정을 확인하지 못했습니다.");
+      throw new Error(
+        t(
+          "Could not verify security settings.",
+          "보안 설정을 확인하지 못했습니다.",
+        ),
+      );
     enabled = (value as { totp_enabled: boolean }).totp_enabled;
     toggle.setAttribute("aria-checked", String(enabled));
-    state.textContent = enabled ? "사용 중" : "사용 안 함";
-    description.textContent = enabled
-      ? "비밀번호와 인증 앱 코드로 로그인합니다."
-      : "비밀번호만으로 로그인합니다. 인증 앱 등록은 유지됩니다.";
+    bindText(state, () =>
+      enabled ? t("Enabled", "사용 중") : t("Disabled", "사용 안 함"),
+    );
+    bindText(description, () =>
+      enabled
+        ? t(
+            "Sign in with a password and authenticator code.",
+            "비밀번호와 인증 앱 코드로 로그인합니다.",
+          )
+        : t(
+            "Sign in with a password only. Your authenticator enrollment remains.",
+            "비밀번호만으로 로그인합니다. 인증 앱 등록은 유지됩니다.",
+          ),
+    );
   };
   async function load() {
     if (busy || !alive()) return;
@@ -140,8 +173,14 @@ export function installAccountSecurity(
     clear();
     error.textContent = "";
     status.textContent = "";
-    title.textContent = enabled ? "TOTP 로그인 끄기" : "TOTP 로그인 켜기";
-    save.textContent = enabled ? "끄기" : "켜기";
+    bindText(title, () =>
+      enabled
+        ? t("Turn off TOTP sign-in", "TOTP 로그인 끄기")
+        : t("Turn on TOTP sign-in", "TOTP 로그인 켜기"),
+    );
+    bindText(save, () =>
+      enabled ? t("Turn off", "끄기") : t("Turn on", "켜기"),
+    );
     // Deliberately avoid autofocus: mobile keyboard opening is user-owned.
   };
   cancel.onclick = () => {
@@ -170,9 +209,11 @@ export function installAccountSecurity(
       render(result);
       clear();
       form.hidden = true;
-      status.textContent = enabled
-        ? "TOTP 로그인을 켰습니다."
-        : "TOTP 로그인을 껐습니다.";
+      bindText(status, () =>
+        enabled
+          ? t("TOTP sign-in turned on.", "TOTP 로그인을 켰습니다.")
+          : t("TOTP sign-in turned off.", "TOTP 로그인을 껐습니다."),
+      );
       onChanged();
     } catch (err) {
       if (!alive()) return;
@@ -190,7 +231,13 @@ export function installAccountSecurity(
         render(result);
         if (enabled !== previous) {
           form.hidden = true;
-          status.textContent = "현재 보안 설정을 다시 확인했습니다.";
+          bindText(
+            status,
+            msg(
+              "Security settings refreshed.",
+              "현재 보안 설정을 다시 확인했습니다.",
+            ),
+          );
           onChanged();
         }
       } catch {

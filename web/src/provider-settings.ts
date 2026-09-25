@@ -1,3 +1,4 @@
+import { t, msg, bindText, bindAttribute, type TextValue } from "./i18n.ts";
 import { createTextFactory } from "./dom.ts";
 
 export type ProviderID = "codex" | "claude" | "gemini";
@@ -79,10 +80,10 @@ export function parseProviderJob(value: unknown): ProviderJob | undefined {
 }
 
 const providerIDs: ProviderID[] = ["codex", "claude", "gemini"];
-const keyLabels: Record<ProviderID, string> = {
-  codex: "OpenAI API 키",
-  claude: "Anthropic API 키",
-  gemini: "Gemini API 키",
+const keyLabels: Record<ProviderID, () => string> = {
+  codex: msg("OpenAI API key", "OpenAI API 키"),
+  claude: msg("Anthropic API key", "Anthropic API 키"),
+  gemini: msg("Gemini API key", "Gemini API 키"),
 };
 
 function text(value: unknown, max: number) {
@@ -92,7 +93,12 @@ function text(value: unknown, max: number) {
 // Home output is untrusted display data; keep only known fields and shapes.
 export function parseProviderResult(value: unknown): ProviderResult {
   if (!value || typeof value !== "object")
-    throw new Error("AI 연결 상태를 확인하지 못했습니다.");
+    throw new Error(
+      t(
+        "Could not verify AI connection status.",
+        "AI 연결 상태를 확인하지 못했습니다.",
+      ),
+    );
   const v = value as Record<string, unknown>;
   const result: ProviderResult = {};
   if (typeof v.error === "string" && v.error) result.error = v.error;
@@ -138,14 +144,19 @@ export function needsProviderSetup(providers: ProviderStatus[]) {
 }
 
 export function providerSummary(p: ProviderStatus) {
-  if (!p.installed && p.auth === "none") return "설치되지 않음";
+  if (!p.installed && p.auth === "none")
+    return t("Not installed", "설치되지 않음");
   const parts = [];
-  if (!p.installed) parts.push("설치되지 않음");
+  if (!p.installed) parts.push(t("Not installed", "설치되지 않음"));
   else if (p.version) parts.push(`v${p.version}`);
-  if (p.auth === "account") parts.push("계정 연결됨");
+  if (p.auth === "account") parts.push(t("Account connected", "계정 연결됨"));
   else if (p.auth === "api-key")
-    parts.push(p.key_hint ? `API 키 ${p.key_hint}` : "API 키 연결됨");
-  else parts.push("연결 필요");
+    parts.push(
+      p.key_hint
+        ? t(`API key ${p.key_hint}`, `API 키 ${p.key_hint}`)
+        : t("API key connected", "API 키 연결됨"),
+    );
+  else parts.push(t("Connection needed", "연결 필요"));
   return parts.join(" · ");
 }
 
@@ -158,19 +169,37 @@ type API = (
 export function jobMessage(job: ProviderJob, action: "connect" | "update") {
   switch (job.state) {
     case "installing":
-      return "설치하는 중입니다. 처음에는 1–2분 걸릴 수 있어요.";
+      return t(
+        "Installing. The first time may take 1–2 minutes.",
+        "설치하는 중입니다. 처음에는 1–2분 걸릴 수 있어요.",
+      );
     case "login":
       if (job.needs_input)
-        return "로그인 페이지에서 받은 코드를 아래에 붙여넣으세요.";
+        return t(
+          "Paste the code from the sign-in page below.",
+          "로그인 페이지에서 받은 코드를 아래에 붙여넣으세요.",
+        );
       if (job.code)
-        return "로그인 페이지를 열고 아래 코드를 입력하세요. 완료되면 자동으로 연결됩니다.";
-      if (job.url) return "로그인 페이지를 열어 계정으로 로그인하세요.";
-      return "로그인을 준비하는 중입니다…";
+        return t(
+          "Open the sign-in page and enter the code below. Connection follows automatically.",
+          "로그인 페이지를 열고 아래 코드를 입력하세요. 완료되면 자동으로 연결됩니다.",
+        );
+      if (job.url)
+        return t(
+          "Open the sign-in page and sign in to your account.",
+          "로그인 페이지를 열어 계정으로 로그인하세요.",
+        );
+      return t("Preparing sign-in…", "로그인을 준비하는 중입니다…");
     case "connected":
     case "done":
-      return action === "update" ? "업데이트했습니다." : "연결되었습니다.";
+      return action === "update"
+        ? t("Updated.", "업데이트했습니다.")
+        : t("Connected.", "연결되었습니다.");
     case "failed":
-      return "완료하지 못했습니다. 진행 로그를 확인하세요.";
+      return t(
+        "Could not finish. Check the progress log.",
+        "완료하지 못했습니다. 진행 로그를 확인하세요.",
+      );
     default:
       return "";
   }
@@ -196,17 +225,24 @@ export function installProviderSettings(
   let current: ProviderStatus[] = [];
   const jobs = new Map<ProviderID, JobView>();
   root.append(
-    make("h3", "AI 연결"),
+    make("h3", msg("AI connections", "AI 연결")),
     make(
       "p",
-      "연결하기를 누르면 Home에 설치하고 계정 로그인까지 이어서 진행합니다. API 키로 연결할 수도 있습니다. 연결 정보는 Home에만 저장되며, 이 Home을 쓰는 모든 웹 계정이 함께 사용합니다.",
+      msg(
+        "Select Connect to install on Home and sign in. You can also use an API key. Connection details are stored only on Home and shared by all web accounts using this Home.",
+        "연결하기를 누르면 Home에 설치하고 계정 로그인까지 이어서 진행합니다. API 키로 연결할 수도 있습니다. 연결 정보는 Home에만 저장되며, 이 Home을 쓰는 모든 웹 계정이 함께 사용합니다.",
+      ),
       "muted",
     ),
   );
   const list = make("div", "", "provider-list");
   const status = make("p", "", "muted provider-status");
   status.setAttribute("role", "status");
-  const reload = make("button", "상태 새로고침", "subtle-button");
+  const reload = make(
+    "button",
+    msg("Refresh status", "상태 새로고침"),
+    "subtle-button",
+  );
   reload.type = "button";
   reload.onclick = () => void load();
   root.append(list, status, reload);
@@ -221,33 +257,36 @@ export function installProviderSettings(
     if (result.error) throw new Error(result.error);
     return result;
   }
-  function failure(error: unknown, fallback: string) {
+  function failure(error: unknown, fallback: TextValue) {
     if (!controller.signal.aborted)
-      status.textContent = error instanceof Error ? error.message : fallback;
+      bindText(status, error instanceof Error ? error.message : fallback);
   }
   async function run(
-    message: string,
+    message: TextValue,
     operation: string,
     payload: unknown,
-    done: string,
+    done: TextValue,
   ) {
     if (busy || controller.signal.aborted) return;
     busy = true;
-    status.textContent = message;
+    bindText(status, message);
     render();
     try {
       const result = await call(operation, payload);
       if (controller.signal.aborted) return;
       if (result.providers) current = result.providers;
-      status.textContent = done;
+      bindText(status, done);
     } catch (error) {
-      failure(error, "요청을 완료하지 못했습니다.");
+      failure(
+        error,
+        msg("Could not complete the request.", "요청을 완료하지 못했습니다."),
+      );
     } finally {
       busy = false;
       if (!controller.signal.aborted) render();
     }
   }
-  function actionButton(label: string, action: () => void, primary = false) {
+  function actionButton(label: TextValue, action: () => void, primary = false) {
     const button = make(
       "button",
       label,
@@ -265,7 +304,11 @@ export function installProviderSettings(
     const panel = make("div", "", "provider-job");
     panel.setAttribute("role", "status");
     const message = make("p", "", "provider-job-message");
-    const open = make("button", "로그인 페이지 열기", "secondary");
+    const open = make(
+      "button",
+      msg("Open sign-in page", "로그인 페이지 열기"),
+      "secondary",
+    );
     open.type = "button";
     let url = "";
     open.onclick = () => {
@@ -273,22 +316,24 @@ export function installProviderSettings(
     };
     const codeRow = make("div", "", "provider-job-code");
     const code = make("strong");
-    const copy = make("button", "복사", "subtle-button");
+    const copy = make("button", msg("Copy", "복사"), "subtle-button");
     copy.type = "button";
     copy.onclick = () =>
       void doc.defaultView?.navigator.clipboard
         ?.writeText(code.textContent || "")
-        .then(() => (copy.textContent = "복사됨"))
+        .then(() => bindText(copy, msg("Copied", "복사됨")))
         .catch(() => {});
     codeRow.append(code, copy);
     const form = make("form", "", "provider-job-input");
     const input = make("input");
     input.autocomplete = "off";
     input.spellcheck = false;
-    input.placeholder = "코드 붙여넣기";
-    input.setAttribute("aria-label", `${p.label} 인증 코드`);
+    bindAttribute(input, "placeholder", msg("Paste code", "코드 붙여넣기"));
+    bindAttribute(input, "aria-label", () =>
+      t(`${p.label} verification code`, `${p.label} 인증 코드`),
+    );
     input.maxLength = 2048;
-    const submit = make("button", "확인", "secondary");
+    const submit = make("button", msg("Confirm", "확인"), "secondary");
     submit.type = "submit";
     form.append(input, submit);
     form.onsubmit = (event) => {
@@ -299,10 +344,15 @@ export function installProviderSettings(
       submit.disabled = true;
       void call("provider-job-input", { provider: p.id, text })
         .then((result) => result.job && view.update(result.job))
-        .catch((error) => failure(error, "코드를 전달하지 못했습니다."))
+        .catch((error) =>
+          failure(
+            error,
+            msg("Could not submit code.", "코드를 전달하지 못했습니다."),
+          ),
+        )
         .finally(() => (submit.disabled = false));
     };
-    const cancel = make("button", "취소", "subtle-button");
+    const cancel = make("button", msg("Cancel", "취소"), "subtle-button");
     cancel.type = "button";
     cancel.onclick = () => {
       stopJob(p.id);
@@ -311,13 +361,13 @@ export function installProviderSettings(
     };
     const details = make("details", "", "provider-job-log");
     const log = make("pre");
-    details.append(make("summary", "진행 로그"), log);
+    details.append(make("summary", msg("Progress log", "진행 로그")), log);
     panel.append(message, open, codeRow, form, cancel, details);
     const view: JobView = {
       root: panel,
       action,
       update(job) {
-        message.textContent = jobMessage(job, view.action);
+        bindText(message, () => jobMessage(job, view.action));
         url = job.url;
         open.hidden = !(job.state === "login" && url);
         code.textContent = job.code;
@@ -353,7 +403,13 @@ export function installProviderSettings(
           if (result.providers) current = result.providers;
           if (result.job) watch(p, view, result.job);
         } catch (error) {
-          failure(error, "진행 상태를 확인하지 못했습니다.");
+          failure(
+            error,
+            msg(
+              "Could not check progress.",
+              "진행 상태를 확인하지 못했습니다.",
+            ),
+          );
           watch(p, view, job);
         }
       }, 1000);
@@ -365,16 +421,19 @@ export function installProviderSettings(
     view.pendingKey = undefined;
     if (job.state !== "failed" && key)
       void run(
-        "API 키를 저장하는 중…",
+        msg("Saving API key…", "API 키를 저장하는 중…"),
         "provider-key",
         { provider: p.id, key },
-        `${p.label} API 키를 저장했습니다.`,
+        () =>
+          t(`${p.label} API key saved.`, `${p.label} API 키를 저장했습니다.`),
       );
     else {
-      status.textContent =
+      bindText(
+        status,
         job.state === "failed"
           ? ""
-          : `${p.label}: ${jobMessage(job, view.action)}`;
+          : () => `${p.label}: ${jobMessage(job, view.action)}`,
+      );
       render();
       if (job.state === "failed")
         list.querySelector(`[data-provider="${p.id}"]`)?.append(view.root);
@@ -411,7 +470,7 @@ export function installProviderSettings(
     } catch (error) {
       stopJob(p.id);
       render();
-      failure(error, "시작하지 못했습니다.");
+      failure(error, msg("Could not start.", "시작하지 못했습니다."));
     }
   }
 
@@ -422,7 +481,11 @@ export function installProviderSettings(
     const running = jobs.get(p.id);
     heading.append(
       make("strong", p.label),
-      make("span", running ? "진행 중" : providerSummary(p), "muted"),
+      make(
+        "span",
+        () => (running ? t("In progress", "진행 중") : providerSummary(p)),
+        "muted",
+      ),
     );
     item.append(heading);
     if (running) {
@@ -432,27 +495,43 @@ export function installProviderSettings(
     const actions = make("div", "", "provider-actions");
     if (p.installed && p.auth !== "none" && p.profile_id)
       actions.append(
-        actionButton("시작", () => startProfile(p.profile_id), true),
-        actionButton("다시 로그인", () => void startJob(p, "connect")),
+        actionButton(
+          msg("Start", "시작"),
+          () => startProfile(p.profile_id),
+          true,
+        ),
+        actionButton(
+          msg("Sign in again", "다시 로그인"),
+          () => void startJob(p, "connect"),
+        ),
       );
     else
       actions.append(
-        actionButton("연결하기", () => void startJob(p, "connect"), true),
+        actionButton(
+          msg("Connect", "연결하기"),
+          () => void startJob(p, "connect"),
+          true,
+        ),
       );
     if (p.installed)
       actions.append(
-        actionButton("업데이트", () => void startJob(p, "update")),
+        actionButton(
+          msg("Update", "업데이트"),
+          () => void startJob(p, "update"),
+        ),
       );
     const form = make("form", "", "provider-key");
     const input = make("input");
     input.type = "password";
     input.autocomplete = "off";
     input.spellcheck = false;
-    input.placeholder = `또는 ${keyLabels[p.id]} 입력`;
-    input.setAttribute("aria-label", `${p.label} ${keyLabels[p.id]}`);
+    bindAttribute(input, "placeholder", () =>
+      t(`Or enter ${keyLabels[p.id]()}`, `또는 ${keyLabels[p.id]()} 입력`),
+    );
+    bindAttribute(input, "aria-label", () => `${p.label} ${keyLabels[p.id]()}`);
     input.maxLength = 512;
     input.disabled = busy;
-    const save = actionButton("키 저장", () => {});
+    const save = actionButton(msg("Save key", "키 저장"), () => {});
     save.type = "submit";
     form.append(input, save);
     form.onsubmit = (event) => {
@@ -465,22 +544,27 @@ export function installProviderSettings(
       if (!p.installed) void startJob(p, "update", key);
       else
         void run(
-          "API 키를 저장하는 중…",
+          msg("Saving API key…", "API 키를 저장하는 중…"),
           "provider-key",
           { provider: p.id, key },
-          `${p.label} API 키를 저장했습니다.`,
+          () =>
+            t(`${p.label} API key saved.`, `${p.label} API 키를 저장했습니다.`),
         );
     };
     if (p.auth === "api-key" && p.key_hint)
       form.append(
         actionButton(
-          "키 삭제",
+          msg("Delete key", "키 삭제"),
           () =>
             void run(
-              "API 키를 삭제하는 중…",
+              msg("Deleting API key…", "API 키를 삭제하는 중…"),
               "provider-key",
               { provider: p.id, key: "" },
-              `${p.label} API 키를 삭제했습니다.`,
+              () =>
+                t(
+                  `${p.label} API key deleted.`,
+                  `${p.label} API 키를 삭제했습니다.`,
+                ),
             ),
         ),
       );
@@ -494,7 +578,10 @@ export function installProviderSettings(
   async function load() {
     if (busy || controller.signal.aborted) return;
     busy = true;
-    status.textContent = "Home에서 상태를 확인하는 중…";
+    bindText(
+      status,
+      msg("Checking status on Home…", "Home에서 상태를 확인하는 중…"),
+    );
     render();
     try {
       const result = await call("providers");
@@ -502,7 +589,13 @@ export function installProviderSettings(
       current = result.providers || [];
       status.textContent = "";
     } catch (error) {
-      failure(error, "AI 연결 상태를 불러오지 못했습니다.");
+      failure(
+        error,
+        msg(
+          "Could not load AI connection status.",
+          "AI 연결 상태를 불러오지 못했습니다.",
+        ),
+      );
     } finally {
       busy = false;
       if (!controller.signal.aborted) render();

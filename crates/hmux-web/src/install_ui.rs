@@ -1,5 +1,5 @@
 //! Small installer presentation and opt-in connection guide; no resident UI or dependencies.
-use crate::enroll::line_prompt;
+use crate::{enroll::line_prompt, locale};
 use std::{
     io::{self, IsTerminal},
     path::{Path, PathBuf},
@@ -30,17 +30,25 @@ impl Display {
     pub fn welcome(&self, binaries_only: bool) {
         println!();
         self.title("HMux / Home");
-        println!("Low memory, web terminal for AI agents.");
+        println!("{}", locale::tr("Low memory, web terminal for AI agents."));
         if binaries_only {
-            println!("Update native executables. Keep configuration and services as they are.");
+            println!(
+                "{}",
+                locale::tr(
+                    "Update native executables. Keep configuration and services as they are."
+                )
+            );
         } else {
-            println!("Your agents run here. Your browser connects from anywhere.");
+            println!(
+                "{}",
+                locale::tr("Your agents run here. Your browser connects from anywhere.")
+            );
         }
     }
 
-    pub fn step(&self, number: usize, text: &str) {
+    pub fn step(&self, number: usize, text: &'static str) {
         println!();
-        self.title(&format!("{number:02}  {text}"));
+        self.title(&format!("{number:02}  {}", locale::tr(text)));
     }
 
     pub fn dependencies(&self) {
@@ -56,48 +64,69 @@ impl Display {
         println!();
         for (label, name) in [("tmux", "tmux"), ("Codex", "codex"), ("Claude", "claude")] {
             let status = if !path.is_empty() && hmux_service::executable_in_path(name, &path) {
-                "found"
+                locale::tr("found")
             } else if name == "tmux" {
-                "missing; install before connecting"
+                locale::tr("missing; install before connecting")
             } else {
-                "optional; not found"
+                locale::tr("optional; not found")
             };
             println!("  {label:<8} {status}");
         }
-        println!("  Provider login stays with your existing CLI account.");
+        println!(
+            "  {}",
+            locale::tr("Provider login stays with your existing CLI account.")
+        );
     }
 
     pub fn complete(&self, bin: &Path, config: &Path, service: bool, binaries_only: bool) {
         println!();
-        self.title("Home installed");
-        println!("  {:<16} {}", "Binaries", printable(&bin.to_string_lossy()));
+        self.title(locale::tr("Home installed"));
+        println!(
+            "  {:<16} {}",
+            locale::tr("Binaries"),
+            printable(&bin.to_string_lossy())
+        );
         if binaries_only {
-            println!("  {:<16} unchanged", "Configuration");
             println!(
-                "  {:<16} unchanged; restart separately to use this version",
-                "Running Home"
+                "  {:<16} {}",
+                locale::tr("Configuration"),
+                locale::tr("unchanged")
+            );
+            println!(
+                "  {:<16} {}",
+                locale::tr("Running Home"),
+                locale::tr("unchanged; restart separately to use this version")
             );
             return;
         }
         println!(
             "  {:<16} {}",
-            "Configuration",
+            locale::tr("Configuration"),
             printable(&config.to_string_lossy())
         );
         println!(
             "  {:<16} {}",
-            "Automatic start",
-            if service { "requested" } else { "not changed" }
+            locale::tr("Automatic start"),
+            locale::tr(if service { "requested" } else { "not changed" })
         );
         let web = shell_quote(&bin.join("hmux-web").to_string_lossy());
         println!();
         if service {
-            println!("Check your Home process:");
+            println!("{}", locale::tr("Check your Home process:"));
             println!("  {web} service status");
-            println!("Then open your Gateway's HTTPS address in a browser.");
-            println!("Service registration alone does not confirm a Gateway connection.");
+            println!(
+                "{}",
+                locale::tr("Then open your Gateway's HTTPS address in a browser.")
+            );
+            println!(
+                "{}",
+                locale::tr("Service registration alone does not confirm a Gateway connection.")
+            );
         } else {
-            println!("Connect when your Gateway and private token file are ready:");
+            println!(
+                "{}",
+                locale::tr("Connect when your Gateway and private token file are ready:")
+            );
             // Preserve an explicitly chosen install/config location in the copyable next step.
             let cfg = if config.join("home.toml").is_file() {
                 config.join("home.toml")
@@ -127,23 +156,39 @@ pub fn connection(
     config: &Path,
 ) -> io::Result<Choice> {
     if requested {
-        println!("  Automatic startup requested by --enable-service.");
+        println!(
+            "{}",
+            locale::tr("  Automatic startup requested by --enable-service.")
+        );
         if !explicit {
-            println!("  Adopting the sole running Home connector and its connection settings.");
+            println!(
+                "{}",
+                locale::tr(
+                    "  Adopting the sole running Home connector and its connection settings."
+                )
+            );
         }
         return Ok(Choice {
             enable_service: true,
             connection: None,
         });
     }
-    println!("A Gateway with HTTPS and a private connector token is needed for remote access.");
-    println!("You can finish the local installation now and connect later.");
+    println!(
+        "{}",
+        locale::tr(
+            "A Gateway with HTTPS and a private connector token is needed for remote access."
+        )
+    );
+    println!(
+        "{}",
+        locale::tr("You can finish the local installation now and connect later.")
+    );
     let enabled = loop {
-        let answer = line_prompt(stop, "Set up automatic startup now? [y/N]: ")?;
+        let answer = line_prompt(stop, locale::tr("Set up automatic startup now? [y/N]: "))?;
         match answer.to_ascii_lowercase().as_str() {
             "" | "n" | "no" => break false,
             "y" | "yes" => break true,
-            _ => println!("Enter y or n."),
+            _ => println!("{}", locale::tr("Enter y or n.")),
         }
     };
     if !enabled {
@@ -153,25 +198,39 @@ pub fn connection(
         });
     }
     if imported {
-        println!("  Using the address and private token from your Gateway connection file.");
+        println!(
+            "{}",
+            locale::tr("  Using the address and private token from your Gateway connection file.")
+        );
         return Ok(Choice {
             enable_service: true,
             connection: None,
         });
     }
     let endpoint = loop {
-        let raw = line_prompt(stop, "Gateway address (https://...): ")?;
+        let raw = line_prompt(stop, locale::tr("Gateway address (https://...): "))?;
         if let Some(endpoint) = endpoint(&raw) {
             break endpoint;
         }
-        println!("Use an HTTPS site address or wss://host/connect, without a query or fragment.");
+        println!(
+            "{}",
+            locale::tr(
+                "Use an HTTPS site address or wss://host/connect, without a query or fragment."
+            )
+        );
     };
     let default_token = config.join("web/connector.token");
     let prompt = format!(
-        "Connector token file [{}]: ",
+        "{} [{}]: ",
+        locale::tr("Connector token file"),
         printable(&default_token.to_string_lossy())
     );
-    println!("Use the private token file copied from your Gateway. Do not paste the token here.");
+    println!(
+        "{}",
+        locale::tr(
+            "Use the private token file copied from your Gateway. Do not paste the token here."
+        )
+    );
     let token = loop {
         let raw = line_prompt(stop, &prompt)?;
         let path = if raw.is_empty() {
@@ -184,9 +243,7 @@ pub fn connection(
         if path.is_absolute() && hmux_core::token::load(&path).is_ok() {
             break path;
         }
-        println!(
-            "Token file unavailable. Use an absolute path or ~/ and a private, valid token file."
-        );
+        println!("{}", locale::tr("Token file unavailable. Use an absolute path or ~/ and a private, valid token file."));
     };
     Ok(Choice {
         enable_service: true,

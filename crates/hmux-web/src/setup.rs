@@ -2,6 +2,7 @@
 use crate::{
     args::{absolute, invalid},
     enroll::line_prompt,
+    locale,
 };
 use std::{
     ffi::OsString,
@@ -12,7 +13,7 @@ use std::{
 };
 use tokio_util::sync::CancellationToken;
 
-const USAGE: &str = "usage: hmux-web install [--role all|gateway|home] [--local | --remote SSH_HOST] [--source-dir DIR] [--connection-file FILE] [--workspace-dir DIR]";
+const USAGE: &str = "usage: hmux-web install [--lang en|ko] [--role all|gateway|home] [--local | --remote SSH_HOST] [--source-dir DIR] [--connection-file FILE] [--workspace-dir DIR]";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Role {
@@ -131,7 +132,7 @@ fn yes(stop: &CancellationToken, prompt: &str) -> io::Result<bool> {
         match line_prompt(stop, prompt)?.to_ascii_lowercase().as_str() {
             "y" | "yes" => return Ok(true),
             "" | "n" | "no" => return Ok(false),
-            _ => println!("Enter y or n."),
+            _ => println!("{}", locale::tr("Enter y or n.")),
         }
     }
 }
@@ -164,7 +165,11 @@ struct Plan {
     proceed: bool,
 }
 fn collect(opts: &Options, home: &Path, stop: &CancellationToken) -> io::Result<Plan> {
-    println!("\nHMux / Install\nLow memory, web terminal for AI agents.\n");
+    println!(
+        "\nHMux / {}\n{}\n",
+        locale::tr("Install"),
+        locale::tr("Low memory, web terminal for AI agents.")
+    );
     let linux = cfg!(target_os = "linux");
     let root = rustix::process::geteuid().as_raw() == 0;
     let role = opts.role.expect("installation role selected");
@@ -175,7 +180,7 @@ fn collect(opts: &Options, home: &Path, stop: &CancellationToken) -> io::Result<
         } else {
             let value = line_prompt(
                 stop,
-                "Gateway connection file [Enter to enter connection details later]: ",
+                locale::tr("Gateway connection file [Enter to enter connection details later]: "),
             )?;
             if value.is_empty() {
                 None
@@ -197,19 +202,29 @@ fn collect(opts: &Options, home: &Path, stop: &CancellationToken) -> io::Result<
         return Err(invalid("workspace configuration requires a Home role"));
     }
     let host = loop {
-        let host = line_prompt(stop, "Gateway domain (for example hmux.example.com): ")?
-            .to_ascii_lowercase();
+        let host = line_prompt(
+            stop,
+            locale::tr("Gateway domain (for example hmux.example.com): "),
+        )?
+        .to_ascii_lowercase();
         if domain(&host) {
             break host;
         }
-        println!("Enter a DNS hostname without https://, a path or a port.");
+        println!(
+            "{}",
+            locale::tr("Enter a DNS hostname without https://, a path or a port.")
+        );
     };
-    println!("\nHTTPS setup:\n  1  Configure Nginx + Let's Encrypt on this server\n  2  Use an existing HTTPS reverse proxy\n");
+    if locale::korean() {
+        println!("\nHTTPS 설정:\n  1  이 서버에서 Nginx + Let's Encrypt 구성\n  2  기존 HTTPS 역방향 프록시 사용\n");
+    } else {
+        println!("\nHTTPS setup:\n  1  Configure Nginx + Let's Encrypt on this server\n  2  Use an existing HTTPS reverse proxy\n");
+    }
     let managed = loop {
-        match line_prompt(stop, "HTTPS mode [1/2]: ")?.as_str() {
+        match line_prompt(stop, locale::tr("HTTPS mode [1/2]: "))?.as_str() {
             "1" => break true,
             "2" => break false,
-            _ => println!("Choose 1 or 2."),
+            _ => println!("{}", locale::tr("Choose 1 or 2.")),
         }
     };
     let mut gateway = vec![
@@ -224,7 +239,7 @@ fn collect(opts: &Options, home: &Path, stop: &CancellationToken) -> io::Result<
     ];
     if managed {
         let email = loop {
-            let value = line_prompt(stop, "Email for certificate renewal notices: ")?;
+            let value = line_prompt(stop, locale::tr("Email for certificate renewal notices: "))?;
             if value.len() <= 254
                 && value.is_ascii()
                 && !value.bytes().any(|b| b.is_ascii_whitespace())
@@ -234,12 +249,18 @@ fn collect(opts: &Options, home: &Path, stop: &CancellationToken) -> io::Result<
             {
                 break value;
             }
-            println!("Enter a valid email address.");
+            println!("{}", locale::tr("Enter a valid email address."));
         };
         gateway.extend(["--email".into(), email.into()]);
-        println!("The domain must point here, with ports 80 and 443 reachable. Existing unrelated Nginx sites are retained.");
-        println!("Let's Encrypt subscriber terms: https://letsencrypt.org/repository/");
-        if !yes(stop, "Accept the certificate subscriber terms? [y/N]: ")? {
+        println!("{}", locale::tr("The domain must point here, with ports 80 and 443 reachable. Existing unrelated Nginx sites are retained."));
+        println!(
+            "{} https://letsencrypt.org/repository/",
+            locale::tr("Let's Encrypt subscriber terms:")
+        );
+        if !yes(
+            stop,
+            locale::tr("Accept the certificate subscriber terms? [y/N]: "),
+        )? {
             return Ok(Plan {
                 role,
                 gateway,
@@ -250,18 +271,21 @@ fn collect(opts: &Options, home: &Path, stop: &CancellationToken) -> io::Result<
         gateway.push("--accept-acme-terms".into());
         if yes(
             stop,
-            "Install missing Nginx/Certbot packages using apt? [y/N]: ",
+            locale::tr("Install missing Nginx/Certbot packages using apt? [y/N]: "),
         )? {
             gateway.push("--install-packages".into());
         }
     } else {
-        println!("Your existing HTTPS proxy must forward HTTP and WebSocket upgrades to 127.0.0.1:8088 on this server. HMux will not change that proxy.");
+        println!("{}", locale::tr("Your existing HTTPS proxy must forward HTTP and WebSocket upgrades to 127.0.0.1:8088 on this server. HMux will not change that proxy."));
     }
-    println!("\nGateway installation creates a dedicated service account, private credentials and a systemd service.");
+    println!("\n{}", locale::tr("Gateway installation creates a dedicated service account, private credentials and a systemd service."));
     if role == Role::All {
-        println!("Home setup follows under your current user, with the Gateway connection filled in automatically.");
+        println!("{}", locale::tr("Home setup follows under your current user, with the Gateway connection filled in automatically."));
     }
-    let proceed = yes(stop, "Install Gateway with these settings? [y/N]: ")?;
+    let proceed = yes(
+        stop,
+        locale::tr("Install Gateway with these settings? [y/N]: "),
+    )?;
     Ok(Plan {
         role,
         gateway,
@@ -272,33 +296,41 @@ fn collect(opts: &Options, home: &Path, stop: &CancellationToken) -> io::Result<
 
 fn target(mut opts: Options, stop: &CancellationToken) -> io::Result<Options> {
     if opts.role.is_none() {
-        println!("\nHMux / Install\n\nChoose the role for the target machine:\n  1  Gateway + Home  / one Linux server\n  2  Gateway only    / Linux HTTPS entry point\n  3  Home only       / macOS or Linux agent host\n");
+        if locale::korean() {
+            println!("\nHMux / 설치\n\n대상 장치의 역할을 선택하세요:\n  1  Gateway + Home  / Linux 서버 한 대\n  2  Gateway만       / Linux HTTPS 진입점\n  3  Home만          / macOS 또는 Linux 에이전트 호스트\n");
+        } else {
+            println!("\nHMux / Install\n\nChoose the role for the target machine:\n  1  Gateway + Home  / one Linux server\n  2  Gateway only    / Linux HTTPS entry point\n  3  Home only       / macOS or Linux agent host\n");
+        }
         opts.role = Some(loop {
-            match line_prompt(stop, "Installation role [1/2/3]: ")?.as_str() {
+            match line_prompt(stop, locale::tr("Installation role [1/2/3]: "))?.as_str() {
                 "1" => break Role::All,
                 "2" => break Role::Gateway,
                 "3" => break Role::Home,
-                _ => println!("Choose 1, 2 or 3."),
+                _ => println!("{}", locale::tr("Choose 1, 2 or 3.")),
             }
         });
     }
     if !opts.local && opts.remote.is_none() {
-        println!("\nInstall on:\n  1  This machine\n  2  A remote server over SSH\n");
+        if locale::korean() {
+            println!("\n설치 대상:\n  1  이 장치\n  2  SSH 원격 서버\n");
+        } else {
+            println!("\nInstall on:\n  1  This machine\n  2  A remote server over SSH\n");
+        }
         loop {
-            match line_prompt(stop, "Installation target [1/2]: ")?.as_str() {
+            match line_prompt(stop, locale::tr("Installation target [1/2]: "))?.as_str() {
                 "1" => {
                     opts.local = true;
                     break;
                 }
                 "2" => {
-                    let host = line_prompt(stop, "SSH host alias or user@hostname: ")?;
+                    let host = line_prompt(stop, locale::tr("SSH host alias or user@hostname: "))?;
                     if crate::remote_install::valid_host(&host) {
                         opts.remote = Some(host);
                         break;
                     }
-                    println!("Use an SSH host alias or user@hostname. Configure ports and keys in SSH config.");
+                    println!("{}", locale::tr("Use an SSH host alias or user@hostname. Configure ports and keys in SSH config."));
                 }
-                _ => println!("Choose 1 or 2."),
+                _ => println!("{}", locale::tr("Choose 1 or 2.")),
             }
         }
     }
@@ -313,7 +345,12 @@ fn target(mut opts: Options, stop: &CancellationToken) -> io::Result<Options> {
 
 pub async fn run(args: &[OsString], stop: CancellationToken) -> io::Result<()> {
     if args == ["--help"] || args == ["-h"] {
-        println!("{USAGE}\n\nChoose Gateway + Home, Gateway only, or Home only.\nGateway provisioning requires Linux/systemd and administrative access.\nHome supports macOS/launchd and Linux/systemd user services.\nRun as the normal Home user; only Gateway provisioning uses sudo.\nChoose this machine or an SSH target. Remote installs need its matching native bundle and a verified SSH host key.\n\nExamples:\n  hmux-web install\n  hmux-web install --role home --connection-file /PRIVATE/home-connection.json\n\nThis guide needs a terminal. For automation, use install-home or install-gateway with explicit options.");
+        println!("{USAGE}");
+        if locale::korean() {
+            println!("\nGateway + Home, Gateway만 또는 Home만 설치할 수 있습니다.\nGateway 설치에는 Linux/systemd와 관리자 권한이 필요합니다.\nHome은 macOS/launchd 및 Linux/systemd 사용자 서비스를 지원합니다.\n일반 Home 사용자로 실행하세요. Gateway 설치에서만 sudo를 사용합니다.\n로컬 장치 또는 SSH 대상을 선택하세요. 원격 설치에는 해당 플랫폼의 번들과 검증된 SSH 호스트 키가 필요합니다.\n\n예시:\n  hmux-web install\n  hmux-web install --role home --connection-file /PRIVATE/home-connection.json\n\n이 안내에는 터미널이 필요합니다. 자동화에는 install-home 또는 install-gateway 명령에 명시적 옵션을 사용하세요.");
+        } else {
+            println!("\nChoose Gateway + Home, Gateway only, or Home only.\nGateway provisioning requires Linux/systemd and administrative access.\nHome supports macOS/launchd and Linux/systemd user services.\nRun as the normal Home user; only Gateway provisioning uses sudo.\nChoose this machine or an SSH target. Remote installs need its matching native bundle and a verified SSH host key.\n\nExamples:\n  hmux-web install\n  hmux-web install --role home --connection-file /PRIVATE/home-connection.json\n\nThis guide needs a terminal. For automation, use install-home or install-gateway with explicit options.");
+        }
         return Ok(());
     }
     let opts = parse(args)?;
@@ -368,7 +405,10 @@ pub async fn run(args: &[OsString], stop: CancellationToken) -> io::Result<()> {
         .await
         .map_err(io::Error::other)??;
     if !plan.proceed {
-        println!("Installation cancelled. No Gateway or Home configuration was changed.");
+        println!(
+            "{}",
+            locale::tr("Installation cancelled. No Gateway or Home configuration was changed.")
+        );
         return Ok(());
     }
     if stop.is_cancelled() {
@@ -391,10 +431,14 @@ pub async fn run(args: &[OsString], stop: CancellationToken) -> io::Result<()> {
         ]);
         gateway(&executable, &args, &stop).await?;
         crate::pairing::ConnectionFile::read(&path)?;
-        println!("\nPrivate Home connection file: {}", path.display());
-        println!("This file grants access to the Home connector. Transfer it only over a trusted private channel; never publish it.");
+        println!(
+            "\n{} {}",
+            locale::tr("Private Home connection file:"),
+            path.display()
+        );
+        println!("{}", locale::tr("This file grants access to the Home connector. Transfer it only over a trusted private channel; never publish it."));
         if plan.role == Role::Gateway {
-            println!("On your Home machine, run the bundle's hmux-web install --role home --connection-file /PRIVATE/home-connection.json");
+            println!("{}", locale::tr("On your Home machine, run the bundle's hmux-web install --role home --connection-file /PRIVATE/home-connection.json"));
             return Ok(());
         }
         Some(path)
@@ -405,7 +449,11 @@ pub async fn run(args: &[OsString], stop: CancellationToken) -> io::Result<()> {
             .map(|path| {
                 let connection = crate::pairing::ConnectionFile::read(&path)?;
                 let retained = connection.retain(&home)?;
-                println!("Private connection file retained at {}", retained.display());
+                println!(
+                    "{} {}",
+                    locale::tr("Private connection file retained at"),
+                    retained.display()
+                );
                 Ok::<_, io::Error>(retained)
             })
             .transpose()?
@@ -423,7 +471,7 @@ pub async fn run(args: &[OsString], stop: CancellationToken) -> io::Result<()> {
     }
     let result = crate::install::run(&home_args, stop).await;
     if result.is_err() && plan.role == Role::All {
-        eprintln!("Gateway setup finished; Home setup did not finish. The Gateway and private connection file were retained. Resume with install --role home --connection-file using that file.");
+        eprintln!("{}", locale::tr("Gateway setup finished; Home setup did not finish. The Gateway and private connection file were retained. Resume with install --role home --connection-file using that file."));
     }
     result
 }
@@ -443,7 +491,10 @@ async fn gateway(executable: &Path, args: &[OsString], stop: &CancellationToken)
         cmd.arg("--").arg(executable);
         cmd
     };
-    cmd.arg("install-gateway").args(args);
+    cmd.arg("install-gateway")
+        .arg("--lang")
+        .arg(locale::current().code())
+        .args(args);
     crate::install_process::run(&mut cmd, false, Duration::from_secs(1800), stop).await?;
     Ok(())
 }

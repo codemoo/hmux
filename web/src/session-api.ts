@@ -1,3 +1,4 @@
+import { t } from "./i18n.ts";
 import { withRequestDeadline } from "./request-deadline.ts";
 
 // Every response, including errors and delayed bodies, belongs to one login.
@@ -63,7 +64,11 @@ export function createSessionAPI(options: {
             const message = await response.text();
             check(signal);
             throw new Error(
-              message.slice(0, 250) || "요청을 완료하지 못했습니다.",
+              message.slice(0, 250) ||
+                t(
+                  "Could not complete the request.",
+                  "요청을 완료하지 못했습니다.",
+                ),
             );
           }
           const value = await response.json();

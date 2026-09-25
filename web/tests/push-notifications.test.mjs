@@ -129,7 +129,7 @@ test("disposing an account panel aborts reads and blocks a late account state", 
   });
   await tick();
   assert.equal(signal.aborted, true);
-  assert.match(root.querySelectorAll("p")[1].textContent, /확인하고/);
+  assert.match(root.querySelectorAll("p")[1].textContent, /Checking/);
 });
 
 test("disposing during explicit opt-in cannot subscribe the next account", async () => {
@@ -194,7 +194,10 @@ test("toggle success and test failure outcomes survive final rendering", async (
   );
   await tick();
   await root.querySelectorAll("button")[0].onclick();
-  assert.match(root.querySelectorAll("p")[1].textContent, /알림을 켰습니다/);
+  assert.match(
+    root.querySelectorAll("p")[1].textContent,
+    /Turned on completion notifications/,
+  );
   await root.querySelectorAll("button")[2].onclick();
   assert.equal(
     root.querySelectorAll("p")[1].textContent,
@@ -231,10 +234,10 @@ test("server disable remains visible when local browser unsubscribe fails", asyn
   await tick();
   const toggle = root.querySelectorAll("button")[0];
   await toggle.onclick();
-  assert.equal(toggle.textContent, "알림 켜기");
+  assert.equal(toggle.textContent, "Turn on notifications");
   assert.match(
     root.querySelectorAll("p")[1].textContent,
-    /서버 알림은 껐습니다/,
+    /Server notifications are off/,
   );
   dispose();
 });
@@ -272,7 +275,10 @@ test("enabled server state can reconnect a missing local subscription", async ()
   await reconnect.onclick();
   assert.equal(local.endpoint, "https://push.invalid/reconnected");
   assert.equal(posts[0][0], "/api/push/subscribe");
-  assert.match(root.querySelectorAll("p")[1].textContent, /알림을 켰습니다/);
+  assert.match(
+    root.querySelectorAll("p")[1].textContent,
+    /Turned on completion notifications/,
+  );
   dispose();
 });
 
@@ -377,6 +383,7 @@ test("presence sends the exact active identity and nulls it on blur", async () =
 async function serviceWorkerHarness(
   fetchImpl = async () =>
     new Response(JSON.stringify({ login_id: "login_9" }), { status: 200 }),
+  locale = "en",
 ) {
   const source = await readFile(
     new URL("../public/sw.js", import.meta.url),
@@ -398,7 +405,10 @@ async function serviceWorkerHarness(
   const self = {
     addEventListener: (name, handler) => (handlers[name] = handler),
     skipWaiting: async () => {},
-    location: { origin: "https://hmux.test" },
+    location: {
+      origin: "https://hmux.test",
+      href: `https://hmux.test/sw.js?lang=${locale}`,
+    },
     registration: {
       showNotification: async (title, options) =>
         shown.push({ title, options }),
@@ -442,10 +452,10 @@ test("service worker accepts only fixed notification fields and exact identity",
     url: "https://attacker.invalid/",
   });
   assert.equal(harness.shown.length, 1);
-  assert.equal(harness.shown[0].title, "Codex 완료 · Research");
+  assert.equal(harness.shown[0].title, "Codex complete · Research");
   assert.equal(
     harness.shown[0].options.body,
-    "Research 탭의 작업이 완료됐습니다.",
+    "Work in the Research tab is complete.",
   );
   assert.deepEqual(JSON.parse(JSON.stringify(harness.shown[0].options.data)), {
     session: { id: "$9", created_at: 1700000009 },
@@ -459,6 +469,30 @@ test("service worker accepts only fixed notification fields and exact identity",
     tab_name: "Research",
   });
   assert.equal(harness.shown.length, 1);
+});
+
+test("service worker uses selected Korean while keeping the same fixed push fields", async () => {
+  const harness = await serviceWorkerHarness(undefined, "ko");
+  let pending;
+  harness.handlers.push({
+    data: {
+      json: () => ({
+        type: "codex-complete",
+        session: { id: "$9", created_at: 1700000009 },
+        login_id: "login_9",
+        event_id: "event_ko",
+        tab_name: "Research",
+        title: "untrusted title",
+      }),
+    },
+    waitUntil: (value) => (pending = value),
+  });
+  await pending;
+  assert.equal(harness.shown[0].title, "Codex 완료 · Research");
+  assert.equal(
+    harness.shown[0].options.body,
+    "Research 탭의 작업이 완료됐습니다.",
+  );
 });
 
 test("service worker suppresses a queued push for a known different login", async () => {

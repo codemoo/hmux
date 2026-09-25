@@ -30,7 +30,7 @@ test("capacity and output pressure recover automatically without bypassing coold
     () => 0,
   );
   assert.equal(recovery.failed("limit").retryMs, 10_000);
-  assert.match(recovery.description(), /한도/);
+  assert.match(recovery.description(), /limit/);
   recovery.resume();
   assert.equal(recovery.delay(), 10_000);
   assert.equal(recovery.failed("output-overflow").retryMs, 10_000);
@@ -117,4 +117,29 @@ test("gateway close categories distinguish pressure, Home exit and malformed inp
   assert.equal(recovery.failed(disconnectKind(4002)).retryMs, 10_000);
   recovery.resume();
   assert.equal(recovery.delay(), 10_000);
+});
+
+test("recovery description follows the selected UI language without resetting backoff", async () => {
+  const { setLocale } = await import("../src/i18n.ts");
+  const recovery = createConnectionRecovery(
+    () => 1000,
+    () => 0,
+  );
+  recovery.failed("limit");
+  const delay = recovery.delay();
+  try {
+    setLocale("ko");
+    assert.equal(
+      recovery.description(),
+      "동시 터미널 연결 한도에 도달했습니다",
+    );
+    setLocale("en");
+    assert.equal(
+      recovery.description(),
+      "Concurrent terminal connection limit reached",
+    );
+    assert.equal(recovery.delay(), delay);
+  } finally {
+    setLocale("en");
+  }
 });

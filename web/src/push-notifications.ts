@@ -1,3 +1,4 @@
+import { t, msg, bindText, onLocaleChange, type TextValue } from "./i18n.ts";
 import type { Identity } from "./types.ts";
 
 type API = (path: string, body?: unknown, signal?: AbortSignal) => Promise<any>;
@@ -112,14 +113,19 @@ export function installPushNotifications(
   let busy = false;
   let state: PushState | undefined;
   let localEndpoint: string | undefined;
-  let outcome = "";
+  let outcome: (() => string) | undefined;
 
   const heading = document.createElement("h3");
-  heading.textContent = "완료 알림";
+  bindText(heading, msg("Completion notifications", "완료 알림"));
   const description = document.createElement("p");
   description.className = "muted";
-  description.textContent =
-    "Codex 작업이 끝나면 탭 이름만 포함하고 대화 내용은 포함하지 않은 알림을 이 기기에 보냅니다.";
+  bindText(
+    description,
+    msg(
+      "When a Codex task finishes, this device receives a notification with the tab name but no conversation content.",
+      "Codex 작업이 끝나면 탭 이름만 포함하고 대화 내용은 포함하지 않은 알림을 이 기기에 보냅니다.",
+    ),
+  );
   const status = document.createElement("p");
   status.className = "push-status";
   status.setAttribute("role", "status");
@@ -131,23 +137,34 @@ export function installPushNotifications(
   const reconnect = document.createElement("button");
   reconnect.type = "button";
   reconnect.className = "secondary";
-  reconnect.textContent = "알림 다시 연결";
+  bindText(reconnect, msg("Reconnect notifications", "알림 다시 연결"));
   const test = document.createElement("button");
   test.type = "button";
   test.className = "subtle-button";
-  test.textContent = "테스트 알림";
+  bindText(test, msg("Test notification", "테스트 알림"));
   actions.append(toggle, reconnect, test);
   root.append(heading, description, status, actions);
 
   const permission = () =>
     "Notification" in window ? Notification.permission : "default";
-  const render = (message?: string) => {
+  const render = (message?: TextValue) => {
     if (disposed) return;
-    if (message !== undefined) outcome = message;
+    if (message !== undefined)
+      outcome =
+        message === ""
+          ? undefined
+          : typeof message === "function"
+            ? message
+            : () => message;
     const enabled = state?.enabled === true;
     const connected =
       enabled && !!state?.endpoint && localEndpoint === state.endpoint;
-    toggle.textContent = enabled ? "알림 끄기" : "알림 켜기";
+    bindText(
+      toggle,
+      enabled
+        ? msg("Turn off notifications", "알림 끄기")
+        : msg("Turn on notifications", "알림 켜기"),
+    );
     toggle.disabled =
       busy || (!enabled && (!supported() || !state?.public_key));
     reconnect.hidden =
@@ -156,29 +173,54 @@ export function installPushNotifications(
     test.hidden = !enabled;
     test.disabled = busy || permission() !== "granted";
     if (outcome) {
-      status.textContent = outcome;
+      bindText(status, outcome);
       return;
     }
     if (!state) {
-      status.textContent = "알림 상태를 확인하고 있습니다…";
+      status.textContent = t(
+        "Checking notification status…",
+        "알림 상태를 확인하고 있습니다…",
+      );
     } else if (!supported()) {
       status.textContent = isIOSDevice()
-        ? "iPhone과 iPad에서는 Safari의 공유 버튼으로 홈 화면에 추가한 뒤, 설치된 HMux 앱에서 켜세요."
-        : "이 브라우저는 웹 푸시 알림을 지원하지 않습니다.";
+        ? t(
+            "On iPhone or iPad, use Safari’s Share button to add HMux to the Home Screen, then enable notifications in the installed app.",
+            "iPhone과 iPad에서는 Safari의 공유 버튼으로 홈 화면에 추가한 뒤, 설치된 HMux 앱에서 켜세요.",
+          )
+        : t(
+            "This browser does not support web push notifications.",
+            "이 브라우저는 웹 푸시 알림을 지원하지 않습니다.",
+          );
     } else if (!state.public_key) {
-      status.textContent = "서버에 웹 푸시 알림이 아직 설정되지 않았습니다.";
+      status.textContent = t(
+        "Web push notifications are not configured on the server.",
+        "서버에 웹 푸시 알림이 아직 설정되지 않았습니다.",
+      );
     } else if (permission() === "denied") {
-      status.textContent =
-        "운영체제 또는 브라우저 설정에서 HMux 알림 권한을 허용한 뒤 이 화면을 다시 여세요.";
+      status.textContent = t(
+        "Allow HMux notifications in system or browser settings, then reopen this screen.",
+        "운영체제 또는 브라우저 설정에서 HMux 알림 권한을 허용한 뒤 이 화면을 다시 여세요.",
+      );
     } else if (enabled && localEndpoint === undefined) {
-      status.textContent = "이 브라우저의 알림 연결을 확인하고 있습니다…";
+      status.textContent = t(
+        "Checking this browser’s notification connection…",
+        "이 브라우저의 알림 연결을 확인하고 있습니다…",
+      );
     } else if (enabled && !connected) {
-      status.textContent =
-        "서버 알림은 켜져 있지만 이 브라우저의 구독이 없습니다. 다시 연결하세요.";
+      status.textContent = t(
+        "Server notifications are on, but this browser has no subscription. Reconnect.",
+        "서버 알림은 켜져 있지만 이 브라우저의 구독이 없습니다. 다시 연결하세요.",
+      );
     } else if (enabled) {
-      status.textContent = "이 계정의 완료 알림이 켜져 있습니다.";
+      status.textContent = t(
+        "Completion notifications are on for this account.",
+        "이 계정의 완료 알림이 켜져 있습니다.",
+      );
     } else {
-      status.textContent = "이 계정의 완료 알림이 꺼져 있습니다.";
+      status.textContent = t(
+        "Completion notifications are off for this account.",
+        "이 계정의 완료 알림이 꺼져 있습니다.",
+      );
     }
   };
 
@@ -191,7 +233,12 @@ export function installPushNotifications(
       )) as PushState;
       if (disposed) return;
       if (next.login_id !== loginID)
-        throw new Error("알림 계정 정보를 확인하지 못했습니다.");
+        throw new Error(
+          t(
+            "Could not verify notification account information.",
+            "알림 계정 정보를 확인하지 못했습니다.",
+          ),
+        );
       state = next;
       render();
       if (next.enabled && supported() && next.public_key) {
@@ -224,7 +271,12 @@ export function installPushNotifications(
         await api("/api/push/unsubscribe", {}, controller.signal);
         if (disposed) return;
         state = { ...state!, enabled: false, endpoint: "" };
-        render("이 계정의 완료 알림을 껐습니다.");
+        render(
+          msg(
+            "Turned off completion notifications for this account.",
+            "이 계정의 완료 알림을 껐습니다.",
+          ),
+        );
         if (!supported()) return;
         try {
           const registration = await navigator.serviceWorker.ready;
@@ -235,7 +287,10 @@ export function installPushNotifications(
         } catch {
           if (!disposed)
             render(
-              "서버 알림은 껐습니다. 브라우저 구독은 정리하지 못했으며 다시 켤 때 교체됩니다.",
+              msg(
+                "Server notifications are off. The browser subscription could not be removed and will be replaced when enabled again.",
+                "서버 알림은 껐습니다. 브라우저 구독은 정리하지 못했으며 다시 켤 때 교체됩니다.",
+              ),
             );
         }
       });
@@ -304,7 +359,12 @@ export function installPushNotifications(
         if (disposed) return;
         state = { ...state!, enabled: true, endpoint: subscription.endpoint };
         localEndpoint = subscription.endpoint;
-        render("이 계정의 완료 알림을 켰습니다.");
+        render(
+          msg(
+            "Turned on completion notifications for this account.",
+            "이 계정의 완료 알림을 켰습니다.",
+          ),
+        );
       });
     } catch (error) {
       if (!disposed && (error as Error).name !== "AbortError")
@@ -321,10 +381,13 @@ export function installPushNotifications(
   test.onclick = async () => {
     if (busy || !state?.enabled) return;
     busy = true;
-    render("테스트 알림을 보내고 있습니다…");
+    render(
+      msg("Sending a test notification…", "테스트 알림을 보내고 있습니다…"),
+    );
     try {
       await api("/api/push/test", {}, controller.signal);
-      if (!disposed) render("테스트 알림을 보냈습니다.");
+      if (!disposed)
+        render(msg("Test notification sent.", "테스트 알림을 보냈습니다."));
     } catch (error) {
       if (!disposed && (error as Error).name !== "AbortError")
         render((error as Error).message);
@@ -334,10 +397,12 @@ export function installPushNotifications(
     }
   };
 
+  const unsubscribeLocale = onLocaleChange(() => render());
   render();
   void read();
   return () => {
     disposed = true;
+    unsubscribeLocale();
     controller.abort();
     toggle.onclick = null;
     reconnect.onclick = null;

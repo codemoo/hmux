@@ -87,7 +87,7 @@ fn text_value(value: OsString) -> io::Result<String> {
         .map_err(|_| invalid("invalid text option"))
 }
 pub fn invalid(message: &'static str) -> io::Error {
-    io::Error::new(io::ErrorKind::InvalidInput, message)
+    io::Error::new(io::ErrorKind::InvalidInput, crate::locale::tr(message))
 }
 
 /// Lexical normalization retains private-file symlink checks at the file owner.

@@ -34,7 +34,9 @@ The Home WSS suite independently checks both JSON v1 and Protobuf v2. Real tmux
 session/view tests use a disposable isolated socket and fake providers.
 The native CLI gate also drives the guided installer through a PTY with synthetic
 bundle tools: service opt-out, literal workspace input, plain output, invalid
-connection input and cancellation before setup. A valid-token Yes case stops at
+connection input and cancellation before setup. Locale checks cover English by
+default, Korean selection, invalid choices, `--lang` precedence over `HMUX_LANG`,
+and allowlisted language propagation to remote installation. A valid-token Yes case stops at
 an intentional setup failure; these checks do not register a real service.
 
 The opt-in native metrics check reads only the host's CPU, RAM and filesystem

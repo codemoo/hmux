@@ -67,18 +67,18 @@ test("weekly reset countdown uses source time with no invented reset", () => {
       new Date(now + (2 * 1440 + 3 * 60 + 4) * 60000).toISOString(),
       now,
     ),
-    "2일 3시간 후 초기화",
+    "Resets in 2 days 3 hours",
   );
   assert.equal(
     weeklyResetLabel(new Date(now + 1000).toISOString(), now),
-    "1분 후 초기화",
+    "Resets in 1 minute",
   );
   assert.equal(
     weeklyResetLabel(new Date(now).toISOString(), now),
-    "초기화 확인 중",
+    "Checking reset",
   );
-  assert.equal(weeklyResetLabel(undefined, now), "초기화 일정 없음");
-  assert.equal(weeklyResetLabel("invalid", now), "초기화 일정 없음");
+  assert.equal(weeklyResetLabel(undefined, now), "No reset scheduled");
+  assert.equal(weeklyResetLabel("invalid", now), "No reset scheduled");
 });
 test("Codex plan labels distinguish verified Plus and Pro without inference", () => {
   assert.equal(codexPlanLabel("plus"), "Plus");
@@ -154,4 +154,23 @@ test("recent measured quota survives refresh failure but not expired observation
     ),
     "—",
   );
+});
+
+test("usage time and number formatting follows the selected UI language", async () => {
+  const { setLocale } = await import("../src/i18n.ts");
+  try {
+    setLocale("ko");
+    assert.equal(
+      weeklyResetLabel(new Date(now + 60000).toISOString(), now),
+      "1분 후 초기화",
+    );
+    assert.equal(diskCapacity(250e9, 500e9), "250.0 / 500.0 GB");
+    setLocale("en");
+    assert.equal(
+      weeklyResetLabel(new Date(now + 60000).toISOString(), now),
+      "Resets in 1 minute",
+    );
+  } finally {
+    setLocale("en");
+  }
 });

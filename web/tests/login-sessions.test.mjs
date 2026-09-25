@@ -159,7 +159,7 @@ test("committed revoke remains successful when the list refresh fails", async ()
   assert.ok(
     root
       .querySelectorAll("p")
-      .some((node) => node.textContent.includes("로그아웃 완료")),
+      .some((node) => node.textContent.includes("Signed out")),
   );
   dispose();
 });

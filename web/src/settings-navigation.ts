@@ -1,16 +1,17 @@
 import { createTextFactory } from "./dom.ts";
+import { bindAttribute, msg, type TextValue } from "./i18n.ts";
 
 // Keep panels mounted: account requests and their disposal stay owned by the
 // originating settings dialog even while another category is selected.
 export function installSettingsNavigation(
   parent: HTMLElement,
-  groups: { id: string; label: string; sections: HTMLElement[] }[],
+  groups: { id: string; label: TextValue; sections: HTMLElement[] }[],
   initialId?: string,
 ) {
   const text = createTextFactory(parent.ownerDocument);
   const nav = text("div", "", "settings-nav");
   nav.setAttribute("role", "tablist");
-  nav.setAttribute("aria-label", "설정 항목");
+  bindAttribute(nav, "aria-label", msg("Settings categories", "설정 항목"));
   const content = text("div", "", "settings-content");
   const buttons: HTMLButtonElement[] = [];
   const panels: HTMLElement[] = [];

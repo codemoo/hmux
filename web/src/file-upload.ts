@@ -1,3 +1,4 @@
+import { t } from "./i18n.ts";
 import type { Identity } from "./types.ts";
 
 export const uploadLimits = {
@@ -19,7 +20,12 @@ export function uploadMetadata(
   files: Pick<File, "name" | "size">[],
 ): FileMetadata[] {
   if (!files.length || files.length > uploadLimits.files)
-    throw Error("파일은 한 번에 1–16개까지 첨부할 수 있습니다.");
+    throw Error(
+      t(
+        "Attach 1–16 files at a time.",
+        "파일은 한 번에 1–16개까지 첨부할 수 있습니다.",
+      ),
+    );
   let total = 0;
   return files.map((file) => {
     if (
@@ -28,11 +34,19 @@ export function uploadMetadata(
       file.size > uploadLimits.fileBytes
     )
       throw Error(
-        "빈 파일은 첨부할 수 없으며, 파일당 최대 크기는 32MiB입니다.",
+        t(
+          "Empty files cannot be attached; each file must be 32 MiB or less.",
+          "빈 파일은 첨부할 수 없으며, 파일당 최대 크기는 32MiB입니다.",
+        ),
       );
     total += file.size;
     if (total > uploadLimits.totalBytes)
-      throw Error("한 번에 첨부하는 파일의 합계는 128MiB 이하여야 합니다.");
+      throw Error(
+        t(
+          "The total size of attachments must be 128 MiB or less.",
+          "한 번에 첨부하는 파일의 합계는 128MiB 이하여야 합니다.",
+        ),
+      );
     const extension =
       /\.([a-z0-9]{1,16})$/i.exec(file.name)?.[1].toLowerCase() ?? "";
     return { size: file.size, extension };
@@ -58,7 +72,12 @@ export function stagedPaths(
     !Array.isArray(stage.files) ||
     stage.files.length !== files.length
   )
-    throw Error("첨부 결과를 확인하지 못했습니다.");
+    throw Error(
+      t(
+        "Could not verify the attachment result.",
+        "첨부 결과를 확인하지 못했습니다.",
+      ),
+    );
   const paths = stage.files.map((file, index) => {
     const metadata = files[index];
     const suffix = `/hmux/staged-files-v1/${stage.expires_at_unix}-${stage.stage_id}/file-${String(index + 1).padStart(4, "0")}${metadata.extension ? "." + metadata.extension : ""}`;
@@ -77,7 +96,12 @@ export function stagedPaths(
         .some((p) => !p || p === "." || p === "..") ||
       !file.path.endsWith(suffix)
     )
-      throw Error("안전한 첨부 경로를 확인하지 못했습니다.");
+      throw Error(
+        t(
+          "Could not verify a safe attachment path.",
+          "안전한 첨부 경로를 확인하지 못했습니다.",
+        ),
+      );
     return "'" + file.path.replaceAll("'", "'\\''") + "'";
   });
   return { stage, text: paths.join(" ") + " " };
@@ -94,7 +118,7 @@ export function uploadFiles(
   const total = metadata.reduce((sum, f) => sum + f.size, 0);
   return new Promise((resolve, reject) => {
     if (signal.aborted) {
-      reject(new DOMException("취소했습니다.", "AbortError"));
+      reject(new DOMException(t("Canceled.", "취소했습니다."), "AbortError"));
       return;
     }
     const url = new URL("/api/upload", location.href);
@@ -108,7 +132,15 @@ export function uploadFiles(
     let phase: "connect" | "ready" | "reading" | "ack" | "complete" = "connect";
     let idle: ReturnType<typeof setTimeout>;
     const deadline = setTimeout(
-      () => fail(Error("파일 전송 시간이 초과되었습니다. 다시 첨부해주세요.")),
+      () =>
+        fail(
+          Error(
+            t(
+              "File transfer timed out. Attach the files again.",
+              "파일 전송 시간이 초과되었습니다. 다시 첨부해주세요.",
+            ),
+          ),
+        ),
       5 * 60_000,
     );
     const cleanup = () => {
@@ -123,11 +155,20 @@ export function uploadFiles(
       cleanup();
       reject(error);
     };
-    const abort = () => fail(new DOMException("취소했습니다.", "AbortError"));
+    const abort = () =>
+      fail(new DOMException(t("Canceled.", "취소했습니다."), "AbortError"));
     const touch = () => {
       clearTimeout(idle);
       idle = setTimeout(
-        () => fail(Error("파일 전송 응답이 없습니다. 연결을 확인해주세요.")),
+        () =>
+          fail(
+            Error(
+              t(
+                "No file transfer response. Check the connection.",
+                "파일 전송 응답이 없습니다. 연결을 확인해주세요.",
+              ),
+            ),
+          ),
         30_000,
       );
     };
@@ -146,7 +187,12 @@ export function uploadFiles(
           .arrayBuffer();
         if (settled) return;
         if (!bytes.byteLength)
-          throw Error("파일을 읽지 못했습니다. 다시 선택해주세요.");
+          throw Error(
+            t(
+              "Could not read the file. Select it again.",
+              "파일을 읽지 못했습니다. 다시 선택해주세요.",
+            ),
+          );
         expected = received + bytes.byteLength;
         fileOffset += bytes.byteLength;
         if (fileOffset === file.size) {
@@ -174,11 +220,16 @@ export function uploadFiles(
       if (settled) return;
       try {
         if (typeof event.data !== "string" || event.data.length > 65536)
-          throw Error("잘못된 첨부 응답입니다.");
+          throw Error(
+            t("Invalid attachment response.", "잘못된 첨부 응답입니다."),
+          );
         const message = JSON.parse(event.data);
         if (message.type === "error")
           throw Error(
-            "파일을 전송하지 못했습니다. Home 연결과 로그인 상태를 확인한 뒤 다시 시도해주세요.",
+            t(
+              "Could not transfer the file. Check the Home connection and sign-in, then try again.",
+              "파일을 전송하지 못했습니다. Home 연결과 로그인 상태를 확인한 뒤 다시 시도해주세요.",
+            ),
           );
         if (phase === "ready" && message.type === "ready") {
           progress(0, total);
@@ -196,7 +247,13 @@ export function uploadFiles(
           settled = true;
           cleanup();
           resolve(result);
-        } else throw Error("첨부 전송 순서를 확인하지 못했습니다.");
+        } else
+          throw Error(
+            t(
+              "Could not verify the attachment transfer order.",
+              "첨부 전송 순서를 확인하지 못했습니다.",
+            ),
+          );
       } catch (error) {
         fail(error as Error);
       }
@@ -204,10 +261,20 @@ export function uploadFiles(
     ws.onerror = () =>
       fail(
         Error(
-          "첨부 연결을 열지 못했습니다. Home 연결과 로그인 상태를 확인해주세요.",
+          t(
+            "Could not open the attachment connection. Check the Home connection and sign-in.",
+            "첨부 연결을 열지 못했습니다. Home 연결과 로그인 상태를 확인해주세요.",
+          ),
         ),
       );
     ws.onclose = () =>
-      fail(Error("파일 전송 중 연결이 끊겼습니다. 다시 첨부해주세요."));
+      fail(
+        Error(
+          t(
+            "The connection was lost during transfer. Attach the files again.",
+            "파일 전송 중 연결이 끊겼습니다. 다시 첨부해주세요.",
+          ),
+        ),
+      );
   });
 }

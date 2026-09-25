@@ -106,7 +106,7 @@ test("job messages guide each step", () => {
     log: [],
     ...extra,
   });
-  assert.match(jobMessage(job("installing"), "connect"), /설치/);
+  assert.match(jobMessage(job("installing"), "connect"), /Installing/);
   assert.match(
     jobMessage(
       job("login", {
@@ -115,15 +115,15 @@ test("job messages guide each step", () => {
       }),
       "connect",
     ),
-    /코드를 입력/,
+    /enter the code/,
   );
   assert.match(
     jobMessage(job("login", { needs_input: true }), "connect"),
-    /붙여넣/,
+    /Paste the code/,
   );
-  assert.equal(jobMessage(job("connected"), "connect"), "연결되었습니다.");
-  assert.equal(jobMessage(job("done"), "update"), "업데이트했습니다.");
-  assert.match(jobMessage(job("failed"), "connect"), /로그/);
+  assert.equal(jobMessage(job("connected"), "connect"), "Connected.");
+  assert.equal(jobMessage(job("done"), "update"), "Updated.");
+  assert.match(jobMessage(job("failed"), "connect"), /progress log/);
 });
 
 test("provider summary describes install and connection state", () => {
@@ -136,18 +136,18 @@ test("provider summary describes install and connection state", () => {
     key_hint: "",
     profile: false,
   };
-  assert.equal(providerSummary(base), "설치되지 않음");
+  assert.equal(providerSummary(base), "Not installed");
   assert.equal(
     providerSummary({ ...base, installed: true, version: "2.1.278" }),
-    "v2.1.278 · 연결 필요",
+    "v2.1.278 · Connection needed",
   );
   assert.equal(
     providerSummary({ ...base, installed: true, auth: "account" }),
-    "계정 연결됨",
+    "Account connected",
   );
   assert.equal(
     providerSummary({ ...base, auth: "api-key", key_hint: "…abcd" }),
-    "설치되지 않음 · API 키 …abcd",
+    "Not installed · API key …abcd",
   );
 });
 

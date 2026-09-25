@@ -1,3 +1,4 @@
+import { msg, type TextValue } from "./i18n.ts";
 import { createTextFactory, iconButton } from "./dom.ts";
 import { renderMarkdown } from "./markdown.ts";
 
@@ -27,9 +28,16 @@ export function renderConversationLoading(
   mark.setAttribute("aria-hidden", "true");
   const copy = text("div", "", "conversation-loading-copy");
   copy.append(
-    text("span", provider || "대화", "conversation-loading-provider"),
-    text("h2", "대화를 불러오는 중"),
-    text("p", "최근 메시지를 정리하고 있어요."),
+    text(
+      "span",
+      provider || msg("Conversation", "대화"),
+      "conversation-loading-provider",
+    ),
+    text("h2", msg("Loading conversation", "대화를 불러오는 중")),
+    text(
+      "p",
+      msg("Preparing recent messages.", "최근 메시지를 정리하고 있어요."),
+    ),
   );
   status.append(mark, copy);
   const preview = text("div", "", "conversation-loading-preview");
@@ -47,15 +55,18 @@ export function renderConversation(
 ): boolean {
   const doc = reader.ownerDocument;
   const text = createTextFactory(doc);
-  const button = (title: string, name: string, action: () => void) =>
+  const button = (title: TextValue, name: string, action: () => void) =>
     iconButton(doc, title, name, action);
   reader.replaceChildren();
   if (data.status !== "ready") {
     reader.append(
-      text("h2", "대화를 확인할 수 없습니다"),
+      text("h2", msg("Conversation unavailable", "대화를 확인할 수 없습니다")),
       text(
         "p",
-        "이 tmux 세션의 활성 pane에 연결된 Codex 또는 Claude 대화를 찾지 못했습니다.",
+        msg(
+          "No Codex or Claude conversation was found for the active pane of this tmux session.",
+          "이 tmux 세션의 활성 pane에 연결된 Codex 또는 Claude 대화를 찾지 못했습니다.",
+        ),
         "muted",
       ),
     );
@@ -66,20 +77,20 @@ export function renderConversation(
   const include = doc.createElement("input");
   include.type = "checkbox";
   include.checked = true;
-  const questions = text("label", "내 메시지 ");
+  const questions = text("label", msg("My messages ", "내 메시지 "));
   questions.prepend(include);
   const code = doc.createElement("input");
   code.type = "checkbox";
-  const codeLabel = text("label", "코드 포함 ");
+  const codeLabel = text("label", msg("Include code ", "코드 포함 "));
   codeLabel.prepend(code);
   controls.append(
-    text("h2", "대화"),
+    text("h2", msg("Conversation", "대화")),
     questions,
     codeLabel,
-    button("최신 메시지로", "arrow", () => {
+    button(msg("Latest message", "최신 메시지로"), "arrow", () => {
       reader.scrollTop = reader.scrollHeight;
     }),
-    button("터미널로 돌아가기", "close", onReturn),
+    button(msg("Return to terminal", "터미널로 돌아가기"), "close", onReturn),
   );
   const content = doc.createElement("div");
   const render = () => {
@@ -95,7 +106,7 @@ export function renderConversation(
             ? data.provider === "claude"
               ? "CLAUDE"
               : "CODEX"
-            : "나",
+            : msg("Me", "나"),
         ),
       );
       const message = text("div", "", "message-text");
@@ -108,6 +119,15 @@ export function renderConversation(
   reader.append(controls, content);
   render();
   if (data.truncated)
-    reader.append(text("p", "최근 대화 일부만 표시합니다.", "muted"));
+    reader.append(
+      text(
+        "p",
+        msg(
+          "Only part of the recent conversation is shown.",
+          "최근 대화 일부만 표시합니다.",
+        ),
+        "muted",
+      ),
+    );
   return true;
 }

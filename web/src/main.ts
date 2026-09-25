@@ -63,6 +63,17 @@ import {
   type WorkspaceChange,
 } from "./shared-workspace";
 import { createTextFactory, iconButton } from "./dom";
+import {
+  bindAttribute,
+  bindText,
+  getLocale,
+  localeTag,
+  msg,
+  onLocaleChange,
+  setLocale,
+  t as tr,
+  type TextValue,
+} from "./i18n";
 import { icon } from "./icons";
 import { renderUsageFooter } from "./usage-view";
 import { createUsagePanelUpdater } from "./usage-panel-update";
@@ -204,19 +215,65 @@ let csrf = "",
   ),
   ctrl = false;
 const tabs = new Map<string, Tab>();
-const collator = new Intl.Collator("en", {
+let collator = new Intl.Collator(localeTag(), {
   numeric: true,
   sensitivity: "base",
 });
 const key = (s: Identity) => `${s.id}:${s.created_at}`;
 const label = (s: Session) => s.alias || s.name;
 const text = createTextFactory(document);
-const button = (title: string, name: string, action: () => void) =>
+const button = (title: TextValue, name: string, action: () => void) =>
   iconButton(document, title, name, action);
-function notice(message: string) {
+function bindLabel(
+  selector: string,
+  en: string,
+  ko: string,
+  root: ParentNode = app,
+) {
+  const node = root.querySelector<HTMLElement>(selector);
+  if (!node) return;
+  const directText = [...node.childNodes].find(
+    (child) => child.nodeType === Node.TEXT_NODE && !!child.textContent?.trim(),
+  );
+  if (directText && node.children.length) {
+    const span = document.createElement("span");
+    directText.replaceWith(span);
+    bindText(span, msg(en, ko));
+  } else {
+    bindText(node, msg(en, ko));
+  }
+}
+function bindNamedAttribute(
+  selector: string,
+  name: string,
+  en: string,
+  ko: string,
+  root: ParentNode = app,
+) {
+  const node = root.querySelector<HTMLElement>(selector);
+  if (node) bindAttribute(node, name, msg(en, ko));
+}
+function languagePicker(className: string) {
+  const label = text("label", msg("Language", "언어"), className);
+  const select = document.createElement("select");
+  bindAttribute(select, "aria-label", msg("Language", "언어"));
+  for (const [value, name] of [
+    ["en", "English"],
+    ["ko", "한국어"],
+  ]) {
+    const option = text("option", name) as HTMLOptionElement;
+    option.value = value;
+    select.append(option);
+  }
+  select.value = getLocale();
+  select.onchange = () => setLocale(select.value);
+  label.append(select);
+  return label;
+}
+function notice(message: TextValue) {
   const n = $("#notice");
   if (n) {
-    n.textContent = message;
+    bindText(n, message);
     n.hidden = !message;
   }
 }
@@ -330,8 +387,11 @@ function resolvePushTarget() {
   pendingPushTarget = undefined;
   openSession(session);
 }
-const bootstrapRequestFailure =
-  "설정 요청을 완료하지 못했습니다. 잠시 후 다시 시도하세요.";
+const bootstrapRequestFailure = () =>
+  tr(
+    "Could not complete setup. Please try again shortly.",
+    "설정 요청을 완료하지 못했습니다. 잠시 후 다시 시도하세요.",
+  );
 async function bootstrapRequest(
   path: string,
   body: unknown,
@@ -347,19 +407,163 @@ async function bootstrapRequest(
         cache: "no-store",
         signal,
       });
-      if (!response.ok) throw new Error(bootstrapRequestFailure);
+      if (!response.ok) throw new Error(bootstrapRequestFailure());
       try {
         return await response.json();
       } catch {
-        throw new Error(bootstrapRequestFailure);
+        throw new Error(bootstrapRequestFailure());
       }
     },
     parent,
     10_000,
   );
 }
+function bindLoginCopy() {
+  bindLabel(".story-copy h1", "Your work stays here.", "작업은 그대로.");
+  bindLabel(
+    ".story-copy h1 span:last-child",
+    "Continue from anywhere.",
+    "어디서든 이어서.",
+  );
+  bindLabel(
+    ".story-copy > p span:first-child",
+    "Your terminal and AI work continue on Home.",
+    "Home에서 이어지는 터미널과 AI 작업.",
+  );
+  bindLabel(
+    ".story-copy > p span:last-child",
+    "Return to your familiar workspace.",
+    "익숙한 공간으로 돌아오세요.",
+  );
+  bindLabel(
+    ".story-terminal .muted",
+    "Your work keeps running on the host.",
+    "작업은 호스트에서 계속 실행됩니다.",
+  );
+  app.querySelector(".login-panel")?.append(languagePicker("login-language"));
+}
+function bindLoginForm() {
+  bindLabel(
+    "#login-form h2",
+    "Sign in to your workspace",
+    "내 작업 공간에 로그인",
+  );
+  bindLabel(
+    "#login-form > p.muted",
+    "Use your account to enter your workspace.",
+    "계정으로 내 작업 공간에 접속하세요.",
+  );
+  bindLabel('#login-form label:has(input[name="username"])', "Account", "계정");
+  bindLabel(
+    '#login-form label:has(input[name="password"])',
+    "Password",
+    "비밀번호",
+  );
+  bindLabel("#login-totp", "Verification code", "인증 코드");
+  bindLabel(
+    "#login-totp small",
+    "6-digit code from Google Authenticator",
+    "Google Authenticator의 6자리 코드",
+  );
+  bindNamedAttribute(
+    '#login-form input[name="username"]',
+    "placeholder",
+    "Account name",
+    "계정 이름",
+  );
+  bindNamedAttribute(
+    '#login-form input[name="password"]',
+    "placeholder",
+    "Password",
+    "비밀번호",
+  );
+  bindLabel(
+    '#login-form button[type="submit"]',
+    "Continue work ",
+    "작업 이어가기 ",
+  );
+  bindLabel(
+    "#login-form .login-note",
+    "Sign in with a registered account.",
+    "등록된 계정으로 접속할 수 있습니다.",
+  );
+}
+function bindWorkspaceCopy() {
+  const labels: [string, string, string][] = [
+    ["#home-state", "Checking connection", "연결 확인 중"],
+    [".list-heading > span", "Sessions ", "세션 "],
+    [".hidden-toggle", " Show hidden sessions", " 숨긴 세션 표시"],
+    ["#empty h2", "Choose work to continue", "이어서 할 작업을 선택하세요"],
+    [
+      "#empty > p span:first-child",
+      "Open a session to connect to work on Home.",
+      "세션을 열면 Home의 작업에 연결됩니다.",
+    ],
+    [
+      "#empty > p span:last-child",
+      "It keeps running after you close this screen.",
+      "이 화면을 닫아도 작업은 계속됩니다.",
+    ],
+    ["#browse", "Browse sessions ", "세션 둘러보기 "],
+    ["#reconnect", " Reconnect", " 다시 연결"],
+    ["#metrics", "Home · Waiting for usage", "Home · 사용량 대기 중"],
+  ];
+  for (const [selector, en, ko] of labels) bindLabel(selector, en, ko);
+  const attributes: [string, string, string, string][] = [
+    ["#sidebar-close", "title", "Close session list", "목록 닫기"],
+    ["#sidebar-close", "aria-label", "Close session list", "목록 닫기"],
+    ["#search", "placeholder", "Search sessions", "세션 검색"],
+    ["#search", "aria-label", "Search sessions", "세션 검색"],
+    ["#new-session", "title", "New session", "새 세션"],
+    ["#new-session", "aria-label", "New session", "새 세션"],
+    ["#logout", "title", "Sign out (Alt+Q)", "로그아웃 (Alt+Q)"],
+    ["#logout", "aria-label", "Sign out", "로그아웃"],
+    ["#floating-tabs", "aria-label", "Expand tab list", "탭 목록 펼치기"],
+    [
+      "#menu",
+      "title",
+      "Toggle sidebar (Alt+L / Alt+`)",
+      "사이드바 전환 (Alt+L / Alt+`)",
+    ],
+    ["#menu", "aria-label", "Toggle sidebar", "사이드바 전환"],
+    ["#tabs", "aria-label", "Open sessions", "열린 세션"],
+    [
+      "#terminal-refresh",
+      "title",
+      "Refresh terminal display",
+      "터미널 화면 새로고침",
+    ],
+    [
+      "#terminal-refresh",
+      "aria-label",
+      "Refresh terminal display",
+      "터미널 화면 새로고침",
+    ],
+    ["#attach", "title", "Attach file", "파일 첨부"],
+    ["#attach", "aria-label", "Attach file", "파일 첨부"],
+    ["#tab-new", "title", "New session", "새 세션"],
+    ["#tab-new", "aria-label", "New session", "새 세션"],
+    ["#conversation", "title", "Read conversation", "대화 읽기"],
+    ["#conversation", "aria-label", "Read conversation", "대화 읽기"],
+    ["#settings", "title", "Settings", "터미널 설정"],
+    ["#settings", "aria-label", "Settings", "터미널 설정"],
+    [".keybar", "aria-label", "Terminal helper keys", "터미널 보조 키"],
+    ["#attach-mobile", "title", "Attach file", "파일 첨부"],
+    ["#attach-mobile", "aria-label", "Attach file", "파일 첨부"],
+    [
+      "#footer-connection",
+      "title",
+      "Connecting shared tabs",
+      "공용 탭 연결 중",
+    ],
+    ["#dialog-close", "aria-label", "Close", "닫기"],
+  ];
+  for (const [selector, name, en, ko] of attributes)
+    bindNamedAttribute(selector, name, en, ko);
+}
 function showBootstrapSetup() {
-  app.innerHTML = `<main class="login"><div class="login-story"><a class="brand" href="/">${mark}<span>HMux</span></a><div class="story-copy"><h1>작업은 그대로.<br><span>어디서든 이어서.</span></h1><p>Home에서 이어지는 터미널과 AI 작업.<br>익숙한 공간으로 돌아오세요.</p><div class="story-terminal"><div><i></i><i></i><i></i><span>home / workspace</span></div><p><b>❯</b> tmux attach</p><p class="muted">작업은 호스트에서 계속 실행됩니다.<span class="cursor">▍</span></p></div></div><p class="story-foot">Codex · Claude · Shell</p></div><section class="login-panel"><div id="bootstrap-setup"></div></section></main>`;
+  app.innerHTML = `<main class="login"><div class="login-story"><a class="brand" href="/">${mark}<span>HMux</span></a><div class="story-copy"><h1>작업은 그대로.<br><span>어디서든 이어서.</span></h1><p><span>Home에서 이어지는 터미널과 AI 작업.</span><br><span>익숙한 공간으로 돌아오세요.</span></p><div class="story-terminal"><div><i></i><i></i><i></i><span>home / workspace</span></div><p><b>❯</b> tmux attach</p><p class="muted">작업은 호스트에서 계속 실행됩니다.<span class="cursor">▍</span></p></div></div><p class="story-foot">Codex · Claude · Shell</p></div><section class="login-panel"><div id="bootstrap-setup"></div></section></main>`;
+  bindLoginCopy();
   disposeBootstrap = installBootstrapSetup(
     $("#bootstrap-setup"),
     bootstrapRequest,
@@ -377,7 +581,9 @@ function showLogin(checkSetup = false) {
   loginID = "";
   sessions = [];
   snapshot = { online: false };
-  app.innerHTML = `<main class="login"><div class="login-story"><a class="brand" href="/">${mark}<span>HMux</span></a><div class="story-copy"><h1>작업은 그대로.<br><span>어디서든 이어서.</span></h1><p>Home에서 이어지는 터미널과 AI 작업.<br>익숙한 공간으로 돌아오세요.</p><div class="story-terminal"><div><i></i><i></i><i></i><span>home / workspace</span></div><p><b>❯</b> tmux attach</p><p class="muted">작업은 호스트에서 계속 실행됩니다.<span class="cursor">▍</span></p></div></div><p class="story-foot">Codex · Claude · Shell</p></div><section class="login-panel"><form id="login-form"><div class="lock-badge">${icon("lock")}</div><h2>내 작업 공간에 로그인</h2><p class="muted">계정으로 내 작업 공간에 접속하세요.</p><label>계정<input name="username" autocomplete="username" required maxlength="80" autofocus placeholder="계정 이름"></label><label>비밀번호<input name="password" type="password" autocomplete="current-password" required maxlength="128" placeholder="비밀번호"></label><label id="login-totp" hidden>인증 코드<input name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000"><small>Google Authenticator의 6자리 코드</small></label><p id="login-error" class="error" role="alert"></p><button class="primary" type="submit">작업 이어가기 ${icon("arrow")}</button><p class="login-note">등록된 계정으로 접속할 수 있습니다.</p></form></section></main>`;
+  app.innerHTML = `<main class="login"><div class="login-story"><a class="brand" href="/">${mark}<span>HMux</span></a><div class="story-copy"><h1>작업은 그대로.<br><span>어디서든 이어서.</span></h1><p><span>Home에서 이어지는 터미널과 AI 작업.</span><br><span>익숙한 공간으로 돌아오세요.</span></p><div class="story-terminal"><div><i></i><i></i><i></i><span>home / workspace</span></div><p><b>❯</b> tmux attach</p><p class="muted">작업은 호스트에서 계속 실행됩니다.<span class="cursor">▍</span></p></div></div><p class="story-foot">Codex · Claude · Shell</p></div><section class="login-panel"><form id="login-form"><div class="lock-badge">${icon("lock")}</div><h2>내 작업 공간에 로그인</h2><p class="muted">계정으로 내 작업 공간에 접속하세요.</p><label>계정<input name="username" autocomplete="username" required maxlength="80" autofocus placeholder="계정 이름"></label><label>비밀번호<input name="password" type="password" autocomplete="current-password" required maxlength="128" placeholder="비밀번호"></label><label id="login-totp" hidden>인증 코드<input name="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000"><small>Google Authenticator의 6자리 코드</small></label><p id="login-error" class="error" role="alert"></p><button class="primary" type="submit">작업 이어가기 ${icon("arrow")}</button><p class="login-note">등록된 계정으로 접속할 수 있습니다.</p></form></section></main>`;
+  bindLoginCopy();
+  bindLoginForm();
   $("#login-form").append(installButton());
   const loginForm = $<HTMLFormElement>("#login-form");
   const codeInput = loginForm.elements.namedItem("code") as HTMLInputElement;
@@ -414,7 +620,12 @@ function showLogin(checkSetup = false) {
         return;
       }
       if (result.ok !== true)
-        throw new Error("로그인 응답을 확인하지 못했습니다.");
+        throw new Error(
+          tr(
+            "Could not verify the sign-in response.",
+            "로그인 응답을 확인하지 못했습니다.",
+          ),
+        );
       form.reset();
       await start();
     } catch (err) {
@@ -434,7 +645,8 @@ function showLogin(checkSetup = false) {
     });
 }
 function shell() {
-  app.innerHTML = `<div class="workspace"><aside id="session-sidebar" class="sidebar"><div class="sidebar-head"><a class="brand" href="/">${mark}<span>HMux</span></a><button id="sidebar-close" class="icon-button" title="목록 닫기" aria-label="목록 닫기">${icon("close")}</button></div><div class="home-card"><span class="status-dot" id="home-dot"></span><div><strong>Home</strong><small id="home-state">연결 확인 중</small></div></div><div class="search-box">${icon("search")}<input id="search" type="search" placeholder="세션 검색" aria-label="세션 검색"><kbd>⌘ K</kbd></div><div class="list-heading"><span>세션 <b id="count">0</b></span><button id="new-session" class="icon-button" title="새 세션" aria-label="새 세션">${icon("plus")}</button></div><div id="session-list" class="session-list"></div><label class="hidden-toggle"><input id="show-hidden" type="checkbox"> 숨긴 세션 표시</label><div class="sidebar-bottom"><span id="username"></span><button id="logout" class="icon-button" title="로그아웃 (Alt+Q)" aria-label="로그아웃">${icon("logout")}</button></div></aside><div id="scrim"></div><main class="workarea"><button id="floating-tabs" class="icon-button" aria-label="탭 목록 펼치기" aria-expanded="false" aria-controls="tabs">${icon("menu")}</button><header class="tabbar"><button id="menu" class="icon-button" title="사이드바 전환 (Alt+L / Alt+&#96;)" aria-label="사이드바 전환" aria-controls="session-sidebar">${icon("menu")}</button><div id="tabs" role="tablist" aria-label="열린 세션"></div><div class="toolbar"><button id="terminal-refresh" class="icon-button" title="터미널 화면 새로고침" aria-label="터미널 화면 새로고침" disabled>${icon("refresh")}</button><button id="attach" class="icon-button" title="파일 첨부" aria-label="파일 첨부">${icon("attach")}</button><button id="tab-new" class="icon-button" title="새 세션" aria-label="새 세션">${icon("plus")}</button><button id="conversation" class="icon-button" title="대화 읽기" aria-label="대화 읽기" aria-pressed="false">${icon("book")}</button><button id="settings" class="icon-button" title="터미널 설정" aria-label="터미널 설정">${icon("settings")}</button></div></header><div id="notice" class="notice" role="status" hidden></div><div id="attachment-status" class="attachment-status" role="status" hidden></div><input id="attachment-picker" type="file" multiple hidden><div id="stage"><div id="empty"><div class="empty-mark">${icon("terminal")}</div><h2>이어서 할 작업을 선택하세요</h2><p>세션을 열면 Home의 작업에 연결됩니다.<br>이 화면을 닫아도 작업은 계속됩니다.</p><button id="browse" class="secondary">세션 둘러보기 ${icon("arrow")}</button><div id="ai-onboarding" class="ai-onboarding" hidden></div></div><div id="reader" hidden></div></div><div class="keybar" aria-label="터미널 보조 키"><button id="attach-mobile" aria-label="파일 첨부" title="파일 첨부">${icon("attach")}</button><button data-key="\u001b">Esc</button><button data-key="\t">Tab</button><button id="ctrl" aria-pressed="false">Ctrl</button><button data-key="\u0003">Ctrl+C</button><button data-key="\u001b[A">↑</button><button data-key="\u001b[B">↓</button><button data-key="\u001b[D">←</button><button data-key="\u001b[C">→</button></div><footer><span id="bedl" class="bedl" aria-hidden="true"></span><button id="usage" class="footer-button">Codex <span>—</span><i></i> Claude <span>—</span></button><span id="metrics">Home · 사용량 대기 중</span><span id="footer-connection" class="footer-connection" title="공용 탭 연결 중"><span id="terminal-state" role="status"></span><button id="reconnect" class="subtle-button" hidden>${icon("refresh")} 다시 연결</button></span></footer></main></div><dialog id="dialog" aria-labelledby="dialog-title"><div class="dialog-head"><h2 id="dialog-title"></h2><button id="dialog-close" class="icon-button" aria-label="닫기">${icon("close")}</button></div><div id="dialog-body"></div></dialog>`;
+  app.innerHTML = `<div class="workspace"><aside id="session-sidebar" class="sidebar"><div class="sidebar-head"><a class="brand" href="/">${mark}<span>HMux</span></a><button id="sidebar-close" class="icon-button" title="목록 닫기" aria-label="목록 닫기">${icon("close")}</button></div><div class="home-card"><span class="status-dot" id="home-dot"></span><div><strong>Home</strong><small id="home-state">연결 확인 중</small></div></div><div class="search-box">${icon("search")}<input id="search" type="search" placeholder="세션 검색" aria-label="세션 검색"><kbd>⌘ K</kbd></div><div class="list-heading"><span>세션 <b id="count">0</b></span><button id="new-session" class="icon-button" title="새 세션" aria-label="새 세션">${icon("plus")}</button></div><div id="session-list" class="session-list"></div><label class="hidden-toggle"><input id="show-hidden" type="checkbox"> 숨긴 세션 표시</label><div class="sidebar-bottom"><span id="username"></span><button id="logout" class="icon-button" title="로그아웃 (Alt+Q)" aria-label="로그아웃">${icon("logout")}</button></div></aside><div id="scrim"></div><main class="workarea"><button id="floating-tabs" class="icon-button" aria-label="탭 목록 펼치기" aria-expanded="false" aria-controls="tabs">${icon("menu")}</button><header class="tabbar"><button id="menu" class="icon-button" title="사이드바 전환 (Alt+L / Alt+&#96;)" aria-label="사이드바 전환" aria-controls="session-sidebar">${icon("menu")}</button><div id="tabs" role="tablist" aria-label="열린 세션"></div><div class="toolbar"><button id="terminal-refresh" class="icon-button" title="터미널 화면 새로고침" aria-label="터미널 화면 새로고침" disabled>${icon("refresh")}</button><button id="attach" class="icon-button" title="파일 첨부" aria-label="파일 첨부">${icon("attach")}</button><button id="tab-new" class="icon-button" title="새 세션" aria-label="새 세션">${icon("plus")}</button><button id="conversation" class="icon-button" title="대화 읽기" aria-label="대화 읽기" aria-pressed="false">${icon("book")}</button><button id="settings" class="icon-button" title="터미널 설정" aria-label="터미널 설정">${icon("settings")}</button></div></header><div id="notice" class="notice" role="status" hidden></div><div id="attachment-status" class="attachment-status" role="status" hidden></div><input id="attachment-picker" type="file" multiple hidden><div id="stage"><div id="empty"><div class="empty-mark">${icon("terminal")}</div><h2>이어서 할 작업을 선택하세요</h2><p><span>세션을 열면 Home의 작업에 연결됩니다.</span><br><span>이 화면을 닫아도 작업은 계속됩니다.</span></p><button id="browse" class="secondary">세션 둘러보기 ${icon("arrow")}</button><div id="ai-onboarding" class="ai-onboarding" hidden></div></div><div id="reader" hidden></div></div><div class="keybar" aria-label="터미널 보조 키"><button id="attach-mobile" aria-label="파일 첨부" title="파일 첨부">${icon("attach")}</button><button data-key="\u001b">Esc</button><button data-key="\t">Tab</button><button id="ctrl" aria-pressed="false">Ctrl</button><button data-key="\u0003">Ctrl+C</button><button data-key="\u001b[A">↑</button><button data-key="\u001b[B">↓</button><button data-key="\u001b[D">←</button><button data-key="\u001b[C">→</button></div><footer><span id="bedl" class="bedl" aria-hidden="true"></span><button id="usage" class="footer-button">Codex <span>—</span><i></i> Claude <span>—</span></button><span id="metrics">Home · 사용량 대기 중</span><span id="footer-connection" class="footer-connection" title="공용 탭 연결 중"><span id="terminal-state" role="status"></span><button id="reconnect" class="subtle-button" hidden>${icon("refresh")} 다시 연결</button></span></footer></main></div><dialog id="dialog" aria-labelledby="dialog-title"><div class="dialog-head"><h2 id="dialog-title"></h2><button id="dialog-close" class="icon-button" aria-label="닫기">${icon("close")}</button></div><div id="dialog-body"></div></dialog>`;
+  bindWorkspaceCopy();
   app.classList.toggle(
     "sidebar-collapsed",
     preferences.get("hmux.sidebar") === "hidden",
@@ -452,7 +664,9 @@ function shell() {
     $("#floating-tabs").setAttribute("aria-expanded", String(expanded));
     $("#floating-tabs").setAttribute(
       "aria-label",
-      expanded ? "탭 목록 접기" : "탭 목록 펼치기",
+      expanded
+        ? tr("Collapse tab list", "탭 목록 접기")
+        : tr("Expand tab list", "탭 목록 펼치기"),
     );
   };
   $("#search").oninput = renderSessions;
@@ -485,7 +699,7 @@ function shell() {
         name:
           sessions.find((s) => key(s) === active)?.alias ||
           sessions.find((s) => key(s) === active)?.name ||
-          "원래 탭",
+          tr("Original tab", "원래 탭"),
       };
     },
     exists: (target) => tabs.get(key(target.identity)) === target.instance,
@@ -644,7 +858,7 @@ function renderSessions() {
       };
       row.append(
         open,
-        button("세션 관리", "settings", () => {
+        button(msg("Manage session", "세션 관리"), "settings", () => {
           const current = sessions.find((v) => key(v) === k);
           if (current) editDialog(current);
         }),
@@ -666,8 +880,8 @@ function renderSessions() {
         [
           s.runtime || "shell",
           s.current_path?.split("/").filter(Boolean).at(-1) ||
-            `${s.window_count}개 창`,
-          s.hidden ? "숨김" : "",
+            tr(`${s.window_count} windows`, `${s.window_count}개 창`),
+          s.hidden ? tr("Hidden", "숨김") : "",
         ]
           .filter(Boolean)
           .join(" · "),
@@ -685,10 +899,16 @@ function renderSessions() {
       text(
         "p",
         query
-          ? "일치하는 세션이 없습니다."
+          ? tr("No matching sessions.", "일치하는 세션이 없습니다.")
           : snapshot.online
-            ? "아직 세션이 없습니다. +로 시작하세요."
-            : "Home 연결을 기다리고 있습니다.",
+            ? tr(
+                "No sessions yet. Select + to start.",
+                "아직 세션이 없습니다. +로 시작하세요.",
+              )
+            : tr(
+                "Waiting for Home to connect.",
+                "Home 연결을 기다리고 있습니다.",
+              ),
         "list-empty",
       ),
     );
@@ -757,18 +977,25 @@ function renderTabs() {
           e.preventDefault();
       };
       choose.onclick = () => selectTab(k);
-      choose.title = "드래그로 순서 변경 · Alt+Shift+좌우로 탭 전환";
+      choose.title = tr(
+        "Drag to reorder · Alt+Shift+arrow to switch tabs",
+        "드래그로 순서 변경 · Alt+Shift+좌우로 탭 전환",
+      );
       box.append(
         choose,
-        button("탭 닫기 (Alt+W)", "close", () => closeTab(k)),
+        button(msg("Close tab (Alt+W)", "탭 닫기 (Alt+W)"), "close", () =>
+          closeTab(k),
+        ),
       );
     }
     box.className = "tab" + (k === active ? " active" : "");
     box.dataset.status = k === active ? t.status : "idle";
     const choose = box.firstElementChild as HTMLButtonElement;
     choose.setAttribute("aria-selected", String(k === active));
-    choose.textContent = session ? label(session) : "세션 없음";
-    choose.title = `${choose.textContent} · 드래그로 순서 변경`;
+    choose.textContent = session
+      ? label(session)
+      : tr("Session unavailable", "세션 없음");
+    choose.title = `${choose.textContent} · ${tr("Drag to reorder", "드래그로 순서 변경")}`;
     if (list.children[position] !== box)
       list.insertBefore(box, list.children[position] || null);
     position++;
@@ -779,17 +1006,21 @@ function renderTabs() {
   $("#footer-connection").dataset.status = t?.status || "idle";
   $("#terminal-state").textContent = t
     ? {
-        connected: "연결됨",
-        connecting: "연결 중…",
-        disconnected: "연결 끊김",
+        connected: tr("Connected", "연결됨"),
+        connecting: tr("Connecting…", "연결 중…"),
+        disconnected: tr("Disconnected", "연결 끊김"),
       }[t.status]
     : "";
   $("#terminal-state").title = t?.recovery.description() || "";
   $("#terminal-state").setAttribute(
     "aria-label",
-    $("#terminal-state").textContent || "세션 없음",
+    $("#terminal-state").textContent || tr("Session unavailable", "세션 없음"),
   );
-  $("#reconnect").setAttribute("aria-label", "터미널 다시 연결");
+  bindAttribute(
+    $("#reconnect"),
+    "aria-label",
+    msg("Reconnect terminal", "터미널 다시 연결"),
+  );
   $("#reconnect").hidden =
     !t || t.status !== "disconnected" || !snapshot.online;
   $("#empty").hidden = tabs.size > 0;
@@ -905,7 +1136,10 @@ function selectTab(k: string) {
 function openSession(s: Session, activate = true) {
   if (!sharedLoaded && !applyingShared) {
     notice(
-      "공용 탭을 불러온 뒤 세션을 열 수 있습니다. Home 연결을 확인해주세요.",
+      msg(
+        "You can open sessions after shared tabs load. Check the Home connection.",
+        "공용 탭을 불러온 뒤 세션을 열 수 있습니다. Home 연결을 확인해주세요.",
+      ),
     );
     return;
   }
@@ -915,7 +1149,12 @@ function openSession(s: Session, activate = true) {
     return;
   }
   if (tabs.size >= 32) {
-    notice("최대 32개 탭을 열 수 있습니다. 사용하지 않는 탭을 닫아주세요.");
+    notice(
+      msg(
+        "You can open up to 32 tabs. Close unused tabs.",
+        "최대 32개 탭을 열 수 있습니다. 사용하지 않는 탭을 닫아주세요.",
+      ),
+    );
     return;
   }
   const host = document.createElement("div");
@@ -1129,7 +1368,10 @@ function connect(t: Tab, manual = false) {
     if (active === key(t.identity)) {
       notice(
         t.recovery.description() +
-          ` · 약 ${Math.ceil(event.retryMs / 1000)}초 후 다시 연결`,
+          tr(
+            ` · Reconnecting in about ${Math.ceil(event.retryMs / 1000)}s`,
+            ` · 약 ${Math.ceil(event.retryMs / 1000)}초 후 다시 연결`,
+          ),
       );
     }
     renderTabs();
@@ -1159,7 +1401,12 @@ function connect(t: Tab, manual = false) {
         const message = JSON.parse(e.data);
         if (message.type === "refresh-result" && active === key(t.identity)) {
           if (message.ok !== true)
-            notice("화면을 다시 그리지 못했습니다. 잠시 후 다시 시도하세요.");
+            notice(
+              msg(
+                "Could not redraw the terminal. Please try again shortly.",
+                "화면을 다시 그리지 못했습니다. 잠시 후 다시 시도하세요.",
+              ),
+            );
           else {
             t.term.refresh(0, t.term.rows - 1);
             $("#terminal-refresh").animate(
@@ -1244,19 +1491,24 @@ function send(data: string) {
     bytes.length > 256 << 10 ||
     t.ws.bufferedAmount + bytes.length > 512 << 10
   ) {
-    notice("입력 전송량이 많습니다. 나누어 붙여넣거나 연결을 확인하세요.");
+    notice(
+      msg(
+        "Too much input to send. Paste in smaller parts or check the connection.",
+        "입력 전송량이 많습니다. 나누어 붙여넣거나 연결을 확인하세요.",
+      ),
+    );
     return;
   }
   for (let i = 0; i < bytes.length; i += 16384)
     t.ws.send(bytes.subarray(i, i + 16384));
 }
-function dialog(title: string) {
+function dialog(title: TextValue) {
   attachments?.invalidate();
   tabs.get(active)?.interaction?.hide();
   dialogCleanup?.();
   dialogCleanup = undefined;
   $("#dialog").classList.remove("settings-dialog", "usage-dialog");
-  $("#dialog-title").textContent = title;
+  bindText($("#dialog-title"), title);
   $("#dialog-body").replaceChildren();
   // Native dialog restores its prior focus on close. Keep that target off the
   // terminal textarea so Android does not reopen the software keyboard.
@@ -1268,7 +1520,11 @@ function dialog(title: string) {
 }
 function dialogActions(primary: HTMLButtonElement) {
   const actions = text("div", "", "dialog-actions");
-  const cancel = text("button", "취소", "secondary") as HTMLButtonElement;
+  const cancel = text(
+    "button",
+    msg("Cancel", "취소"),
+    "secondary",
+  ) as HTMLButtonElement;
   cancel.type = "button";
   cancel.onclick = () => $<HTMLDialogElement>("#dialog").close();
   actions.append(cancel, primary);
@@ -1276,7 +1532,7 @@ function dialogActions(primary: HTMLButtonElement) {
 }
 function formField(
   parent: HTMLElement,
-  label: string,
+  label: TextValue,
   value = "",
   type = "text",
 ) {
@@ -1289,19 +1545,27 @@ function formField(
   return i;
 }
 function editDialog(s: Session) {
-  const body = dialog("세션 설정");
+  const body = dialog(msg("Session settings", "세션 설정"));
   body.append(text("p", s.name, "dialog-context"));
   const form = document.createElement("form");
-  const alias = formField(form, "표시 별칭", s.alias || "");
+  const alias = formField(
+    form,
+    msg("Display alias", "표시 별칭"),
+    s.alias || "",
+  );
   alias.maxLength = 80;
   const error = text("p", "", "error");
-  const save = text("button", "저장", "primary") as HTMLButtonElement;
+  const save = text(
+    "button",
+    msg("Save", "저장"),
+    "primary",
+  ) as HTMLButtonElement;
   save.type = "submit";
   form.append(error, dialogActions(save));
   form.onsubmit = async (e) => {
     e.preventDefault();
     save.disabled = true;
-    save.textContent = "저장 중…";
+    bindText(save, msg("Saving…", "저장 중…"));
     try {
       await action("alias", s, { alias: alias.value });
       s.alias = alias.value;
@@ -1314,13 +1578,15 @@ function editDialog(s: Session) {
       error.textContent = (e as Error).message;
     } finally {
       save.disabled = false;
-      save.textContent = "저장";
+      bindText(save, msg("Save", "저장"));
     }
   };
   body.append(form);
   const hide = text(
     "button",
-    s.hidden ? "목록에 다시 표시" : "목록에서 숨기기",
+    s.hidden
+      ? msg("Show in list", "목록에 다시 표시")
+      : msg("Hide from list", "목록에서 숨기기"),
     "session-visibility-action",
   ) as HTMLButtonElement;
   hide.onclick = async () => {
@@ -1339,7 +1605,14 @@ function editDialog(s: Session) {
   };
   body.append(
     hide,
-    text("p", "숨기거나 탭을 닫아도 Home의 작업은 종료되지 않습니다.", "muted"),
+    text(
+      "p",
+      msg(
+        "Hiding a session or closing its tab keeps work running on Home.",
+        "숨기거나 탭을 닫아도 Home의 작업은 종료되지 않습니다.",
+      ),
+      "muted",
+    ),
   );
 }
 // First-run hint in the empty workspace: point to Settings → AI 연결 until one
@@ -1368,10 +1641,14 @@ async function checkProviderOnboarding(force = false) {
         card.hidden = true;
         return;
       }
-      const open = text("button", "AI 연결하기", "secondary");
+      const open = text(
+        "button",
+        msg("Connect AI", "AI 연결하기"),
+        "secondary",
+      );
       open.type = "button";
       open.onclick = () => settingsDialog("providers");
-      const later = text("button", "나중에", "subtle-button");
+      const later = text("button", msg("Later", "나중에"), "subtle-button");
       later.type = "button";
       later.onclick = () => {
         preferences.set(providerOnboardingKey, "1");
@@ -1380,10 +1657,13 @@ async function checkProviderOnboarding(force = false) {
       const actions = text("div", "", "ai-onboarding-actions");
       actions.append(open, later);
       card.replaceChildren(
-        text("strong", "AI 연결이 필요합니다"),
+        text("strong", msg("Connect an AI provider", "AI 연결이 필요합니다")),
         text(
           "p",
-          "Codex, Claude Code, Gemini 중 하나를 설치하고 계정이나 API 키로 연결하면 바로 작업을 시작할 수 있습니다.",
+          msg(
+            "Install Codex, Claude Code, or Gemini and connect an account or API key to start working.",
+            "Codex, Claude Code, Gemini 중 하나를 설치하고 계정이나 API 키로 연결하면 바로 작업을 시작할 수 있습니다.",
+          ),
         ),
         actions,
       );
@@ -1397,14 +1677,24 @@ async function checkProviderOnboarding(force = false) {
     }
     const actions = text("div", "", "ai-onboarding-actions");
     for (const p of ready) {
-      const start = text("button", `${p.label} 시작`, "secondary");
+      const start = text(
+        "button",
+        () => tr(`Start ${p.label}`, `${p.label} 시작`),
+        "secondary",
+      );
       start.type = "button";
       start.onclick = () => startProfile(p.profile_id);
       actions.append(start);
     }
     card.replaceChildren(
-      text("strong", "바로 시작하세요"),
-      text("p", "연결된 AI로 새 세션을 열어 작업을 시작합니다."),
+      text("strong", msg("Start working", "바로 시작하세요")),
+      text(
+        "p",
+        msg(
+          "Open a new session with a connected AI provider.",
+          "연결된 AI로 새 세션을 열어 작업을 시작합니다.",
+        ),
+      ),
       actions,
     );
     card.hidden = false;
@@ -1446,26 +1736,41 @@ async function openCreatedSession(result: Identity) {
     await new Promise((resolve) => setTimeout(resolve, 400));
   }
   if (loggedIn && epoch === accountEpoch)
-    notice("세션을 만들었습니다. 목록이 갱신되면 열어주세요.");
+    notice(
+      msg(
+        "Session created. Open it when the list refreshes.",
+        "세션을 만들었습니다. 목록이 갱신되면 열어주세요.",
+      ),
+    );
 }
 async function createDialog() {
-  const body = dialog("새 작업 시작");
+  const body = dialog(msg("Start new work", "새 작업 시작"));
   body.append(
     text(
       "p",
-      "설정된 작업 경로 아래에 세션 이름으로 새 폴더를 만듭니다.",
+      msg(
+        "Creates a folder named after the session under the configured workspace path.",
+        "설정된 작업 경로 아래에 세션 이름으로 새 폴더를 만듭니다.",
+      ),
       "muted",
     ),
   );
   const form = document.createElement("form");
-  const name = formField(form, "세션 이름 (선택)");
+  const name = formField(
+    form,
+    msg("Session name (optional)", "세션 이름 (선택)"),
+  );
   name.maxLength = 80;
-  const l = text("label", "프로파일");
+  const l = text("label", msg("Profile", "프로파일"));
   const select = document.createElement("select");
   l.append(select);
   form.append(l);
   const error = text("p", "", "error");
-  const save = text("button", "세션 만들기", "primary") as HTMLButtonElement;
+  const save = text(
+    "button",
+    msg("Create session", "세션 만들기"),
+    "primary",
+  ) as HTMLButtonElement;
   save.disabled = true;
   form.append(error, dialogActions(save));
   body.append(form);
@@ -1481,8 +1786,10 @@ async function createDialog() {
     }
     save.disabled = !profiles.length;
     if (!profiles.length)
-      error.textContent =
-        "Home에 등록된 프로파일이 없습니다. 설정 → AI 연결에서 추가하세요.";
+      error.textContent = tr(
+        "No profiles are registered on Home. Add one in Settings → AI connections.",
+        "Home에 등록된 프로파일이 없습니다. 설정 → AI 연결에서 추가하세요.",
+      );
   } catch (e) {
     error.textContent = (e as Error).message;
   }
@@ -1502,12 +1809,19 @@ async function createDialog() {
   };
 }
 function settingsDialog(initialTab?: string) {
-  const body = dialog("설정");
+  const body = dialog(msg("Settings", "설정"));
   $("#dialog").classList.add("settings-dialog");
   const appearance = text("section", "", "settings-section");
   appearance.append(
-    text("h3", "터미널"),
-    text("p", "테마와 글자 크기는 이 기기에 저장됩니다.", "muted"),
+    text("h3", msg("Terminal", "터미널")),
+    text(
+      "p",
+      msg(
+        "Theme and font size are saved on this device.",
+        "테마와 글자 크기는 이 기기에 저장됩니다.",
+      ),
+      "muted",
+    ),
   );
   installThemePicker(
     appearance,
@@ -1521,20 +1835,37 @@ function settingsDialog(initialTab?: string) {
       );
     },
   );
-  const preview = text("div", "$ hmux · 한글 ABC 0123456789", "font-preview");
+  const preview = text(
+    "div",
+    msg("$ hmux · ABC 한글 0123456789", "$ hmux · 한글 ABC 0123456789"),
+    "font-preview",
+  );
   preview.style.fontFamily = terminalFonts.family();
   preview.style.fontSize = `${fontSize}px`;
   appearance.append(preview);
   const controls = text("div", "", "font-controls");
-  const decrease = button("글자 작게", "minus", () => apply(fontSize - 1));
-  const increase = button("글자 크게", "plus", () => apply(fontSize + 1));
-  const input = formField(controls, "글자 크기", String(fontSize), "range");
+  const decrease = button(msg("Decrease font size", "글자 작게"), "minus", () =>
+    apply(fontSize - 1),
+  );
+  const increase = button(msg("Increase font size", "글자 크게"), "plus", () =>
+    apply(fontSize + 1),
+  );
+  const input = formField(
+    controls,
+    msg("Font size", "글자 크기"),
+    String(fontSize),
+    "range",
+  );
   input.min = "8";
   input.max = "24";
   const value = text("output", `${fontSize}px`, "font-value");
   controls.prepend(decrease);
   controls.append(increase, value);
-  const reset = text("button", "기본 크기로", "subtle-button");
+  const reset = text(
+    "button",
+    msg("Reset font size", "기본 크기로"),
+    "subtle-button",
+  );
   reset.setAttribute("type", "button");
   reset.onclick = () => apply(preferredFontSize(mobileScreen.matches, null));
   appearance.append(controls, reset);
@@ -1552,18 +1883,21 @@ function settingsDialog(initialTab?: string) {
   const details = text("div", "", "appearance-details");
   details.append(
     text("span", "Monatendard Mono"),
-    text("span", "한글 · 영문 · Nerd Font"),
+    text(
+      "span",
+      msg("Korean · English · Nerd Font", "한글 · 영문 · Nerd Font"),
+    ),
   );
-  appearance.append(details);
+  appearance.append(details, languagePicker("settings-language"));
   const keys = text("section", "", "settings-section shortcut-guide");
-  keys.append(text("h3", "키보드 단축키"));
+  keys.append(text("h3", msg("Keyboard shortcuts", "키보드 단축키")));
   for (const [label, chord] of [
-    ["탭 이동", "Alt Shift ← / →"],
-    ["번호로 탭 이동", "Alt 1–9"],
-    ["사이드바", "Alt L / Alt ` (₩)"],
-    ["현재 탭 닫기", "Alt W"],
-    ["로그아웃", "Alt Q"],
-    ["세션 검색", "⌘ / Ctrl K"],
+    [msg("Switch tabs", "탭 이동"), "Alt Shift ← / →"],
+    [msg("Switch to numbered tab", "번호로 탭 이동"), "Alt 1–9"],
+    [msg("Sidebar", "사이드바"), "Alt L / Alt ` (₩)"],
+    [msg("Close current tab", "현재 탭 닫기"), "Alt W"],
+    [msg("Sign out", "로그아웃"), "Alt Q"],
+    [msg("Search sessions", "세션 검색"), "⌘ / Ctrl K"],
   ]) {
     const row = text("div", "", "shortcut-row");
     row.append(text("span", label), text("kbd", chord));
@@ -1571,8 +1905,15 @@ function settingsDialog(initialTab?: string) {
   }
   const install = text("section", "", "settings-section");
   install.append(
-    text("h3", "어디서든 HMux"),
-    text("p", "홈 화면에 추가하고 앱처럼 열어보세요.", "muted"),
+    text("h3", msg("HMux anywhere", "어디서든 HMux")),
+    text(
+      "p",
+      msg(
+        "Add HMux to your home screen and open it like an app.",
+        "홈 화면에 추가하고 앱처럼 열어보세요.",
+      ),
+      "muted",
+    ),
     installButton(),
   );
   const loginSessions = text("section", "", "settings-section login-sessions");
@@ -1588,13 +1929,33 @@ function settingsDialog(initialTab?: string) {
   installSettingsNavigation(
     body,
     [
-      { id: "terminal", label: "터미널", sections: [appearance] },
-      { id: "providers", label: "AI 연결", sections: [providerPanel] },
-      { id: "usage", label: "사용량", sections: [usagePanel] },
-      { id: "notifications", label: "알림", sections: [notifications] },
-      { id: "account", label: "계정", sections: [security, loginSessions] },
-      { id: "shortcuts", label: "단축키", sections: [keys] },
-      { id: "app", label: "앱 정보", sections: [install, diagnosticPanel] },
+      {
+        id: "terminal",
+        label: msg("Terminal", "터미널"),
+        sections: [appearance],
+      },
+      {
+        id: "providers",
+        label: msg("AI connections", "AI 연결"),
+        sections: [providerPanel],
+      },
+      { id: "usage", label: msg("Usage", "사용량"), sections: [usagePanel] },
+      {
+        id: "notifications",
+        label: msg("Notifications", "알림"),
+        sections: [notifications],
+      },
+      {
+        id: "account",
+        label: msg("Account", "계정"),
+        sections: [security, loginSessions],
+      },
+      { id: "shortcuts", label: msg("Shortcuts", "단축키"), sections: [keys] },
+      {
+        id: "app",
+        label: msg("About", "앱 정보"),
+        sections: [install, diagnosticPanel],
+      },
     ],
     initialTab,
   );
@@ -1705,7 +2066,7 @@ function renderFooter() {
   );
 }
 function usageDialog() {
-  const body = dialog("계정 사용량");
+  const body = dialog(msg("Account usage", "계정 사용량"));
   $("#dialog").classList.add("usage-dialog");
   const updatePanel = createUsagePanelUpdater(body);
   const render = () => {
@@ -1746,9 +2107,12 @@ async function refresh() {
       catalogVerified = next.online;
       if (next.online) closeEndedSessionTabs();
     }
-    $("#home-state").textContent = next.online
-      ? "연결됨 · Home에서 실행 중"
-      : "오프라인 · Home 연결 대기";
+    bindText(
+      $("#home-state"),
+      next.online
+        ? msg("Connected · Running on Home", "연결됨 · Home에서 실행 중")
+        : msg("Offline · Waiting for Home", "오프라인 · Home 연결 대기"),
+    );
     $("#home-dot").classList.toggle("online", next.online);
     renderSessions();
     renderTabs();
@@ -1766,7 +2130,7 @@ async function refresh() {
   }
 }
 // A tab whose tmux session has ended (for example Ctrl+D in Claude) closes
-// itself instead of lingering as "세션 없음". Only an online catalog counts,
+// itself instead of lingering as tr("Session unavailable", "세션 없음"). Only an online catalog counts,
 // and the session must be missing from two consecutive catalogs so a transient
 // gap cannot close a live tab. Closing is an explicit shared-workspace removal.
 const endedSessionMisses = new Map<string, number>();
@@ -1831,7 +2195,10 @@ function restoreTerminalFonts(): Promise<void> {
       requestAnimationFrame(() => tabs.get(active)?.fit.fit());
     } catch {
       notice(
-        "터미널 폰트 연결 대기 중입니다. 앱으로 돌아오거나 네트워크가 복구되면 다시 불러옵니다.",
+        msg(
+          "Waiting for terminal fonts. They will reload when you return or the network recovers.",
+          "터미널 폰트 연결 대기 중입니다. 앱으로 돌아오거나 네트워크가 복구되면 다시 불러옵니다.",
+        ),
       );
     }
   })().finally(() => {
@@ -1839,13 +2206,18 @@ function restoreTerminalFonts(): Promise<void> {
   });
   return fontRestore;
 }
-function showConnectionRecovery(message: string) {
+function showConnectionRecovery(message: TextValue) {
   const main = text("main", "", "login");
   const panel = text("section", "", "login-panel");
-  const retry = text("button", "다시 연결", "primary");
+  const retry = text("button", msg("Reconnect", "다시 연결"), "primary");
   retry.type = "button";
   retry.onclick = () => void start();
-  panel.append(text("h2", "연결 확인 중"), text("p", message, "muted"), retry);
+  panel.append(
+    text("h2", msg("Checking connection", "연결 확인 중")),
+    text("p", message, "muted"),
+    retry,
+    languagePicker("login-language"),
+  );
   main.append(panel);
   app.replaceChildren(main);
 }
@@ -1855,7 +2227,9 @@ async function start() {
   const request = {};
   const epoch = accountEpoch;
   startRequest = request;
-  showConnectionRecovery("기존 로그인을 확인하고 있습니다.");
+  showConnectionRecovery(
+    msg("Checking your existing sign-in.", "기존 로그인을 확인하고 있습니다."),
+  );
   try {
     const session = await api("/api/session");
     if (epoch !== accountEpoch) return;
@@ -1906,7 +2280,13 @@ async function start() {
       }
       renderSessions();
       renderTabs();
-      $("#home-state").textContent = "저장된 목록 · 최신 상태 확인 중";
+      bindText(
+        $("#home-state"),
+        msg(
+          "Saved list · Checking for updates",
+          "저장된 목록 · 최신 상태 확인 중",
+        ),
+      );
     }
     // Font downloads and shared-tab synchronization must not block recovery.
     void restoreTerminalFonts();
@@ -1915,8 +2295,11 @@ async function start() {
     if (epoch !== accountEpoch || (error as Error).name === "AbortError")
       return;
     const delay = retryDelay(++startFailures);
-    showConnectionRecovery(
-      `서버에 연결하지 못했습니다. 약 ${Math.ceil(delay / 1000)}초 후 다시 확인합니다.`,
+    showConnectionRecovery(() =>
+      tr(
+        `Could not reach the server. Retrying in about ${Math.ceil(delay / 1000)}s.`,
+        `서버에 연결하지 못했습니다. 약 ${Math.ceil(delay / 1000)}초 후 다시 확인합니다.`,
+      ),
     );
     startTimer = window.setTimeout(() => {
       if (epoch === accountEpoch) void start();
@@ -1943,6 +2326,25 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible" && loggedIn) {
     resumeConnection();
   }
+});
+onLocaleChange(() => {
+  collator = new Intl.Collator(localeTag(), {
+    numeric: true,
+    sensitivity: "base",
+  });
+  if (!loggedIn || !document.querySelector("#session-list")) return;
+  renderSessions();
+  renderTabs();
+  renderFooter();
+  refreshUsageDialog?.();
+  const floating = document.querySelector<HTMLElement>("#floating-tabs");
+  if (floating)
+    floating.setAttribute(
+      "aria-label",
+      app.classList.contains("floating-tabs-open")
+        ? tr("Collapse tab list", "탭 목록 접기")
+        : tr("Expand tab list", "탭 목록 펼치기"),
+    );
 });
 void start();
 
@@ -2072,9 +2474,16 @@ async function syncSharedWorkspace() {
       workspaceDirty = false;
       applySharedWorkspace(value);
       notice(
-        "공용 탭이 변경되어 Home 목록을 다시 불러왔습니다. 최근 로컬 탭 변경은 저장되지 않았습니다.",
+        msg(
+          "Shared tabs changed, so the Home list was reloaded. Recent local tab changes were not saved.",
+          "공용 탭이 변경되어 Home 목록을 다시 불러왔습니다. 최근 로컬 탭 변경은 저장되지 않았습니다.",
+        ),
       );
-      $("#footer-connection").title = "공용 탭 · 최신 목록 복원됨";
+      bindAttribute(
+        $("#footer-connection"),
+        "title",
+        msg("Shared tabs · Latest list restored", "공용 탭 · 최신 목록 복원됨"),
+      );
       return;
     }
     if (sent) {
@@ -2109,13 +2518,22 @@ async function syncSharedWorkspace() {
     } else if (!workspaceDirty) {
       applySharedWorkspace(value);
     }
-    $("#footer-connection").title = workspaceDirty
-      ? "공용 탭 · 동기화 중"
-      : "공용 탭 · 동기화됨";
+    bindAttribute(
+      $("#footer-connection"),
+      "title",
+      workspaceDirty
+        ? msg("Shared tabs · Syncing", "공용 탭 · 동기화 중")
+        : msg("Shared tabs · Synced", "공용 탭 · 동기화됨"),
+    );
     resolvePushTarget();
   } catch (error) {
     if (epoch !== workspaceEpoch) return;
-    if (loggedIn) $("#footer-connection").title = "공용 탭 · 동기화 대기";
+    if (loggedIn)
+      bindAttribute(
+        $("#footer-connection"),
+        "title",
+        msg("Shared tabs · Waiting to sync", "공용 탭 · 동기화 대기"),
+      );
   } finally {
     if (workspaceRequest === request) workspaceRequest = undefined;
   }
@@ -2135,7 +2553,7 @@ function applySharedWorkspace(value: SharedWorkspace) {
       if (tabs.has(key(id))) continue;
       const session = sessions.find((s) => key(s) === key(id)) || {
         ...id,
-        name: "세션 없음",
+        name: tr("Session unavailable", "세션 없음"),
         window_count: 0,
         attached_clients: 0,
       };

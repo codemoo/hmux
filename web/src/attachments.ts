@@ -1,3 +1,11 @@
+import {
+  t,
+  msg,
+  bindText,
+  bindAttribute,
+  onLocaleChange,
+  type TextValue,
+} from "./i18n.ts";
 import type { Identity } from "./types.ts";
 import {
   uploadFiles,
@@ -51,16 +59,16 @@ export function installAttachments(options: Options) {
     clearTimeout(clearTimer);
     render();
   };
-  const node = (tag: string, value: string, cls?: string) => {
+  const node = (tag: string, value: TextValue, cls?: string) => {
     const el = document.createElement(tag);
-    el.textContent = value;
+    bindText(el, value);
     if (cls) el.className = cls;
     return el;
   };
-  const action = (label: string, callback: () => void) => {
+  const action = (label: TextValue, callback: () => void) => {
     const b = document.createElement("button");
     b.type = "button";
-    b.textContent = label;
+    bindText(b, label);
     b.onclick = callback;
     return b;
   };
@@ -76,7 +84,10 @@ export function installAttachments(options: Options) {
     if (!current.result || !currentMatches(current.target)) return;
     if (current.result.stage.expires_at_unix * 1000 <= Date.now()) {
       current.state = "error";
-      current.error = "첨부가 만료되었습니다. 파일을 다시 선택해주세요.";
+      current.error = t(
+        "Attachment expired. Select the files again.",
+        "첨부가 만료되었습니다. 파일을 다시 선택해주세요.",
+      );
       render();
       return;
     }
@@ -108,49 +119,81 @@ export function installAttachments(options: Options) {
       const progress = document.createElement("progress");
       progress.max = current.total;
       progress.value = current.received;
-      progress.setAttribute("aria-label", "파일 전송 진행률");
+      bindAttribute(
+        progress,
+        "aria-label",
+        msg("File transfer progress", "파일 전송 진행률"),
+      );
       const percent = Math.floor((current.received / current.total) * 100);
       status.append(
         progress,
         node(
           "span",
-          percent === 100 ? "Home에 저장 중…" : `${percent}%`,
+          percent === 100
+            ? msg("Saving to Home…", "Home에 저장 중…")
+            : `${percent}%`,
           "attachment-detail",
         ),
-        action("취소", abort),
+        action(msg("Cancel", "취소"), abort),
       );
     } else if (current.state === "ready") {
       status.append(
         node(
           "span",
-          `${current.target.name} · 3시간 후 삭제`,
+          () =>
+            t(
+              `${current.target.name} · deleted after 3 hours`,
+              `${current.target.name} · 3시간 후 삭제`,
+            ),
           "attachment-detail",
         ),
       );
-      const paste = action("경로 넣기", () => insert(current));
+      const paste = action(msg("Insert path", "경로 넣기"), () =>
+        insert(current),
+      );
       paste.disabled = !currentMatches(current.target);
-      paste.title = "원래 탭에서 연결 후 누르세요";
-      status.append(paste, action("닫기", abort));
+      bindAttribute(
+        paste,
+        "title",
+        msg(
+          "Connect in the original tab, then select this",
+          "원래 탭에서 연결 후 누르세요",
+        ),
+      );
+      status.append(paste, action(msg("Close", "닫기"), abort));
     } else if (current.state === "inserted") {
       status.append(
-        node("span", "경로 입력 완료 · 3시간 후 삭제", "attachment-detail"),
-        action("닫기", abort),
+        node(
+          "span",
+          msg(
+            "Path inserted · deleted after 3 hours",
+            "경로 입력 완료 · 3시간 후 삭제",
+          ),
+          "attachment-detail",
+        ),
+        action(msg("Close", "닫기"), abort),
       );
     } else {
       status.append(
         node(
           "span",
-          current.error ?? "첨부하지 못했습니다",
+          current.error ?? msg("Could not attach files", "첨부하지 못했습니다"),
           "attachment-detail attachment-error",
         ),
-        action("닫기", abort),
+        action(msg("Close", "닫기"), abort),
       );
     }
   }
+  const unsubscribeLocale = onLocaleChange(render);
   const upload = async (files: File[], target: Target) => {
     if (disposed || !files.length) return;
     if (job?.state === "sending" || job?.state === "ready") {
-      options.error("진행 중인 첨부를 완료하거나 닫은 뒤 다시 첨부해주세요.");
+      options.error(
+        t(
+          "Finish or close the current attachment before attaching more files.",
+          "진행 중인 첨부를 완료하거나 닫은 뒤 다시 첨부해주세요.",
+        ),
+      );
       return;
     }
     try {
@@ -161,7 +204,10 @@ export function installAttachments(options: Options) {
     }
     if (!options.exists(target)) {
       options.error(
-        "첨부할 탭이 닫혔습니다. 탭을 선택한 뒤 다시 첨부해주세요.",
+        t(
+          "The target tab closed. Select a tab, then attach the files again.",
+          "첨부할 탭이 닫혔습니다. 탭을 선택한 뒤 다시 첨부해주세요.",
+        ),
       );
       return;
     }
@@ -173,7 +219,10 @@ export function installAttachments(options: Options) {
       name:
         files.length === 1
           ? files[0].name
-          : `${files[0].name} 외 ${files.length - 1}개`,
+          : t(
+              `${files[0].name} and ${files.length - 1} more`,
+              `${files[0].name} 외 ${files.length - 1}개`,
+            ),
       received: 0,
       total: files.reduce((sum, f) => sum + f.size, 0),
       state: "sending",
@@ -193,10 +242,12 @@ export function installAttachments(options: Options) {
           if (meter) meter.value = received;
           const detail = status.querySelector(".attachment-detail");
           if (detail)
-            detail.textContent =
+            bindText(
+              detail as HTMLElement,
               received === current.total
-                ? "Home에 저장 중…"
-                : `${Math.floor((received / current.total) * 100)}%`;
+                ? msg("Saving to Home…", "Home에 저장 중…")
+                : `${Math.floor((received / current.total) * 100)}%`,
+            );
         },
       );
       if (disposed || job !== current || !options.exists(target)) return;
@@ -266,7 +317,12 @@ export function installAttachments(options: Options) {
     resetDrag();
     const target = options.current();
     if (!target) {
-      options.error("연결된 터미널 탭을 선택한 뒤 파일을 놓아주세요.");
+      options.error(
+        t(
+          "Select a connected terminal tab before dropping files.",
+          "연결된 터미널 탭을 선택한 뒤 파일을 놓아주세요.",
+        ),
+      );
       return;
     }
     const entries = Array.from(event.dataTransfer?.items ?? []);
@@ -276,7 +332,12 @@ export function installAttachments(options: Options) {
           item.kind === "file" && item.webkitGetAsEntry?.()?.isDirectory,
       )
     ) {
-      options.error("폴더 대신 파일을 선택해주세요.");
+      options.error(
+        t(
+          "Select files instead of a folder.",
+          "폴더 대신 파일을 선택해주세요.",
+        ),
+      );
       return;
     }
     void upload(Array.from(event.dataTransfer?.files ?? []), {
@@ -307,6 +368,7 @@ export function installAttachments(options: Options) {
     dispose() {
       abort();
       disposed = true;
+      unsubscribeLocale();
       pickerTarget = undefined;
       resetDrag();
       for (const b of buttons) b.removeEventListener("click", choose);

@@ -1,3 +1,4 @@
+import { msg, bindText, bindAttribute } from "./i18n.ts";
 import type { Terminal } from "@xterm/xterm";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { hasNativeSelection } from "./native-clipboard.ts";
@@ -41,17 +42,17 @@ export function installTerminalLinks(
     popover = doc.createElement("div");
     popover.className = "terminal-link-popover xterm-hover";
     popover.setAttribute("role", "dialog");
-    popover.setAttribute("aria-label", "링크 열기");
+    bindAttribute(popover, "aria-label", msg("Open link", "링크 열기"));
     const address = doc.createElement("span");
     address.textContent = url;
     const open = doc.createElement("a");
     open.href = url;
     open.target = "_blank";
     open.rel = "noopener noreferrer";
-    open.textContent = "새 창에서 열기 ↗";
+    bindText(open, msg("Open in new window ↗", "새 창에서 열기 ↗"));
     const close = doc.createElement("button");
     close.type = "button";
-    close.textContent = "닫기";
+    bindText(close, msg("Close", "닫기"));
     close.onclick = hide;
     open.onclick = hide;
     popover.append(address, open, close);

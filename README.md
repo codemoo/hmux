@@ -1,5 +1,7 @@
 # HMux
 
+[English](README.md) | [한국어](README.ko.md)
+
 **Low memory, web terminal for AI agents.**
 
 HMux keeps long-running terminal sessions on a host you control and makes them
@@ -51,6 +53,7 @@ an arbitrary host OS has the same support just because a binary compiles there.
 - Persistent tmux sessions with desktop/mobile tabs, search and reconnects.
 - Password login, optional per-account TOTP, persistent logins and session revocation.
 - Responsive web/PWA interface, Korean input, selection/copy and explicit link opening.
+- English and Korean interface and installer; English is the default.
 - File attachments with a three-hour retention window on the host.
 - Provider usage, host metrics and a filtered Codex/Claude conversation reader.
 - Shared host state and recovery of verified tmux/provider sessions after a reboot.
@@ -93,6 +96,11 @@ Gateway requires Linux/systemd; Home supports macOS and Linux. Remote setup chec
 the target OS/CPU and transfers a matching native bundle. Gateway HTTPS can use
 managed Nginx/Let's Encrypt or your existing reverse proxy. Create the first account
 and configure TOTP in the browser using the private one-time setup token.
+
+Choose the web language on the login screen or in **Settings → Terminal → Language**.
+The choice is saved on this browser and changes the interface without reconnecting
+terminals. The installer offers a language choice; use `--lang en` or `--lang ko`
+to choose explicitly (`HMUX_LANG` is also supported).
 
 Same-host setup passes connection details automatically. Split-host setup uses a
 private connection file. Home asks for a workspace (default `~/.hmux`) and optional

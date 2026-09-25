@@ -308,6 +308,7 @@ strong {
 }
 .login-panel {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 50px 40px;
@@ -315,6 +316,35 @@ strong {
 .login-panel form {
   width: 100%;
   max-width: 355px;
+}
+.login-panel #bootstrap-setup,
+.login-language {
+  width: 100%;
+  max-width: 355px;
+}
+.login-language,
+.settings-language {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.login-language {
+  margin-top: 20px;
+}
+.login-language select,
+.settings-language select {
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  min-height: 34px;
+  padding: 5px 8px;
+}
+.settings-language {
+  margin-top: 18px;
 }
 .lock-badge {
   width: 42px;

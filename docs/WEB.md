@@ -4,6 +4,22 @@ This is the current web/PWA reference. Historical experiments are archived and
 are not implementation instructions. HMux Web uses TypeScript, Vite and xterm.js
 with a Rust gateway and one outbound Home connector. Web/PWA is the only HMux UI.
 
+## Interface language
+
+English is the default, including when the browser's language is Korean. Select
+**English** or **한국어** on the login/first-account screen or in
+**Settings → Terminal → Language**. The choice is stored in this browser as
+`hmux.locale`; if browser storage is blocked, switching still works for the visit.
+It is independent of account profiles, terminal settings and provider languages.
+
+Switching updates application labels, accessibility text and localized usage/date
+formats without reloading the page or reconnecting terminals. Mounted form inputs
+and authentication challenges are preserved. Terminal output, transcripts, session
+names, paths and provider responses are not translated. The same-scope service
+worker registration retains the selected language for anonymous offline copy and
+push notifications without caching account/session data. An offline or blocked
+worker update may keep the prior notification language until registration succeeds.
+
 ## Runtime and security
 
 Browser → HTTPS/WSS → Linux Nginx → loopback Rust gateway. Home → authenticated

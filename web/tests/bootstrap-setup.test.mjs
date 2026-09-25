@@ -214,6 +214,6 @@ test("setup rejects byte-short passwords before making a request", async () => {
   assert.ok(
     mount
       .querySelectorAll("p")
-      .some((entry) => entry.textContent.includes("8~128")),
+      .some((entry) => entry.textContent.includes("8–128")),
   );
 });

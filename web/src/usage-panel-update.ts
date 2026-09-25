@@ -1,3 +1,4 @@
+import { getLocale, t } from "./i18n.ts";
 import { renderUsagePanel } from "./usage-view.ts";
 import { selectedUsage, type UsagePreferences } from "./usage-preferences.ts";
 import type { Snapshot } from "./types.ts";
@@ -44,6 +45,7 @@ export function createUsagePanelUpdater(body: HTMLElement) {
   ) => {
     const signature = JSON.stringify([
       selectedUsage(snapshot, preferences),
+      getLocale(),
       preferences,
       Math.floor(now / 30000),
     ]);
@@ -62,7 +64,8 @@ export function createUsagePanelUpdater(body: HTMLElement) {
       previous = signature;
     }
     const host = body.querySelector(".usage-host");
-    const label = metrics || "Home · 사용량 대기 중";
+    const label =
+      metrics || t("Home · Waiting for usage", "Home · 사용량 대기 중");
     if (host && host.textContent !== label) host.textContent = label;
   };
 }

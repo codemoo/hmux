@@ -1,5 +1,15 @@
 // Network-only by design: no credentials, API replies, conversations or terminal
 // bytes are cached. The offline page contains no account or session information.
+// The same-scope registration URL retains only this device's language choice.
+// No settings database or response cache is needed, including after worker restarts.
+let locale = "en";
+try {
+  if (new URL(self.location.href).searchParams.get("lang") === "ko")
+    locale = "ko";
+} catch {
+  // Older registrations and unavailable location metadata default to English.
+}
+const text = (en, ko) => (locale === "ko" ? ko : en);
 self.addEventListener("install", (event) =>
   event.waitUntil(self.skipWaiting()),
 );
@@ -13,9 +23,9 @@ self.addEventListener("fetch", (event) => {
       () =>
         new Response(
           `<!doctype html>
-<html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#17191d"><title>HMux · 연결 대기</title>
+<html lang="${locale}"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#17191d"><title>HMux · ${text("Waiting for connection", "연결 대기")}</title>
 <style>body{margin:0;background:#17191d;color:#e5e7eb;font:16px/1.6 system-ui;display:grid;place-items:center;min-height:100dvh}main{padding:32px;max-width:360px}h1{font-size:28px}p{color:#a0a6b1}a{color:#9aadc6}</style>
-<main><h1>HMux</h1><p>네트워크 연결을 확인해주세요.<br>Home에서 실행 중인 작업은 계속됩니다.</p><a href="/">다시 연결</a></main></html>`,
+<main><h1>HMux</h1><p>${text("Check your network connection.<br>Your work keeps running on Home.", "네트워크 연결을 확인해주세요.<br>Home에서 실행 중인 작업은 계속됩니다.")}</p><a href="/">${text("Reconnect", "다시 연결")}</a></main></html>`,
           {
             status: 503,
             headers: {
@@ -45,7 +55,10 @@ function notificationFromPayload(value) {
   if (value.type === "test") {
     if (value.session !== undefined) return;
     return {
-      body: "알림이 정상적으로 연결되었습니다.",
+      body: text(
+        "Notifications are connected.",
+        "알림이 정상적으로 연결되었습니다.",
+      ),
       data: null,
       tag: `hmux-test-${value.event_id}`,
     };
@@ -69,8 +82,11 @@ function notificationFromPayload(value) {
   )
     return;
   return {
-    title: `Codex 완료 · ${tabName}`,
-    body: `${tabName} 탭의 작업이 완료됐습니다.`,
+    title: `${text("Codex complete", "Codex 완료")} · ${tabName}`,
+    body: text(
+      `Work in the ${tabName} tab is complete.`,
+      `${tabName} 탭의 작업이 완료됐습니다.`,
+    ),
     data: {
       session: { id: session.id, created_at: session.created_at },
       login_id: value.login_id,
