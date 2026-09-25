@@ -35,7 +35,12 @@ import {
   installIOSNativeInput,
   installMacSafariNativeInput,
 } from "./ios-native-input";
-import { releaseTerminalView, terminalSize } from "./terminal-session";
+import {
+  releaseTerminalView,
+  terminalSize,
+  syncTerminalSize,
+} from "./terminal-session";
+import { createKeyboardRestore } from "./keyboard-restore";
 import { createTerminalHeartbeat } from "./terminal-heartbeat";
 import { createTerminalOutput } from "./terminal-output";
 import { createViewportController } from "./viewport";
@@ -135,6 +140,12 @@ let readerAbort: AbortController | undefined;
 let layoutObserver: ResizeObserver | undefined;
 let layoutFrame = 0;
 let layoutSettledTimers: number[] = [];
+const keyboardRestore = createKeyboardRestore<Tab>();
+function redrawTerminal(tab: Tab) {
+  tab.fit.fit();
+  tab.term.refresh(0, tab.term.rows - 1);
+  if (syncTerminalSize(tab)) tab.ws!.send(JSON.stringify({ type: "refresh" }));
+}
 function fitActiveTerminal() {
   const tab = tabs.get(active);
   if (!tab || !tab.initialized || reading || !tab.host.isConnected) return;
@@ -155,6 +166,10 @@ function scheduleTerminalLayout() {
     window.setTimeout(() => {
       resizeMobileViewport();
       fitActiveTerminal();
+      if (delay === 800) {
+        const tab = keyboardRestore.take(tabs.get(active));
+        if (tab?.initialized && tab.host.isConnected) redrawTerminal(tab);
+      }
     }, delay),
   );
 }
@@ -775,16 +790,7 @@ function shell() {
       )
         return;
       if (t.ws?.readyState !== WebSocket.OPEN) return;
-      t.fit.fit();
-      t.term.refresh(0, t.term.rows - 1);
-      // Always resync the PTY size, even when FitAddon sees no local change.
-      t.ws.send(
-        JSON.stringify({
-          type: "resize",
-          ...terminalSize(t.term.cols, t.term.rows),
-        }),
-      );
-      t.ws.send(JSON.stringify({ type: "refresh" }));
+      redrawTerminal(t);
     };
   }
   $("#reconnect").onclick = () => {
@@ -1434,6 +1440,8 @@ function connect(t: Tab, manual = false) {
           t.nativeInput?.cancel();
           t.term.reset();
           renderTabs();
+          t.fit.fit();
+          syncTerminalSize(t);
           if (!isAndroid && active === key(t.identity)) focusTerminal(t);
         }
       } catch {
@@ -2613,7 +2621,18 @@ navigator.serviceWorker?.addEventListener("message", (event) => {
 
 const viewportController = createViewportController(app, isIOS, isAndroid);
 function resizeMobileViewport() {
-  viewportController.update();
+  const keyboardVisible = viewportController.update();
+  keyboardRestore.observe(
+    keyboardVisible,
+    (isIOS || isAndroid) &&
+      loggedIn &&
+      !loggingOut &&
+      !reading &&
+      document.visibilityState === "visible" &&
+      !document.querySelector("dialog[open]")
+      ? tabs.get(active)
+      : undefined,
+  );
 }
 window.visualViewport?.addEventListener("resize", scheduleTerminalLayout);
 window.visualViewport?.addEventListener("scroll", scheduleTerminalLayout);

@@ -57,6 +57,11 @@ expanded height per orientation. Never subtract keyboard height a second time.
 Keyboard-visible layout hides normal tabs/footer and exposes a top-right floating
 tab button. Auxiliary keys stay compact; pinch zoom is disabled. Remeasure on tab,
 dialog, focus, viewport and resume transitions, including settled measurements.
+After keyboard dismissal settles, resynchronize the fitted PTY size and request
+one redraw of that active view. Cancel pending redraws on ownership/generation
+changes, dialogs, backgrounding or keyboard reopening. Send the latest fitted
+size again when a terminal connection becomes ready; local xterm resize events
+may have happened while Home was still opening the view.
 
 Desktop macOS Safari uses the native-input bridge for the physical Safari 18.6
 Hangul trace: `insertText` arrives before keydown229 and selected
@@ -106,7 +111,9 @@ keep this behavior and stop that work; no additional confirmation is pending.
 Android keeps its top-left input anchor when opening the keyboard. Once the
 textarea is focused and the keyboard is visible, `android-native-paste.ts` exposes
 that same textarea across the current input row through a visual transform for
-native long-press Paste. Blur/keyboard dismissal restores pinned geometry. iOS and Android share
+native long-press Paste. Blur/keyboard dismissal removes that transform and
+restores the pinned textarea anchor; terminal expansion follows the viewport and
+PTY synchronization described above. iOS and Android share
 editable gesture protection; Android's xterm input/composition/paste handlers are
 unchanged. The user reported that the full-row target appears to work in Chrome
 PWA and chose to keep it. This is initial feedback, not exhaustive device coverage.

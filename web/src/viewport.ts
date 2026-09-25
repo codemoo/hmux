@@ -88,6 +88,7 @@ export function createViewportController(
         .querySelector("#floating-tabs")
         ?.setAttribute("aria-expanded", "false");
     }
+    return document.documentElement.classList.contains("keyboard-visible");
   }
 
   return { update };

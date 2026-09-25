@@ -157,6 +157,13 @@ After a frontend update, reload at a convenient stopping point; HMux does not
 force-reload an active terminal. A browser view reconnects to the existing tmux
 session. Do not clear credentials/site storage as the first troubleshooting step.
 
+- Keyboard dismissal: check that both the terminal area and its tmux content
+  expand again, including when input keeps focus or the connection is opening.
+  The same view receives a settled size/redraw; no reconnect should be needed.
+  If content remains smaller than the area, record whether the redraw button
+  helps and whether another client is attached to that tmux window. Grouped views
+  share its existing tmux sizing policy. Record browser, OS and PWA mode; an
+  emulated viewport is not evidence of physical-keyboard/OS behavior.
 - iPhone: type directly in the terminal. Native Korean edits remain visible until
   a boundary such as space/Enter commits them. Long press near the input caret for
   the OS Paste menu. Its slightly slow first appearance was accepted; its cause
