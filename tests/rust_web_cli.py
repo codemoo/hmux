@@ -57,11 +57,11 @@ class NativeWebCLI(unittest.TestCase):
         self.cred.symlink_to(self.root / "missing")
         self.assertIn(b"refusing to overwrite", self.command(*self.init_args()).stderr)
 
-    def start_terminal(self):
+    def start_terminal(self, args=None):
         master, slave = os.openpty()
         self.addCleanup(os.close, master)
         self.addCleanup(os.close, slave)
-        process = subprocess.Popen([BINARY, *self.init_args()], stdin=slave, stdout=slave, stderr=slave, env=self.env)
+        process = subprocess.Popen([BINARY, *(self.init_args() if args is None else args)], stdin=slave, stdout=slave, stderr=slave, env=self.env)
         def cleanup():
             if process.poll() is None:
                 process.kill()
@@ -121,6 +121,89 @@ class NativeWebCLI(unittest.TestCase):
         self.assertTrue(termios.tcgetattr(slave)[3] & termios.ECHO)
         self.assertFalse(self.cred.exists())
         self.assertFalse(self.token.exists())
+
+    def install_args(self):
+        source = self.root / "bundle"
+        source.mkdir(mode=0o700)
+        for name in ["hmux-web", "hmux-agent"]:
+            path = source / name
+            path.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > "$HOME/setup-args"\n')
+            path.chmod(0o700)
+        return ["install-home", "--guided", "--source-dir", str(source)]
+
+    def test_guided_install_declines_service_and_keeps_output_plain_with_no_color(self):
+        self.env.update(TERM="xterm-256color", NO_COLOR="1")
+        process, master, _ = self.start_terminal(self.install_args())
+        output = self.read_until(master, b"New-session base directory [~/.hmux]: ")
+        self.assertIn(b"HMux / Home", output)
+        os.write(master, "~/my project 한글\n".encode())
+        output += self.read_until(master, b"Set up automatic startup now? [y/N]: ")
+        os.write(master, b"\n")
+        output += self.read_until(master, b"--token-file '/PRIVATE/connector.token'")
+        self.assertEqual(process.wait(timeout=10), 0)
+        self.assertNotIn(b"\x1b[", output)
+        self.assertIn(b"Home installed", output)
+        self.assertIn("~/my project 한글", (self.root / "setup-args").read_text())
+        self.assertTrue((self.root / ".local/bin/hmux-web").is_file())
+        self.assertFalse((self.root / "Library/LaunchAgents").exists())
+        self.assertFalse((self.root / ".config/systemd").exists())
+
+    def test_guided_install_validates_address_and_cancels_before_mutation(self):
+        process, master, _ = self.start_terminal(self.install_args())
+        self.read_until(master, b"New-session base directory [~/.hmux]: ")
+        os.write(master, b"\n")
+        self.read_until(master, b"Set up automatic startup now? [y/N]: ")
+        os.write(master, b"y\n")
+        self.read_until(master, b"Gateway address (https://...): ")
+        os.write(master, b"http://hmux.example\n")
+        output = self.read_until(master, b"Gateway address (https://...): ")
+        self.assertIn(b"Use an HTTPS site address", output)
+        os.write(master, b"https://hmux.example\n")
+        self.read_until(master, b"Connector token file [")
+        os.write(master, b"/missing/synthetic-token\n")
+        output = self.read_until(master, b"Token file unavailable.")
+        self.assertNotIn(b"Home installed", output)
+        process.send_signal(signal.SIGTERM)
+        self.assertNotEqual(process.wait(timeout=5), 0)
+        self.assertFalse((self.root / ".config").exists())
+        self.assertFalse((self.root / ".local").exists())
+        self.assertFalse((self.root / "setup-args").exists())
+
+    def test_guided_install_requires_terminal_before_mutation(self):
+        result = self.command(*self.install_args())
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(b"--guided requires an interactive terminal", result.stderr)
+        self.assertFalse((self.root / ".config").exists())
+        self.assertFalse((self.root / ".local").exists())
+
+    def test_guided_valid_token_reaches_setup_without_printing_secret(self):
+        args = self.install_args()
+        # Stop at setup to exercise a valid Yes choice without ever entering a
+        # real launchd/systemd manager or making a network connection.
+        helper = self.root / "bundle/hmux-agent"
+        helper.write_text(helper.read_text() + "exit 42\n")
+        private = self.root / "private"
+        private.mkdir(mode=0o700)
+        token = private / "connector.token"
+        secret = base64.urlsafe_b64encode(bytes(range(32))).rstrip(b"=")
+        token.write_bytes(secret + b"\n")
+        token.chmod(0o600)
+        self.env["NO_COLOR"] = "1"
+        process, master, _ = self.start_terminal(args)
+        output = self.read_until(master, b"New-session base directory [~/.hmux]: ")
+        os.write(master, b"\n")
+        output += self.read_until(master, b"Set up automatic startup now? [y/N]: ")
+        os.write(master, b"y\n")
+        output += self.read_until(master, b"Gateway address (https://...): ")
+        os.write(master, b"https://hmux.example\n")
+        output += self.read_until(master, b"Connector token file [")
+        os.write(master, str(token).encode() + b"\n")
+        output += self.read_until(master, b"04  Install Home")
+        self.assertNotEqual(process.wait(timeout=5), 0)
+        self.assertIn("setup-home", (self.root / "setup-args").read_text())
+        self.assertNotIn(secret, output)
+        self.assertFalse((self.root / "Library/LaunchAgents").exists())
+        self.assertFalse((self.root / ".config/systemd").exists())
 
 
 if __name__ == "__main__":

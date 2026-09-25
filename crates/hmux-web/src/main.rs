@@ -2,6 +2,7 @@
 mod args;
 mod enroll;
 mod install;
+mod install_ui;
 mod logging;
 use args::{absolute, invalid, Options};
 use hmux_gateway::runtime::{GatewayRuntime, Options as GatewayOptions};

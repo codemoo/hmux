@@ -67,9 +67,10 @@ cd hmux
 ```
 
 Follow the [installation guide](docs/OPERATIONS.md) to configure your own host, gateway,
-domain and credentials. No hosted service, private configuration or maintainer
-infrastructure access is included. Build prerequisites are the pinned Rust toolchain,
-Node.js 22+, Python 3 and tmux on the Home host. HTTPS is required for remote web access.
+domain and credentials. The current distribution starts from source; building needs
+the pinned Rust toolchain, Node.js 22+ and Python 3. Once built, the native installer
+needs none of those tools. The Home host needs tmux and your chosen provider CLIs.
+Remote access requires your own HTTPS Gateway and connector token.
 
 ```sh
 make build
@@ -81,11 +82,17 @@ existing sessions. Build another supported target only when its Rust target, lin
 and platform SDK are available, for example through `HMUX_RUST_TARGETS`; see
 [Operations](docs/OPERATIONS.md#build-and-install-home).
 
-Install the Home connector and administration helper from the built bundle:
+Run the guided Home installer from the bundle for your platform:
 
 ```sh
-./dist/web-darwin-arm64/hmux-web install-home
+./dist/web-darwin-arm64/hmux-web install-home --guided
 ```
+
+The guide checks local tools, asks for a workspace (default `~/.hmux`) and offers
+automatic startup. Enter your Gateway's HTTPS address and private token-file path
+to connect now, or skip that step and connect later. Existing workspace paths are
+preserved. The completion screen gives the next command with your install paths.
+For scripts, omit `--guided` and use the [explicit options](docs/OPERATIONS.md#build-and-install-home).
 
 macOS here refers to the host running tmux. An optional
 [native Home service](docs/OPERATIONS.md#automatic-home-startup-macos-and-linux)

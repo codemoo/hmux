@@ -206,16 +206,25 @@ fn secret(
 
 /// Optional new-install workspace prompt; existing installations never prompt.
 pub fn workspace_prompt(stop: &CancellationToken) -> io::Result<String> {
-    let stdin = io::stdin();
-    let mut input = stdin.lock();
-    print!("New-session base directory [~/.hmux]: ");
-    io::stdout().flush()?;
-    let line = read_line(&mut input, stop, 4096)?;
-    Ok(if line.trim().is_empty() {
+    let line = line_prompt(stop, "New-session base directory [~/.hmux]: ")?;
+    Ok(if line.is_empty() {
         "~/.hmux".into()
     } else {
-        line.trim().into()
+        line
     })
+}
+
+/// Bounded, cancellable input for non-secret installer choices.
+pub fn line_prompt(stop: &CancellationToken, prompt: &str) -> io::Result<String> {
+    let stdin = io::stdin();
+    let mut input = stdin.lock();
+    print!("{prompt}");
+    io::stdout().flush()?;
+    let line = read_line(&mut input, stop, 4096)?;
+    if line.chars().any(char::is_control) {
+        return Err(invalid("input must not contain control characters"));
+    }
+    Ok(line.trim().into())
 }
 
 #[cfg(test)]

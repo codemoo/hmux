@@ -20,11 +20,26 @@ notices and a SHA-256 manifest. Build does not deploy. To build a non-host suppo
 target, set `HMUX_RUST_TARGETS` only after installing its Rust target, linker and any
 required platform SDK. The target's binary is not portable across platforms.
 
-Install the Home pair explicitly from its built bundle:
+For a guided installation, run the Home pair's installer from its built bundle:
 
 ```sh
-./dist/web-darwin-arm64/hmux-web install-home
+./dist/web-darwin-arm64/hmux-web install-home --guided
 ```
+
+The terminal guide shows installation steps and local tmux/provider availability,
+then asks whether to configure automatic startup. The default is **No**. To connect
+now, supply an existing HTTPS Gateway address and a private connector token file
+copied from that Gateway. HTTPS site addresses are converted to the strict WSS
+connector endpoint; invalid addresses or token files can be corrected at the prompt.
+Token contents are never printed. The guide does not install packages, authenticate
+provider CLIs, provision a Gateway or configure HTTPS.
+
+Prompts support cancellation before setup starts. Existing workspace configuration
+is preserved unless an explicit `--workspace-dir` is supplied. `--guided` requires
+a terminal; omit it for scripts using explicit flags. A supported terminal gets
+restrained color headings; `NO_COLOR` or `TERM=dumb` keeps plain output. Both modes
+show installed paths and the next command. Automatic startup registration is
+reported separately from a verified Gateway connection.
 
 The native installer preflights both source/target binaries, rejects symlinks and
 unsafe ownership/permissions, configures Home through `hmux-agent setup-home`, and
@@ -46,7 +61,9 @@ including custom paths. An explicit `--workspace-dir` updates all profile bases
 with a timestamped inventory backup, preserving other settings and legacy fields.
 Existing `client.toml` remains authoritative when `home.toml` is absent; `state_dir`
 and provider command arguments are preserved. The installer starts a service only
-with `--enable-service`; without it, running connectors are untouched.
+with `--enable-service` or an explicit Yes in the guide; otherwise running
+connectors are untouched. `--guided --enable-service` retains the explicit service
+options and, when none are supplied, the existing running-connector adoption flow.
 `--binaries-only` skips configuration entirely and cannot enable a service.
 `--source-dir`, `--bin-dir` and `--config-dir` select alternative locations.
 Coordinate connector restart separately; restore binary backup bytes with executable

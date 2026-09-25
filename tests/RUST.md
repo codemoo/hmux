@@ -32,6 +32,10 @@ pair gate launches actual `serve`/`connect` commands through a test-local TLS pr
 logs in and checks catalog/terminal ACK and reconnect using synthetic host tools.
 The Home WSS suite independently checks both JSON v1 and Protobuf v2. Real tmux
 session/view tests use a disposable isolated socket and fake providers.
+The native CLI gate also drives the guided installer through a PTY with synthetic
+bundle tools: service opt-out, literal workspace input, plain output, invalid
+connection input and cancellation before setup. A valid-token Yes case stops at
+an intentional setup failure; these checks do not register a real service.
 
 The opt-in native metrics check reads only the host's CPU, RAM and filesystem
 statistics; GPU support is optional. It does not attach to tmux or provider work:

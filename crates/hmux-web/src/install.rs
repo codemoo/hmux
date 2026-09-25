@@ -19,8 +19,9 @@ struct Options {
     enable_service: bool,
     endpoint: Option<OsString>,
     token: Option<PathBuf>,
+    guided: bool,
 }
-const USAGE: &str = "usage: hmux-web install-home [--source-dir DIR] [--bin-dir DIR] [--config-dir DIR] [--workspace-dir DIR] [--binaries-only | --enable-service [--url wss://host/connect --token-file FILE]]";
+const USAGE: &str = "usage: hmux-web install-home [--guided] [--source-dir DIR] [--bin-dir DIR] [--config-dir DIR] [--workspace-dir DIR] [--binaries-only | --enable-service [--url wss://host/connect --token-file FILE]]";
 fn parse(args: &[OsString]) -> io::Result<Options> {
     if args.len() > 64 || args.iter().map(|v| v.len()).sum::<usize>() > 65536 {
         return Err(invalid("installation arguments exceed limit"));
@@ -33,8 +34,16 @@ fn parse(args: &[OsString]) -> io::Result<Options> {
             .split_once('=')
             .map_or((raw, None), |(k, v)| (k, Some(OsString::from(v))));
         match key {
-            "--binaries-only" => options.binaries_only = true,
-            "--enable-service" => options.enable_service = true,
+            "--binaries-only" | "--enable-service" | "--guided" => {
+                if inline.is_some() {
+                    return Err(invalid("installation switches do not accept a value"));
+                }
+                match key {
+                    "--binaries-only" => options.binaries_only = true,
+                    "--enable-service" => options.enable_service = true,
+                    _ => options.guided = true,
+                }
+            }
             _ => {
                 let value = if let Some(ref inline) = inline {
                     inline
@@ -62,6 +71,9 @@ fn parse(args: &[OsString]) -> io::Result<Options> {
         return Err(invalid(
             "--binaries-only cannot be combined with --enable-service",
         ));
+    }
+    if options.binaries_only && options.guided {
+        return Err(invalid("--guided cannot be combined with --binaries-only"));
     }
     if options.endpoint.is_some() != options.token.is_some() {
         return Err(invalid("--url and --token-file must be supplied together"));
@@ -128,10 +140,15 @@ async fn command(binary: &Path, args: Vec<OsString>, stop: &CancellationToken) -
 }
 pub async fn run(args: &[OsString], stop: CancellationToken) -> io::Result<()> {
     if args == ["--help"] || args == ["-h"] {
-        println!("{USAGE}");
+        println!("{USAGE}\n\nInstall the native Home connector and helper.\n\n  --guided          Walk through workspace and connection setup\n  --enable-service  Register automatic startup; adopt a running connector\n                    when --url and --token-file are omitted\n  --binaries-only   Update executables without changing configuration\n\nExamples:\n  hmux-web install-home --guided\n  hmux-web install-home --enable-service --url wss://hmux.example/connect --token-file ~/.config/hmux/web/connector.token\n\nAutomatic startup is opt-in. Existing workspace paths are preserved.");
         return Ok(());
     }
     let mut options = parse(args)?;
+    if options.guided && !(io::stdin().is_terminal() && io::stdout().is_terminal()) {
+        return Err(invalid(
+            "--guided requires an interactive terminal; use explicit flags for automation",
+        ));
+    }
     let home = std::env::var_os("HOME")
         .map(PathBuf::from)
         .filter(|p| p.is_absolute())
@@ -147,8 +164,11 @@ pub async fn run(args: &[OsString], stop: CancellationToken) -> io::Result<()> {
     )?;
     let bin = resolved(&options.bin.unwrap_or(home.join(".local/bin")), &home)?;
     let config = resolved(&options.config.unwrap_or(home.join(".config/hmux")), &home)?;
+    let ui = crate::install_ui::Display::new();
+    ui.welcome(options.binaries_only);
+    ui.step(1, "Check installation files");
+    validate_candidate(&source)?;
     if !options.binaries_only {
-        hmux_core::PrivateDir::open_or_create_trusted(&config)?;
         let mut existing = false;
         for name in ["home.toml", "client.toml", "inventory.toml"] {
             match std::fs::symlink_metadata(config.join(name)) {
@@ -156,6 +176,10 @@ pub async fn run(args: &[OsString], stop: CancellationToken) -> io::Result<()> {
                 Err(e) if e.kind() == io::ErrorKind::NotFound => (),
                 Err(e) => return Err(e),
             }
+        }
+        ui.step(2, "Choose your workspace");
+        if existing && options.workspace.is_none() {
+            println!("  Existing configuration found. Keeping your workspace paths.");
         }
         if !existing && options.workspace.is_none() && io::stdin().is_terminal() {
             let stop = stop.clone();
@@ -166,6 +190,31 @@ pub async fn run(args: &[OsString], stop: CancellationToken) -> io::Result<()> {
                     .into(),
             );
         }
+        if options.guided {
+            ui.dependencies();
+            ui.step(3, "Connect your Home");
+            let stop = stop.clone();
+            let enable_service = options.enable_service;
+            let explicit_connection = options.endpoint.is_some();
+            let home = home.clone();
+            let config = config.clone();
+            let choice = tokio::task::spawn_blocking(move || {
+                crate::install_ui::connection(
+                    &stop,
+                    enable_service,
+                    explicit_connection,
+                    &home,
+                    &config,
+                )
+            })
+            .await
+            .map_err(io::Error::other)??;
+            options.enable_service = choice.enable_service;
+            if let Some((endpoint, token)) = choice.connection {
+                options.endpoint = Some(endpoint.into());
+                options.token = Some(token);
+            }
+        }
     }
     if options.binaries_only {
         active(&stop)?;
@@ -175,6 +224,7 @@ pub async fn run(args: &[OsString], stop: CancellationToken) -> io::Result<()> {
             .map_err(io::Error::other)??;
         active(&stop)?;
         println!("Installed hmux-web and hmux-agent");
+        ui.complete(&bin, &config, false, true);
         return Ok(());
     }
     let mut setup = vec![
@@ -185,10 +235,11 @@ pub async fn run(args: &[OsString], stop: CancellationToken) -> io::Result<()> {
     if let Some(workspace) = options.workspace {
         setup.extend(["--workspace-dir".into(), workspace]);
     }
-    validate_candidate(&source)?;
+    ui.step(if options.guided { 4 } else { 3 }, "Install Home");
     command(&source.join("hmux-agent"), setup, &stop).await?;
     println!("Home configured; existing paths are preserved unless --workspace-dir is supplied.");
-    if options.enable_service {
+    let enable_service = options.enable_service;
+    if enable_service {
         let binary = bin.join("hmux-web");
         let mut service = vec![
             "service".into(),
@@ -221,7 +272,7 @@ pub async fn run(args: &[OsString], stop: CancellationToken) -> io::Result<()> {
                     .map_err(|_| invalid("service paths must be UTF-8"))
             })
             .collect::<io::Result<Vec<_>>>()?;
-        let output = hmux_service::run_with_bundle(&args, stop, source, bin).await?;
+        let output = hmux_service::run_with_bundle(&args, stop, source, bin.clone()).await?;
         println!("Installed hmux-web and hmux-agent");
         print!("{output}");
     } else {
@@ -233,6 +284,7 @@ pub async fn run(args: &[OsString], stop: CancellationToken) -> io::Result<()> {
         active(&stop)?;
         println!("Installed hmux-web and hmux-agent");
     }
+    ui.complete(&bin, &config, enable_service, false);
     Ok(())
 }
 #[cfg(test)]
@@ -245,6 +297,9 @@ mod tests {
             vec!["--token-file", "/token"],
             vec!["--enable-service", "--binaries-only"],
             vec!["--unknown", "x"],
+            vec!["--guided", "--binaries-only"],
+            vec!["--enable-service=false"],
+            vec!["--guided=no"],
         ] {
             assert!(parse(&args.into_iter().map(Into::into).collect::<Vec<_>>()).is_err());
         }
