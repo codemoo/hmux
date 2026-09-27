@@ -363,3 +363,100 @@ fn terminal_stdin_reads_valid_hook_and_restores_fd_flags() {
     assert!(root.join(".local/state/hmux/workflows/state.json").exists());
     fs::remove_dir_all(root).unwrap();
 }
+
+#[test]
+fn conversation_link_cli_validates_and_unlinks_after_session_closes() {
+    let root = root();
+    let bin = root.join("bin");
+    fs::create_dir(&bin).unwrap();
+    let scripts = [
+        ("tmux", "#!/bin/sh\ncase \"$1\" in\nlist-sessions) /bin/cat \"$HOME/sessions\" ;;\nlist-windows) printf '%s\\n' '$7|:hmux-sep-v1:|main|:hmux-sep-v1:|1|:hmux-sep-v1:|/work|:hmux-sep-v1:|zsh|:hmux-sep-v1:|80|:hmux-sep-v1:|24|:hmux-sep-v1:|80' ;;\n*) exit 99 ;;\nesac\n"),
+        ("ps", "#!/bin/sh\nif [ \"$1\" = -p ]; then printf '%s\\n' 'synthetic start'; else printf '%s\\n' '80 1 S 0.0 zsh' '90 80 S+ 0.1 codex'; fi\n"),
+        ("lsof", "#!/bin/sh\nexit 0\n"),
+    ];
+    for (name, body) in scripts {
+        fs::write(bin.join(name), body).unwrap();
+        fs::set_permissions(bin.join(name), fs::Permissions::from_mode(0o700)).unwrap();
+    }
+    fs::write(root.join("sessions"), "$7|:hmux-sep-v1:|example|:hmux-sep-v1:|1700000000|:hmux-sep-v1:|1700000200|:hmux-sep-v1:|0|:hmux-sep-v1:|1|:hmux-sep-v1:||:hmux-sep-v1:|\n").unwrap();
+    let path = root.join(".codex/sessions/2026/09/27/rollout-example-thread-test.jsonl");
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::write(&path, "{\"type\":\"session_meta\",\"payload\":{\"id\":\"thread-test\",\"source\":\"cli\"}}\n{\"type\":\"response_item\",\"payload\":{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"Fixture question\"}]}}\n").unwrap();
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).unwrap();
+    let invalid = cli(
+        &root,
+        &[
+            "conversation-link",
+            "--session",
+            "$7",
+            "--created-at",
+            "1700000000",
+            "--codex-thread",
+            "wrong-thread",
+            "--record",
+            path.to_str().unwrap(),
+        ],
+    )
+    .output()
+    .unwrap();
+    assert!(!invalid.status.success());
+    let linked = cli(
+        &root,
+        &[
+            "conversation-link",
+            "--session",
+            "$7",
+            "--created-at",
+            "1700000000",
+            "--codex-thread",
+            "thread-test",
+            "--record",
+            path.to_str().unwrap(),
+        ],
+    )
+    .output()
+    .unwrap();
+    assert!(
+        linked.status.success(),
+        "{}",
+        String::from_utf8_lossy(&linked.stderr)
+    );
+    let out = cli(
+        &root,
+        &[
+            "conversation",
+            "--session",
+            "$7",
+            "--created-at",
+            "1700000000",
+        ],
+    )
+    .output()
+    .unwrap();
+    assert!(out.status.success());
+    let value: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(value["status"], "linked");
+    assert_eq!(value["messages"][0]["text"], "Fixture question");
+    fs::write(root.join("sessions"), "").unwrap();
+    let out = cli(
+        &root,
+        &[
+            "conversation-unlink",
+            "--session",
+            "$7",
+            "--created-at",
+            "1700000000",
+        ],
+    )
+    .output()
+    .unwrap();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(!root
+        .join(".local/state/hmux/conversation-links/$7.json")
+        .exists());
+    fs::remove_dir_all(root).unwrap();
+}

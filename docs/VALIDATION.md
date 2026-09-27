@@ -1,6 +1,6 @@
 # Validation status
 
-Evidence summary updated 2026-09-26. Deployment observations describe one maintained
+Evidence summary updated 2026-09-27. Deployment observations describe one maintained
 installation, not every HMux deployment. [Rust runtime status](RUST_MIGRATION.md)
 owns the remaining acceptance queue; [Rust verification](../tests/RUST.md) owns
 runnable checks. Detailed investigations, earlier CI failures and per-change
@@ -28,6 +28,24 @@ parallel build resumed with two build jobs. These are automated fixture results,
 not physical-device or long-running stability acceptance. Earlier CI outcomes
 are checkpoint-specific; see the dated record rather than inferring current CI
 status from a prior local result.
+
+## Explicit Codex conversation links
+
+Shared-daemon Codex clients can lack a client-owned rollout descriptor. The reader
+now supports an administrator-selected, visibly labeled transcript link, without
+using cwd/newest-file guesses or changing provider execution. The 4 MiB tail and
+public-output limits are retained. Process start checks are best-effort, as described
+in [Operations](OPERATIONS.md#administration); switching threads in the same CLI
+still requires relinking.
+
+Automated macOS checks passed: 12 conversation peer tests across JSON/Protobuf,
+private-link identity/inode/symlink/storage-cap checks, and a CLI integration test
+covering create/read and unlink after tmux closure. Automatic bindings take
+precedence and ambiguous bindings never expose linked text. Rust formatting and
+strict Clippy passed for Home/helper targets. Web TypeScript/formatting, 199 tests
+and the production build passed. Independent review of the lifecycle/storage
+corrections found no remaining material issue. These are targeted checks, not a
+new full-workspace, Linux-runtime or physical-device acceptance run.
 
 ## Mobile keyboard restoration
 

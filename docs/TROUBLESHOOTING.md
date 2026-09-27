@@ -108,10 +108,16 @@ clock agreement. Platform collectors remain host-specific.
 
 ## Codex conversations are unavailable
 
-Home needs one exact provider binding for the active pane. Ambiguous, missing or
+Automatic discovery needs one exact provider binding for the active pane. Ambiguous, missing or
 changing rollout files are unavailable rather than guessed. The reader returns only
 a bounded tail of complete records, excluding tools and internal context. Markdown
 rendering does not execute raw HTML. See [WEB.md](WEB.md#conversation-reader).
+
+For a shared Codex daemon with no per-client rollout descriptor, supply the exact
+thread ID shown by the CLI and its matching rollout path to the Home administrator.
+Use the reader-only link command documented in [Operations](OPERATIONS.md#administration).
+Do not select the newest file or match only by working directory. Relink after
+switching threads inside the same CLI; this does not restart the provider.
 
 ## Reboot recovery
 

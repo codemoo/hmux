@@ -71,6 +71,22 @@ rechecked after reading. Claude tool results, thinking blocks, sidechain message
 metadata and compaction summaries are excluded. The assistant label follows the
 server-provided provider. Markdown tables and existing filters apply to both.
 
+Codex clients using a shared app-server daemon may not expose a per-client rollout
+file descriptor. In that case a Home administrator can explicitly link a known
+thread using `hmux-agent conversation-link` (see [Operations](OPERATIONS.md#administration)).
+The reader labels these responses as manually linked. Links are reader-only and
+never supply recovery, catalog attribution or completion notifications. Exact
+automatic bindings take precedence; ambiguous bindings remain unavailable.
+A link expires when the tmux lifetime, pane process, Codex process/start time or
+record inode changes. Switching threads inside the same running CLI (`/new` or
+interactive resume) cannot be detected through this link: update or remove it.
+
+Manual conversation links use `ps lstart` as a best-effort restart guard (one-second
+precision), not an authoritative daemon thread association. The private store holds
+at most 128 links; `conversation-unlink` removes a matching stored identity even
+after its tmux session has closed. Creating links requires unavailable automatic
+discovery, so an already bound thread cannot leave a dormant override.
+
 Messages render GitHub-flavored Markdown: headings, emphasis, nested/task lists,
 quotes, links, fenced/indented code and aligned tables. Wide tables and code blocks
 scroll within the message on narrow screens. The question filter remains available;

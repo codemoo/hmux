@@ -3,18 +3,20 @@
 use crate::{
     binding::{Binding, Status},
     catalog::{CatalogError, TmuxCatalogReader},
+    conversation_link::{self, Link},
     inspection::{self, Error, Inspector, ScanPurpose},
     records, transcript,
 };
 use bytes::Bytes;
 use hmux_model::{
-    Conversation, SessionIdentity, CONVERSATION_AMBIGUOUS, CONVERSATION_READY,
+    Conversation, SessionIdentity, CONVERSATION_AMBIGUOUS, CONVERSATION_LINKED, CONVERSATION_READY,
     CONVERSATION_UNAVAILABLE,
 };
 use std::{
     fs::File,
     io::{Read, Seek, SeekFrom, Write},
     os::unix::fs::MetadataExt,
+    path::PathBuf,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -28,8 +30,71 @@ pub(crate) struct Job {
     pub reader: TmuxCatalogReader,
     pub identity: SessionIdentity,
     pub stop: CancellationToken,
+    pub state_dir: PathBuf,
 }
 impl Job {
+    pub async fn link(
+        self,
+        record: Option<(String, PathBuf)>,
+        permit: OwnedSemaphorePermit,
+    ) -> Result<(), Error> {
+        let runtime = tokio::runtime::Handle::current();
+        let _cancel = self.stop.clone().drop_guard();
+        tokio::task::spawn_blocking(move || {
+            let _permit = permit;
+            let deadline = Instant::now() + Duration::from_secs(15);
+            if record.is_none() {
+                inspection::check(&self.stop, deadline)?;
+                return conversation_link::save(&self.state_dir, &self.identity, None);
+            }
+            let pane = self.pane(&runtime, deadline)?.ok_or(Error::Unavailable)?;
+            let linked = if let Some(record) = record {
+                let (base, status) = self.automatic_binding(pane, &runtime, deadline)?;
+                if status != Status::Unavailable {
+                    return Err(Error::Unavailable);
+                }
+                let base = base.ok_or(Error::Unavailable)?;
+                let stamp = self.inspector.process_stamp(
+                    base.provider_pid,
+                    &self.stop,
+                    deadline,
+                    &runtime,
+                )?;
+                let link = Link::new(
+                    self.identity.clone(),
+                    pane,
+                    &base,
+                    stamp.clone(),
+                    record,
+                    &self.stop,
+                    deadline,
+                )?;
+                let (after, status) = self.automatic_binding(pane, &runtime, deadline)?;
+                let after = after.ok_or(Error::Unavailable)?;
+                if status != Status::Unavailable
+                    || !link.matches(&self.identity, pane, &after)
+                    || self.inspector.process_stamp(
+                        after.provider_pid,
+                        &self.stop,
+                        deadline,
+                        &runtime,
+                    )? != stamp
+                {
+                    return Err(Error::Unavailable);
+                }
+                Some(link)
+            } else {
+                None
+            };
+            if self.pane(&runtime, deadline)? != Some(pane) {
+                return Err(Error::Unavailable);
+            }
+            inspection::check(&self.stop, deadline)?;
+            conversation_link::save(&self.state_dir, &self.identity, linked.as_ref())
+        })
+        .await
+        .map_err(|_| Error::Worker)?
+    }
     pub async fn run(mut self, permit: OwnedSemaphorePermit) -> Result<Conversation, Error> {
         if hmux_model::validate_session_id(&self.identity.id).is_err()
             || self.identity.created_at < 1
@@ -89,7 +154,7 @@ impl Job {
             .find(|s| s.id == self.identity.id && s.created_at == self.identity.created_at)
             .and_then(|s| i32::try_from(s.pane_pid).ok().filter(|&p| p > 0)))
     }
-    fn binding(
+    fn automatic_binding(
         &self,
         pane: i32,
         runtime: &tokio::runtime::Handle,
@@ -108,6 +173,32 @@ impl Job {
             scan.statuses.remove(&pane).unwrap_or(Status::Unavailable),
         ))
     }
+    fn binding(
+        &self,
+        pane: i32,
+        runtime: &tokio::runtime::Handle,
+        deadline: Instant,
+    ) -> Result<(Option<Arc<Binding>>, Status, bool), Error> {
+        let (base, status) = self.automatic_binding(pane, runtime, deadline)?;
+        if status == Status::Unavailable {
+            if let (Some(base), Some(link)) = (
+                base.as_ref(),
+                conversation_link::load(&self.state_dir, &self.identity)?,
+            ) {
+                if link.matches(&self.identity, pane, base) {
+                    let stamp = self.inspector.process_stamp(
+                        base.provider_pid,
+                        &self.stop,
+                        deadline,
+                        runtime,
+                    )?;
+                    let bound = link.resolve(&stamp, &self.stop, deadline)?;
+                    return Ok((Some(Arc::new(bound)), Status::Ready, true));
+                }
+            }
+        }
+        Ok((base, status, false))
+    }
     fn read(
         &self,
         runtime: &tokio::runtime::Handle,
@@ -117,7 +208,7 @@ impl Job {
             let Some(first) = self.pane(runtime, deadline)? else {
                 return Ok(self.empty(Status::Unavailable));
             };
-            let (binding, status) = self.binding(first, runtime, deadline)?;
+            let (binding, status, linked) = self.binding(first, runtime, deadline)?;
             if status != Status::Ready {
                 return Ok(self.empty(status));
             }
@@ -138,12 +229,12 @@ impl Job {
             if self.pane(runtime, deadline)? != Some(first) {
                 return Ok(self.empty(Status::Unavailable));
             }
-            let (second, status) = self.binding(first, runtime, deadline)?;
+            let (second, status, linked_after) = self.binding(first, runtime, deadline)?;
             if status != Status::Ready {
                 return Ok(self.empty(status));
             }
             let second = second.ok_or(Error::Unavailable)?;
-            if !binding.same_record(&second) {
+            if linked != linked_after || !binding.same_record(&second) {
                 return Ok(self.empty(Status::Ambiguous));
             }
             let file =
@@ -159,7 +250,12 @@ impl Job {
                 session_id: self.identity.id.clone(),
                 created_at: self.identity.created_at,
                 provider: binding.provider.as_str().into(),
-                status: CONVERSATION_READY.into(),
+                status: if linked {
+                    CONVERSATION_LINKED
+                } else {
+                    CONVERSATION_READY
+                }
+                .into(),
                 messages: Some(parsed.messages),
                 truncated: parsed.truncated,
             })

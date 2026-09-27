@@ -767,3 +767,53 @@ async fn occupied_inspection_slot_releases_to_waiting_conversation() {
         close(stop, owner).await;
     }
 }
+
+#[tokio::test]
+async fn explicit_reader_link_is_lifetime_bound_and_never_overrides_exact_or_ambiguous_binding() {
+    use std::os::unix::fs::MetadataExt;
+    let _serial = SERIAL.lock().await;
+    for protocol in [Negotiated::JsonV1, Negotiated::ProtobufV2] {
+        let mut f = Fixture::new();
+        f.script("fake-ps", "#!/bin/sh\nroot=${0%/*}\nif [ \"$1\" = -p ]; then /bin/cat \"$root/stamp\"; else /bin/cat \"$root/ps-data\"; fi\n");
+        f.put("stamp", "synthetic-start\n");
+        let path = f.codex("selected-private", "{\"type\":\"response_item\",\"payload\":{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"Selected question\"}]}}\n");
+        let stat = fs::metadata(&path).unwrap();
+        let link = serde_json::json!({"version":1,"identity":{"id":"$7","created_at":1700000000},"pane":80,"provider_pid":90,"process_stamp":"synthetic-start","record_id":"selected-private","path":path,"device":stat.dev(),"inode":stat.ino()});
+        let linkdir = f.dir.join("conversation-links");
+        fs::DirBuilder::new().mode(0o700).create(&linkdir).unwrap();
+        f.put("conversation-links/$7.json", &link.to_string());
+        let (stop, owner, mut g) = boot(&f, protocol).await;
+        send(&mut g, protocol, conversation("linked", 1700000000)).await;
+        let r = reply(&mut g, protocol, "linked").await;
+        assert_eq!(status(&r), "linked");
+        assert_eq!(texts(&r), ["Selected question"]);
+        no_private_leak(&r, &f.dir, "selected-private");
+        f.put("stamp", "restarted\n");
+        send(&mut g, protocol, conversation("restarted", 1700000000)).await;
+        assert_eq!(
+            status(&reply(&mut g, protocol, "restarted").await),
+            "unavailable"
+        );
+        f.put("stamp", "synthetic-start\n");
+        send(&mut g, protocol, conversation("wrong-lifetime", 1700000001)).await;
+        assert_eq!(
+            status(&reply(&mut g, protocol, "wrong-lifetime").await),
+            "unavailable"
+        );
+        let exact = f.codex("exact-private", "");
+        f.put("lsof-data", &format!("p90\nn{}\n", exact.display()));
+        send(&mut g, protocol, conversation("exact", 1700000000)).await;
+        let r = reply(&mut g, protocol, "exact").await;
+        assert_eq!(status(&r), "ready");
+        assert!(texts(&r).is_empty());
+        f.put(
+            "lsof-data",
+            &format!("p90\nn{}\nn{}\n", exact.display(), path.display()),
+        );
+        send(&mut g, protocol, conversation("ambiguous", 1700000000)).await;
+        let r = reply(&mut g, protocol, "ambiguous").await;
+        assert_eq!(status(&r), "ambiguous");
+        assert!(texts(&r).is_empty());
+        close(stop, owner).await;
+    }
+}

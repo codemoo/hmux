@@ -14,7 +14,7 @@ use std::{
 use tokio_util::sync::CancellationToken;
 
 type Result<T> = std::result::Result<T, String>;
-const USAGE: &str = "usage: hmux-agent <catalog|recovery|conversation|workspace|workflow|workflow-hook|workflow-report|setup-home|create|alias-set|hidden-set|terminate|metadata-migrate|doctor|version>";
+const USAGE: &str = "usage: hmux-agent <catalog|recovery|conversation|conversation-link|conversation-unlink|workspace|workflow|workflow-hook|workflow-report|setup-home|create|alias-set|hidden-set|terminate|metadata-migrate|doctor|version>";
 fn home() -> Result<PathBuf> {
     env::var_os("HOME")
         .map(PathBuf::from)
@@ -364,6 +364,43 @@ async fn run(args: &[String], stop: &CancellationToken) -> Result<()> {
                 .map_err(|e| e.to_string())?;
             let result = backend()?.workspace(&wrapped, stop).await?;
             json_line(&result)
+        }
+        "conversation-link" | "conversation-unlink" => {
+            let linking = command == "conversation-link";
+            if rest.len() != (if linking { 8 } else { 4 })
+                || rest[0] != "--session"
+                || rest[2] != "--created-at"
+                || (linking && (rest[4] != "--codex-thread" || rest[6] != "--record"))
+            {
+                return Err("usage: hmux-agent conversation-link --session id --created-at timestamp --codex-thread id --record absolute-path; conversation-unlink --session id --created-at timestamp".into());
+            }
+            hmux_model::validate_session_id(&rest[1]).map_err(|_| "invalid session identity")?;
+            let created_at = rest[3]
+                .parse::<i64>()
+                .ok()
+                .filter(|v| *v > 0)
+                .ok_or("invalid session identity")?;
+            let record = if linking {
+                let path = PathBuf::from(&rest[7]);
+                if !path.is_absolute() || rest[5].is_empty() || rest[5].len() > 128 {
+                    return Err("invalid conversation record".into());
+                }
+                Some((rest[5].clone(), path))
+            } else {
+                None
+            };
+            backend()?
+                .conversation_link(
+                    SessionIdentity {
+                        id: rest[1].clone(),
+                        created_at,
+                    },
+                    record,
+                    stop,
+                )
+                .await?;
+            println!("Conversation link updated.");
+            Ok(())
         }
         "conversation" => {
             if rest.len() != 4 || rest[0] != "--session" || rest[2] != "--created-at" {

@@ -168,6 +168,32 @@ pub(crate) async fn command(
     }
 }
 impl Inspector {
+    pub(crate) fn process_stamp(
+        &self,
+        pid: i32,
+        stop: &CancellationToken,
+        deadline: Instant,
+        runtime: &tokio::runtime::Handle,
+    ) -> Result<String, Error> {
+        if pid < 1 {
+            return Err(Error::Invalid);
+        }
+        let raw = runtime.block_on(command(
+            CommandSpec::new(self.ps.clone(), 1024, Duration::from_secs(2))
+                .args(["-p", &pid.to_string(), "-o", "lstart="])
+                .env("LC_ALL", "C"),
+            stop,
+            deadline,
+        ))?;
+        let stamp = std::str::from_utf8(&raw)
+            .map_err(|_| Error::Unavailable)?
+            .trim();
+        if stamp.is_empty() || stamp.len() > 128 || stamp.contains('\n') {
+            return Err(Error::Unavailable);
+        }
+        Ok(stamp.into())
+    }
+
     pub fn new(home: PathBuf, ps: PathBuf, lsof: Option<PathBuf>) -> Result<Self, Error> {
         if [&home, &ps].into_iter().chain(lsof.iter()).any(|p| {
             !p.is_absolute()

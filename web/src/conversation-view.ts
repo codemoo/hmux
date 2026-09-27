@@ -58,7 +58,7 @@ export function renderConversation(
   const button = (title: TextValue, name: string, action: () => void) =>
     iconButton(doc, title, name, action);
   reader.replaceChildren();
-  if (data.status !== "ready") {
+  if (data.status !== "ready" && data.status !== "linked") {
     reader.append(
       text("h2", msg("Conversation unavailable", "대화를 확인할 수 없습니다")),
       text(
@@ -84,7 +84,12 @@ export function renderConversation(
   const codeLabel = text("label", msg("Include code ", "코드 포함 "));
   codeLabel.prepend(code);
   controls.append(
-    text("h2", msg("Conversation", "대화")),
+    text(
+      "h2",
+      data.status === "linked"
+        ? msg("Linked conversation", "연결한 대화")
+        : msg("Conversation", "대화"),
+    ),
     questions,
     codeLabel,
     button(msg("Latest message", "최신 메시지로"), "arrow", () => {
@@ -116,7 +121,19 @@ export function renderConversation(
     }
   };
   include.onchange = code.onchange = render;
-  reader.append(controls, content);
+  reader.append(controls);
+  if (data.status === "linked")
+    reader.append(
+      text(
+        "p",
+        msg(
+          "Manually linked conversation. Update the link when switching threads in the CLI.",
+          "직접 연결한 대화입니다. CLI에서 다른 대화로 전환하면 연결을 갱신해 주세요.",
+        ),
+        "muted",
+      ),
+    );
+  reader.append(content);
   render();
   if (data.truncated)
     reader.append(

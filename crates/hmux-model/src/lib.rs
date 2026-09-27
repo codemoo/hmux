@@ -453,6 +453,7 @@ object_model! {
 }
 
 pub const CONVERSATION_READY: &str = "ready";
+pub const CONVERSATION_LINKED: &str = "linked";
 pub const CONVERSATION_UNAVAILABLE: &str = "unavailable";
 pub const CONVERSATION_AMBIGUOUS: &str = "ambiguous";
 

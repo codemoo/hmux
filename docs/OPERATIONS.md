@@ -305,11 +305,36 @@ command. Do not delete an active lock file to bypass the singleton.
 ## Administration
 
 `hmux-agent` provides `setup-home`, `doctor`, `catalog`, `recovery`, `workflow`, `workflow-hook`,
-`workflow-report`, `conversation`, `workspace`, `create`, `alias-set`, `hidden-set`,
+`workflow-report`, `conversation`, `conversation-link`, `conversation-unlink`, `workspace`, `create`, `alias-set`, `hidden-set`,
 `terminate`, `metadata-migrate` and `version`. These are headless administration
 operations, not an alternate user interface. Destructive termination requires
 both `--confirmed` and `--created-at`; ordinary browser tab closing never terminates work.
 Optional workflow hooks use [CODEX_WORKFLOWS.md](CODEX_WORKFLOWS.md).
+
+For a Codex daemon client without an exact automatic rollout binding, explicitly
+select a known transcript for the reader using synthetic example arguments below:
+
+```sh
+hmux-agent conversation-link --session '$7' --created-at 1700000000 \
+  --codex-thread thread-example \
+  --record /home/example/.codex/sessions/2026/09/27/rollout-example-thread-example.jsonl
+hmux-agent conversation-unlink --session '$7' --created-at 1700000000
+```
+
+Use the actual tmux identity, thread ID reported by the selected CLI, and matching
+absolute rollout path. The command validates the transcript header and stores a
+private record under the configured Home state directory. The web reader visibly
+labels manual links. These links do not affect agent execution or automatic
+recovery/completion detection. They fail closed after process/session/file identity
+changes. Update or remove the link when changing threads in the same running CLI;
+that transition is not observable from the stored link. Deploy the matching web
+reader before using the new `linked` response status.
+
+Manual conversation links use `ps lstart` as a best-effort restart guard (one-second
+precision), not an authoritative daemon thread association. The private store holds
+at most 128 links; `conversation-unlink` removes a matching stored identity even
+after its tmux session has closed. Creating links requires unavailable automatic
+discovery, so an already bound thread cannot leave a dormant override.
 
 Keep credential/session/profile/push stores and Home state private and outside
 release directories. Inspect bounded frontend diagnostics through Settings;

@@ -169,6 +169,7 @@ impl AgentSupport {
             .ok_or("conversation unavailable for this session")?;
         let permit = inspection::admit().ok_or("conversation unavailable for this session")?;
         conversation::Job {
+            state_dir: self.config.state_dir.clone(),
             inspector,
             reader: self.reader.clone(),
             identity,
@@ -178,6 +179,31 @@ impl AgentSupport {
         .await
         .and_then(|value| conversation::json(&value))
         .map_err(|_| "conversation unavailable for this session".into())
+    }
+
+    pub async fn conversation_link(
+        &self,
+        identity: SessionIdentity,
+        record: Option<(String, PathBuf)>,
+        stop: &CancellationToken,
+    ) -> Result<(), String> {
+        let inspector = self
+            .inspector
+            .clone()
+            .ok_or("conversation inspector unavailable")?;
+        let permit = inspection::admit().ok_or("Home is busy")?;
+        conversation::Job {
+            inspector,
+            reader: self.reader.clone(),
+            identity,
+            stop: stop.child_token(),
+            state_dir: self.config.state_dir.clone(),
+        }
+        .link(record, permit)
+        .await
+        .map_err(|_| {
+            "conversation link rejected: verify session, process and record identity".into()
+        })
     }
 
     pub async fn action(

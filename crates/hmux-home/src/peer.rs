@@ -948,6 +948,7 @@ async fn run_owned(
                             let cancellation = stop.child_token();
                             pending.insert(id.clone(), cancellation.clone());
                             let job = conversation::Job {
+                                state_dir: config.state_dir.clone(),
                                 inspector: inspector.as_ref().expect("configured").clone(),
                                 reader: catalog.clone(),
                                 identity: hmux_model::SessionIdentity { id: session.id, created_at: session.created_at },

@@ -13,6 +13,7 @@ pub mod completion_tracker;
 pub mod config;
 pub mod connector;
 mod conversation;
+mod conversation_link;
 pub mod create_plan;
 pub mod dial;
 pub mod filestage;

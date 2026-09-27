@@ -582,3 +582,29 @@ test("conversation loading follows known provider and has neutral fallback", () 
     assert.ok(all(view).some((n) => n.attrs.role === "status"));
   }
 });
+
+test("explicitly linked conversation renders messages with attribution notice", () => {
+  const view = root();
+  assert.equal(
+    renderConversation(
+      view,
+      {
+        status: "linked",
+        provider: "codex",
+        truncated: false,
+        messages: [{ role: "assistant", text: "**Linked answer**" }],
+      },
+      () => {},
+    ),
+    true,
+  );
+  assert.equal(articles(view).length, 1);
+  assert.ok(view.textContent.includes("Manually linked conversation"));
+  assert.ok(
+    all(view).some(
+      (n) => n.tagName === "h2" && n.textContent === "Linked conversation",
+    ),
+  );
+  assert.ok(view.textContent.includes("switching threads"));
+  assert.ok(all(view).some((n) => n.tagName === "strong"));
+});
