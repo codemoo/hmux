@@ -82,7 +82,10 @@ pub fn launch_agent(spec: &Spec) -> Vec<u8> {
         "</array>\n<key>WorkingDirectory</key><string>{}</string>\n",
         xml_text(&spec.home)
     ));
-    out.push_str("<key>RunAtLoad</key><true/>\n<key>KeepAlive</key><true/>\n<key>ThrottleInterval</key><integer>10</integer>\n<key>ExitTimeOut</key><integer>20</integer>\n<key>AbandonProcessGroup</key><true/>\n<key>ProcessType</key><string>Background</string>\n<key>Umask</key><integer>63</integer>\n<key>StandardOutPath</key><string>/dev/null</string>\n<key>StandardErrorPath</key><string>/dev/null</string>\n</dict></plist>\n");
+    // The live web terminal and heartbeat depend on timely scheduling.
+    // Background throttles CPU/I/O under host load; Adaptive requires XPC
+    // transactions, which this outbound WebSocket service does not use.
+    out.push_str("<key>RunAtLoad</key><true/>\n<key>KeepAlive</key><true/>\n<key>ThrottleInterval</key><integer>10</integer>\n<key>ExitTimeOut</key><integer>20</integer>\n<key>AbandonProcessGroup</key><true/>\n<key>ProcessType</key><string>Interactive</string>\n<key>Umask</key><integer>63</integer>\n<key>StandardOutPath</key><string>/dev/null</string>\n<key>StandardErrorPath</key><string>/dev/null</string>\n</dict></plist>\n");
     out.into_bytes()
 }
 
@@ -295,6 +298,7 @@ mod tests {
         let plist = String::from_utf8(launch_agent(&s)).unwrap();
         assert!(plist.contains("a&amp;b&lt;quoted&gt;&#34;"));
         assert!(plist.contains("<key>AbandonProcessGroup</key><true/>"));
+        assert!(plist.contains("<key>ProcessType</key><string>Interactive</string>"));
         let unit = String::from_utf8(systemd_unit(&s)).unwrap();
         for fragment in [
             "ExecStart=\"/usr/bin/env\" \"-i\"",

@@ -64,6 +64,26 @@ expected binary hashes, preserved state and live conversation output. High host
 load and pre-existing reconnect delays were observed separately; this conversation
 change does not claim to resolve those broader latency symptoms.
 
+## macOS Home scheduling under load
+
+A subsequent live outage investigation found Gateway still running and serving
+HTTP 200 while the Home connector repeatedly disconnected. The Home LaunchAgent
+used `ProcessType=Background`; on a heavily loaded host, it remained runnable with
+little CPU time and catalog publication took 15 seconds. macOS documents this
+classification as CPU/I/O throttled. The live plist was backed up and changed only
+to `Interactive`, preserving its arguments, environment, process-group policy,
+configuration and original tmux sessions. Home connected immediately and initial
+catalog publication fell to 316 ms. With host load still above 90, the same
+connection subsequently served a terminal open in 55 ms and workspace requests
+in 21–27 ms without another reconnect during the observation. This is a live before/after observation, not a
+controlled benchmark or a claim that every connection failure has this cause.
+
+The service template now emits the same classification. Service tests passed
+(27 tests, two opt-in tests ignored); the native-manager opt-in test was not run.
+The immediate repair changed the installed plist and restarted only Home; native
+binaries and Gateway were unchanged. Older installed binaries still contain the
+previous template until updated, so reinstalling with one can restore Background.
+
 ## Mobile keyboard restoration
 
 A synthetic browser reproduction found that xterm could expand during Home view

@@ -199,6 +199,15 @@ ending the original tmux/provider processes.
 
 ## Automatic Home startup (macOS and Linux)
 
+The macOS LaunchAgent uses `ProcessType=Interactive`: browser terminal I/O and
+WebSocket heartbeats need timely scheduling under host load. `Background` can
+throttle both CPU and I/O until the connector misses liveness deadlines. `Adaptive`
+requires XPC transactions, which this outbound WebSocket service does not use.
+This classification does not change login/sleep policy or add a resident process.
+Existing plists retain their current value until explicitly updated or reinstalled
+with a binary containing this service-template change; back up the plist first.
+
+
 Run as the account that owns the tmux sessions and provider CLI authentication,
 from a terminal where those CLIs work. Do not use `sudo` for service installation.
 After building the Home binaries, an existing foreground connector can be migrated
