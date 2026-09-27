@@ -47,6 +47,23 @@ and the production build passed. Independent review of the lifecycle/storage
 corrections found no remaining material issue. These are targeted checks, not a
 new full-workspace, Linux-runtime or physical-device acceptance run.
 
+The matching web assets and macOS Home/helper were deployed to the maintained
+installation. All 47 web asset hashes, anonymous authentication rejections and PWA
+headers passed; Gateway process identity was unchanged. The macOS bundle passed
+five packaging checks. The installed helper returned 25 recent messages from the
+explicitly selected live Codex thread, with `linked` attribution; conversation
+contents were not copied into verification logs. Original tmux identities, the
+provider process and configuration were preserved. Catalog and usage publication
+were observed after Home connected. Authenticated browser rendering is not yet
+user-confirmed.
+
+The first rollout readiness check rejected launchd's transient `xpcproxy` process;
+it did not complete an automatic rollback. The same PID subsequently executed the
+verified binary and connected. Manual checks confirmed one LaunchAgent run,
+expected binary hashes, preserved state and live conversation output. High host
+load and pre-existing reconnect delays were observed separately; this conversation
+change does not claim to resolve those broader latency symptoms.
+
 ## Mobile keyboard restoration
 
 A synthetic browser reproduction found that xterm could expand during Home view
