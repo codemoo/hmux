@@ -52,6 +52,12 @@ launch attempts failed on sandbox/cache permissions before the isolated run.
 Independent review identified and removed HTTP 502 replay. This is web-only
 validation; physical devices and live authenticated failure recovery were not tested.
 
+The web-only production rollout passed 47 public asset hash checks, five anonymous
+API authentication checks and PWA CSP/no-store checks. Gateway process identity and
+restart count stayed unchanged; Home was not restarted and existing tmux/provider
+work was untouched. These deployment checks confirm asset delivery and access
+boundaries, separately from the synthetic browser recovery checks above.
+
 ## Explicit Codex conversation links
 
 Shared-daemon Codex clients can lack a client-owned rollout descriptor. The reader
