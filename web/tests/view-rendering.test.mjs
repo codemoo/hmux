@@ -4,6 +4,7 @@ import { renderMarkdown } from "../src/markdown.ts";
 import {
   renderConversation,
   renderConversationLoading,
+  renderConversationFailure,
 } from "../src/conversation-view.ts";
 import { renderUsageFooter, renderUsagePanel } from "../src/usage-view.ts";
 
@@ -607,4 +608,32 @@ test("explicitly linked conversation renders messages with attribution notice", 
   );
   assert.ok(view.textContent.includes("switching threads"));
   assert.ok(all(view).some((n) => n.tagName === "strong"));
+});
+
+test("reader recovery shows progress and failure controls remain actionable", () => {
+  const view = root();
+  renderConversationLoading(view, "claude", { attempt: 2, maximum: 3 });
+  assert.ok(view.textContent.includes("Recovering conversation"));
+  assert.ok(view.textContent.includes("2/3"));
+  let retries = 0,
+    returns = 0;
+  renderConversationFailure(
+    view,
+    "unavailable",
+    () => retries++,
+    () => returns++,
+  );
+  assert.ok(view.textContent.includes("Session ID"));
+  const buttons = all(view).filter((n) => n.tagName === "button");
+  buttons[0].onclick();
+  buttons[1].onclick();
+  assert.equal(retries, 1);
+  assert.equal(returns, 1);
+  renderConversationFailure(
+    view,
+    "ambiguous",
+    () => {},
+    () => {},
+  );
+  assert.ok(view.textContent.includes("More than one"));
 });

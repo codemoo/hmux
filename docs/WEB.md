@@ -71,6 +71,22 @@ rechecked after reading. Claude tool results, thinking blocks, sidechain message
 metadata and compaction summaries are excluded. The assistant label follows the
 server-provided provider. Markdown tables and existing filters apply to both.
 
+When the reader cannot load a conversation, it automatically retries the same
+`{id, created_at}` up to three times within a 45-second cycle. Each request causes
+Home to recheck the active pane/provider binding. Temporary network/timeouts,
+HTTP 429/503/504 and an `unavailable` response are eligible. Retry progress is
+shown; tab changes, returning to the terminal and logout cancel requests and waits.
+Ambiguous bindings, authentication and malformed/protocol responses stop the cycle.
+Server backoffs above ten seconds (or invalid backoffs) stop this foreground cycle
+rather than being shortened. The failure view offers **Try again** and **Return to
+terminal**. Conversation retry belongs to the reader only, avoiding nested HTTP
+retry loops. No transcript is cached by this recovery flow.
+
+Automatic retry can recover transient discovery and transport failures. A shared
+Codex daemon without an observable thread binding still needs the exact thread ID
+for an explicit link; retries do not select the newest file or rebind an expired
+manual link. The failure view points to Codex's `/status` Session ID in that case.
+
 Codex clients using a shared app-server daemon may not expose a per-client rollout
 file descriptor. In that case a Home administrator can explicitly link a known
 thread using `hmux-agent conversation-link` (see [Operations](OPERATIONS.md#administration)).

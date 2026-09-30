@@ -18,6 +18,7 @@ import {
 } from "./usage-preferences";
 import { installAttachments } from "./attachments";
 import { createSessionAPI } from "./session-api";
+import { loadConversation } from "./conversation-recovery";
 import { withRequestDeadline } from "./request-deadline";
 import {
   checkBootstrapRequired,
@@ -85,6 +86,7 @@ import { createUsagePanelUpdater } from "./usage-panel-update";
 import {
   renderConversation,
   renderConversationLoading,
+  renderConversationFailure,
   type Conversation,
 } from "./conversation-view";
 import { createTerminalAppearance } from "./theme";
@@ -2037,29 +2039,52 @@ async function toggleReader() {
   t.term.blur();
   const reader = $("#reader");
   reader.hidden = false;
-  renderConversationLoading(
-    reader,
-    catalogVerified
-      ? sessions.find((session) => key(session) === key(identity))?.runtime
-      : undefined,
-  );
+  const runtime = catalogVerified
+    ? sessions.find((session) => key(session) === key(identity))?.runtime
+    : undefined;
+  const owner = readerAbort;
+  const current = () =>
+    reading &&
+    epoch === readEpoch &&
+    key(identity) === active &&
+    !owner.signal.aborted;
+  const retry = () => {
+    if (!current()) return;
+    readerAbort?.abort();
+    reading = false;
+    void toggleReader();
+  };
+  const returnToTerminal = () => {
+    if (current()) selectTab(active);
+  };
+  renderConversationLoading(reader, runtime);
   try {
-    const data = (await action(
-      "conversation",
-      identity,
-      undefined,
-      readerAbort.signal,
-    )) as Conversation;
-    if (!reading || epoch !== readEpoch || key(identity) !== active) return;
-    if (!renderConversation(reader, data, () => selectTab(active))) return;
-    requestAnimationFrame(() => {
-      if (reading && epoch === readEpoch && key(identity) === active) {
-        reader.scrollTop = reader.scrollHeight;
-      }
+    const data = await loadConversation({
+      signal: owner.signal,
+      request: async (signal) =>
+        (await action(
+          "conversation",
+          identity,
+          undefined,
+          signal,
+        )) as Conversation,
+      retrying: (attempt, maximum) => {
+        if (current())
+          renderConversationLoading(reader, runtime, { attempt, maximum });
+      },
     });
-  } catch (e) {
-    if (epoch === readEpoch)
-      reader.replaceChildren(text("p", (e as Error).message, "error"));
+    if (!current()) return;
+    if (data.status !== "ready" && data.status !== "linked") {
+      renderConversationFailure(reader, data.status, retry, returnToTerminal);
+      return;
+    }
+    renderConversation(reader, data, returnToTerminal);
+    requestAnimationFrame(() => {
+      if (current()) reader.scrollTop = reader.scrollHeight;
+    });
+  } catch (error) {
+    if (current() && (error as Error).name !== "AbortError")
+      renderConversationFailure(reader, "error", retry, returnToTerminal);
   }
 }
 function renderFooter() {

@@ -1,6 +1,6 @@
 # Validation status
 
-Evidence summary updated 2026-09-27. Deployment observations describe one maintained
+Evidence summary updated 2026-09-30. Deployment observations describe one maintained
 installation, not every HMux deployment. [Rust runtime status](RUST_MIGRATION.md)
 owns the remaining acceptance queue; [Rust verification](../tests/RUST.md) owns
 runnable checks. Detailed investigations, earlier CI failures and per-change
@@ -28,6 +28,29 @@ parallel build resumed with two build jobs. These are automated fixture results,
 not physical-device or long-running stability acceptance. Earlier CI outcomes
 are checkpoint-specific; see the dated record rather than inferring current CI
 status from a prior local result.
+
+## Conversation reader recovery
+
+The web reader now retries the same exact tmux identity up to three times within
+45 seconds for transient network/deadline failures, HTTP 429/503/504 or an
+`unavailable` conversation binding. It shows progress and offers retry/return
+controls after failure. Ambiguous, malformed, authentication and protocol failures
+stop immediately; HTTP 502 is not replayed because Gateway also uses it for
+invalid protocol responses. Long/invalid server backoffs stop the foreground cycle.
+Tab/reader/account cancellation covers active requests and delay timers. Every
+retry uses existing Home discovery; missing daemon thread associations still need
+an explicit link and are never inferred from directory/file recency.
+
+Web TypeScript/formatting, 209 tests and production build passed. Regression tests
+cover finite attempts, nested-retry avoidance, account expiry, cancellation/late
+responses, browser AbortError-to-timeout preservation, overall deadline, backoff
+and invalid payloads. Production assets in an isolated Chrome browser with
+synthetic API/WebSocket responses passed a busy→missing→ready recovery, persistent
+failure stopping at three reads, manual retry and closed-reader late-response
+checks. The browser's synthetic 503 console entry was expected. Initial browser
+launch attempts failed on sandbox/cache permissions before the isolated run.
+Independent review identified and removed HTTP 502 replay. This is web-only
+validation; physical devices and live authenticated failure recovery were not tested.
 
 ## Explicit Codex conversation links
 

@@ -113,6 +113,11 @@ changing rollout files are unavailable rather than guessed. The reader returns o
 a bounded tail of complete records, excluding tools and internal context. Markdown
 rendering does not execute raw HTML. See [WEB.md](WEB.md#conversation-reader).
 
+The web reader retries transient failures automatically, at most three attempts
+within 45 seconds. If it still fails, use **Try again** after the connection returns,
+or **Return to terminal**. Ambiguous bindings and authentication/protocol errors
+are not automatically replayed. The retry only reads the same exact tmux lifetime.
+
 For a shared Codex daemon with no per-client rollout descriptor, supply the exact
 thread ID shown by the CLI and its matching rollout path to the Home administrator.
 Use the reader-only link command documented in [Operations](OPERATIONS.md#administration).

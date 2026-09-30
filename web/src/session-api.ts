@@ -1,6 +1,27 @@
 import { t } from "./i18n.ts";
 import { withRequestDeadline } from "./request-deadline.ts";
 
+// Structured metadata lets foreground readers recover transient HTTP failures
+// without matching translated messages or retrying authentication/protocol errors.
+export class APIRequestError extends Error {
+  status: number;
+  retryAfterMs: number;
+  constructor(message: string, status: number, retryAfterMs = 0) {
+    super(message);
+    this.name = "APIRequestError";
+    this.status = status;
+    this.retryAfterMs = retryAfterMs;
+  }
+}
+
+function retryAfterMs(value: string | null | undefined): number {
+  if (value == null) return 0;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1000;
+  const date = Date.parse(value);
+  return Number.isFinite(date) ? Math.max(0, date - Date.now()) : Infinity;
+}
+
 // Only queries can be replayed. Creating sessions, auth changes and workspace
 // mutations may already have succeeded when a response is interrupted.
 function retryableQuery(path: string, body: unknown): boolean {
@@ -8,7 +29,7 @@ function retryableQuery(path: string, body: unknown): boolean {
   const request = body as { operation?: unknown; payload?: unknown };
   if (
     typeof request.operation === "string" &&
-    ["conversation", "profiles", "providers"].includes(request.operation)
+    ["profiles", "providers"].includes(request.operation)
   )
     return true;
   if (request.operation !== "workspace") return false;
@@ -76,58 +97,74 @@ export function createSessionAPI(options: {
           body === undefined ? undefined : JSON.stringify(body);
         const query = retryableQuery(path, body);
         return await withRequestDeadline(async (signal) => {
-          for (let attempt = 0; ; attempt++) {
-            check(signal);
-            status = 0;
-            const response = await (options.fetch || fetch)(path, {
-              method: body === undefined ? "GET" : "POST",
-              headers:
-                body === undefined
-                  ? {}
-                  : {
-                      "Content-Type": "application/json",
-                      "X-CSRF-Token": options.csrf(),
-                    },
-              body: serialized,
-              credentials: "same-origin",
-              cache: "no-store",
-              signal,
-            });
-            check(signal);
-            status = response.status || 200;
-            if (!response.ok) {
-              if (response.status === 401 && path !== "/api/login") {
-                options.unauthorized();
-                throw new DOMException("Authentication expired", "AbortError");
-              }
-              const message = await response.text();
+          try {
+            for (let attempt = 0; ; attempt++) {
               check(signal);
-              if (query && response.status === 503 && attempt < 2) {
-                const retryAfter = response.headers?.get("Retry-After");
-                const seconds = retryAfter == null ? 1 : Number(retryAfter);
-                // Never ignore a longer server backoff or extend the overall
-                // request deadline. Cancel immediately on tab/account changes.
-                if (Number.isFinite(seconds) && seconds >= 0 && seconds <= 2) {
-                  await waitForRetry(Math.max(250, seconds * 1000), signal);
-                  continue;
+              status = 0;
+              const response = await (options.fetch || fetch)(path, {
+                method: body === undefined ? "GET" : "POST",
+                headers:
+                  body === undefined
+                    ? {}
+                    : {
+                        "Content-Type": "application/json",
+                        "X-CSRF-Token": options.csrf(),
+                      },
+                body: serialized,
+                credentials: "same-origin",
+                cache: "no-store",
+                signal,
+              });
+              check(signal);
+              status = response.status || 200;
+              if (!response.ok) {
+                if (response.status === 401 && path !== "/api/login") {
+                  options.unauthorized();
+                  throw new DOMException(
+                    "Authentication expired",
+                    "AbortError",
+                  );
                 }
+                const message = await response.text();
+                check(signal);
+                if (query && response.status === 503 && attempt < 2) {
+                  const retryAfter = response.headers?.get("Retry-After");
+                  const seconds = retryAfter == null ? 1 : Number(retryAfter);
+                  // Never ignore a longer server backoff or extend the overall
+                  // request deadline. Cancel immediately on tab/account changes.
+                  if (
+                    Number.isFinite(seconds) &&
+                    seconds >= 0 &&
+                    seconds <= 2
+                  ) {
+                    await waitForRetry(Math.max(250, seconds * 1000), signal);
+                    continue;
+                  }
+                }
+                throw new APIRequestError(
+                  (response.status === 503
+                    ? t(
+                        "Temporarily unavailable. Please try again shortly.",
+                        "일시적으로 처리할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+                      )
+                    : message.slice(0, 250)) ||
+                    t(
+                      "Could not complete the request.",
+                      "요청을 완료하지 못했습니다.",
+                    ),
+                  response.status,
+                  retryAfterMs(response.headers?.get("Retry-After")),
+                );
               }
-              throw new Error(
-                (response.status === 503
-                  ? t(
-                      "Temporarily unavailable. Please try again shortly.",
-                      "일시적으로 처리할 수 없습니다. 잠시 후 다시 시도해 주세요.",
-                    )
-                  : message.slice(0, 250)) ||
-                  t(
-                    "Could not complete the request.",
-                    "요청을 완료하지 못했습니다.",
-                  ),
-              );
+              const value = await response.json();
+              check(signal);
+              return value;
             }
-            const value = await response.json();
+          } catch (error) {
+            // Browsers may reject fetch/body consumption with AbortError even
+            // when our deadline aborted it. Preserve the actual timeout reason.
             check(signal);
-            return value;
+            throw error;
           }
         }, controller.signal);
       } catch (error) {

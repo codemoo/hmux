@@ -13,6 +13,7 @@ export type Conversation = {
 export function renderConversationLoading(
   reader: HTMLElement,
   runtime?: string,
+  recovery?: { attempt: number; maximum: number },
 ) {
   const text = createTextFactory(reader.ownerDocument);
   const provider =
@@ -33,10 +34,20 @@ export function renderConversationLoading(
       provider || msg("Conversation", "대화"),
       "conversation-loading-provider",
     ),
-    text("h2", msg("Loading conversation", "대화를 불러오는 중")),
+    text(
+      "h2",
+      recovery
+        ? msg("Recovering conversation", "대화를 다시 불러오는 중")
+        : msg("Loading conversation", "대화를 불러오는 중"),
+    ),
     text(
       "p",
-      msg("Preparing recent messages.", "최근 메시지를 정리하고 있어요."),
+      recovery
+        ? msg(
+            `Retrying · ${recovery.attempt}/${recovery.maximum}`,
+            `자동 재시도 · ${recovery.attempt}/${recovery.maximum}`,
+          )
+        : msg("Preparing recent messages.", "최근 메시지를 정리하고 있어요."),
     ),
   );
   status.append(mark, copy);
@@ -147,4 +158,42 @@ export function renderConversation(
       ),
     );
   return true;
+}
+
+export function renderConversationFailure(
+  reader: HTMLElement,
+  status: string,
+  retry: () => void,
+  onReturn: () => void,
+) {
+  const text = createTextFactory(reader.ownerDocument);
+  const explanation =
+    status === "ambiguous"
+      ? msg(
+          "More than one conversation is connected to this pane. The current conversation needs to be identified.",
+          "이 pane에 대화가 여러 개 연결돼 있습니다. 현재 대화가 무엇인지 확인해야 합니다.",
+        )
+      : status === "unavailable"
+        ? msg(
+            "The active conversation could not be identified after retrying. For Codex, check the Session ID in /status to link it again.",
+            "다시 조회했지만 현재 대화를 찾지 못했습니다. Codex는 /status의 Session ID를 확인해 대화를 다시 연결할 수 있습니다.",
+          )
+        : msg(
+            "The conversation could not be loaded. Try again when the connection is available.",
+            "대화를 불러오지 못했습니다. 연결이 돌아오면 다시 시도해 주세요.",
+          );
+  const controls = text("div", "", "reader-controls");
+  controls.append(
+    text("h2", msg("Conversation unavailable", "대화를 불러올 수 없습니다")),
+  );
+  for (const [label, action] of [
+    [msg("Try again", "다시 시도"), retry],
+    [msg("Return to terminal", "터미널로 돌아가기"), onReturn],
+  ] as const) {
+    const button = text("button", label);
+    button.type = "button";
+    button.onclick = action;
+    controls.append(button);
+  }
+  reader.replaceChildren(controls, text("p", explanation, "muted"));
 }

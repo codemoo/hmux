@@ -139,7 +139,7 @@ test("a busy read-only action recovers without reporting a failure", async () =>
     },
   });
   const body = {
-    operation: "conversation",
+    operation: "profiles",
     session: { id: "$1", created_at: 1 },
   };
   const pending = api.request("/api/action", body);
@@ -164,7 +164,7 @@ test("busy retries are finite and longer server backoffs are respected", async (
       },
     });
     await assert.rejects(
-      api.request("/api/action", { operation: "conversation" }),
+      api.request("/api/action", { operation: "profiles" }),
       /Temporarily unavailable/,
     );
     assert.equal(calls, retry === "0" ? 3 : 1);
@@ -211,7 +211,7 @@ test("tab cancellation and account reset cancel retry waits without replay", asy
     });
     const pending = api.request(
       "/api/action",
-      { operation: "conversation" },
+      { operation: "profiles" },
       parent.signal,
     );
     await new Promise((resolve) => setImmediate(resolve));
@@ -221,4 +221,21 @@ test("tab cancellation and account reset cancel retry waits without replay", asy
     assert.equal(calls, 1);
     assert.deepEqual(failures, []);
   }
+});
+
+test("conversation busy responses are delegated once to the foreground recovery owner", async () => {
+  let calls = 0;
+  const api = createSessionAPI({
+    csrf: () => "fixture",
+    unauthorized: () => {},
+    fetch: async () => {
+      calls++;
+      return busy("20");
+    },
+  });
+  await assert.rejects(
+    api.request("/api/action", { operation: "conversation" }),
+    (e) => e.status === 503 && e.retryAfterMs === 20000,
+  );
+  assert.equal(calls, 1);
 });
