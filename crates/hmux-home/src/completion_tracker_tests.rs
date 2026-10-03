@@ -33,6 +33,7 @@ impl Fixture {
             root: root.clone(),
             path: path.clone(),
             observation: Observation {
+                ownership: "fd:20:20".into(),
                 identity: SessionIdentity {
                     id: "$1".into(),
                     created_at: 42,
@@ -316,6 +317,7 @@ fn cancellation_and_limit_clear_state() {
     assert!(f.observe().is_empty());
     let many: Vec<_> = (0..=CURSORS_MAX)
         .map(|n| Observation {
+            ownership: String::new(),
             identity: SessionIdentity {
                 id: format!("${n}"),
                 created_at: 42,
@@ -329,4 +331,24 @@ fn cancellation_and_limit_clear_state() {
         Err(Error::Limit)
     );
     assert!(f.tracker.cursors.is_empty());
+}
+
+#[test]
+fn ownership_changes_rebaseline_the_same_transcript() {
+    let mut f = Fixture::new(&[START]);
+    assert!(f.observe().is_empty());
+    for owner in ["link:stamp:nonce-one", "link:stamp:nonce-two", "fd:21:21"] {
+        f.append(COMPLETE);
+        f.observation.ownership = owner.into();
+        assert!(
+            f.observe().is_empty(),
+            "old ownership must not complete a new source"
+        );
+        f.append(START);
+        assert!(f.observe().is_empty());
+        f.append(COMPLETE);
+        assert_eq!(f.observe().len(), 1);
+        f.append(START);
+        assert!(f.observe().is_empty());
+    }
 }

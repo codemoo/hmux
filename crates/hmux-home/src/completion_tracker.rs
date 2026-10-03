@@ -30,6 +30,7 @@ const ANCHOR_MAX: u64 = 256;
 pub struct Observation {
     pub identity: SessionIdentity,
     pub binding: Option<Arc<Binding>>,
+    pub ownership: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -52,6 +53,7 @@ pub struct Tracker {
 }
 
 struct Cursor {
+    ownership: String,
     root: PathBuf,
     path: PathBuf,
     record_id: String,
@@ -228,9 +230,14 @@ fn bytes(cursor: &Cursor, identity: &SessionIdentity) -> usize {
         + cursor.path.as_os_str().as_bytes().len()
         + cursor.record_id.len()
         + identity.id.len()
+        + cursor.ownership.len()
 }
 
 impl Tracker {
+    pub fn forget(&mut self, identity: &SessionIdentity) {
+        self.cursors.remove(identity);
+    }
+
     pub fn clear(&mut self) {
         self.cursors.clear();
     }
@@ -294,7 +301,7 @@ impl Tracker {
                 continue;
             };
             let output_start = output.len();
-            match self.observe_one(&item.identity, binding, stop, deadline, &mut output) {
+            match self.observe_one(item, binding, stop, deadline, &mut output) {
                 Ok(cursor) => {
                     retained += bytes(&cursor, &item.identity);
                     if let Some(old) = self.cursors.insert(item.identity.clone(), cursor) {
@@ -330,17 +337,22 @@ impl Tracker {
 
     fn observe_one(
         &self,
-        identity: &SessionIdentity,
+        item: &Observation,
         binding: &Binding,
         stop: &CancellationToken,
         deadline: Instant,
         output: &mut Vec<Completion>,
     ) -> Result<Cursor, Error> {
+        let identity = &item.identity;
+        if item.ownership.len() > 256 {
+            return Err(Error::Limit);
+        }
         let mut file = open_record(&binding.root, &binding.path).map_err(|_| Error::Unavailable)?;
         let info = file.metadata().map_err(|_| Error::Unavailable)?;
         let current = self.cursors.get(identity);
         let same = if let Some(cursor) = current {
-            let possible = cursor.root == binding.root
+            let possible = cursor.ownership == item.ownership
+                && cursor.root == binding.root
                 && cursor.path == binding.path
                 && cursor.record_id == binding.record_id
                 && cursor.dev == info.dev()
@@ -397,6 +409,7 @@ impl Tracker {
         let (anchor, anchor_len) = anchor(&mut file, offset, stop, deadline)?;
         output.extend(found);
         Ok(Cursor {
+            ownership: item.ownership.clone(),
             root: binding.root.clone(),
             path: binding.path.clone(),
             record_id: binding.record_id.clone(),

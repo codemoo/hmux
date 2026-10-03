@@ -1,5 +1,5 @@
 //! Explicit administrator-selected transcripts, never an inferred daemon binding.
-//! These links are reader-only: catalog, recovery and completion keep exact FD bindings.
+//! Catalog/recovery keep exact FD bindings; notifications need a separate explicit opt-in.
 use crate::{
     binding::{Binding, Provider, Status},
     inspection::Error,
@@ -30,6 +30,8 @@ pub(crate) struct Link {
     path: PathBuf,
     device: u64,
     inode: u64,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    notification_key: String,
 }
 fn name(identity: &SessionIdentity) -> Result<String, Error> {
     hmux_model::validate_session_id(&identity.id).map_err(|_| Error::Invalid)?;
@@ -104,6 +106,17 @@ pub(crate) fn save(
         .map_err(|_| Error::Unavailable)
 }
 impl Link {
+    pub(crate) fn enable_notifications(&mut self) -> Result<(), Error> {
+        let mut nonce = [0u8; 16];
+        getrandom::fill(&mut nonce).map_err(|_| Error::Unavailable)?;
+        self.notification_key = nonce.iter().map(|b| format!("{b:02x}")).collect();
+        Ok(())
+    }
+    pub(crate) fn notification_owner(&self) -> Option<String> {
+        (self.notification_key.len() == 32
+            && self.notification_key.bytes().all(|b| b.is_ascii_hexdigit()))
+        .then(|| format!("link:{}:{}", self.process_stamp, self.notification_key))
+    }
     pub(crate) fn new(
         identity: SessionIdentity,
         pane: i32,
@@ -149,6 +162,7 @@ impl Link {
             path: record.1,
             device: stat.dev(),
             inode: stat.ino(),
+            notification_key: String::new(),
         })
     }
     pub(crate) fn matches(&self, identity: &SessionIdentity, pane: i32, base: &Binding) -> bool {

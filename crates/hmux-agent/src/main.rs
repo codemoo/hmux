@@ -367,12 +367,15 @@ async fn run(args: &[String], stop: &CancellationToken) -> Result<()> {
         }
         "conversation-link" | "conversation-unlink" => {
             let linking = command == "conversation-link";
-            if rest.len() != (if linking { 8 } else { 4 })
-                || rest[0] != "--session"
+            if !(if linking {
+                rest.len() == 8 || (rest.len() == 9 && rest[8] == "--notify")
+            } else {
+                rest.len() == 4
+            }) || rest[0] != "--session"
                 || rest[2] != "--created-at"
                 || (linking && (rest[4] != "--codex-thread" || rest[6] != "--record"))
             {
-                return Err("usage: hmux-agent conversation-link --session id --created-at timestamp --codex-thread id --record absolute-path; conversation-unlink --session id --created-at timestamp".into());
+                return Err("usage: hmux-agent conversation-link --session id --created-at timestamp --codex-thread id --record absolute-path [--notify]; conversation-unlink --session id --created-at timestamp".into());
             }
             hmux_model::validate_session_id(&rest[1]).map_err(|_| "invalid session identity")?;
             let created_at = rest[3]
@@ -385,7 +388,7 @@ async fn run(args: &[String], stop: &CancellationToken) -> Result<()> {
                 if !path.is_absolute() || rest[5].is_empty() || rest[5].len() > 128 {
                     return Err("invalid conversation record".into());
                 }
-                Some((rest[5].clone(), path))
+                Some((rest[5].clone(), path, rest.len() == 9))
             } else {
                 None
             };

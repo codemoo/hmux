@@ -41,7 +41,7 @@ pty-process.workspace = true
 quick-xml.workspace = true
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["test-util"] }
+tokio = { workspace = true, features = ["test-util", "rt-multi-thread"] }
 futures-util.workspace = true
 rcgen = { version = "=0.13.2", default-features = false, features = ["ring"] }
 

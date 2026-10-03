@@ -184,7 +184,7 @@ impl AgentSupport {
     pub async fn conversation_link(
         &self,
         identity: SessionIdentity,
-        record: Option<(String, PathBuf)>,
+        record: Option<(String, PathBuf, bool)>,
         stop: &CancellationToken,
     ) -> Result<(), String> {
         let inspector = self

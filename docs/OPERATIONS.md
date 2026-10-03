@@ -333,10 +333,14 @@ hmux-agent conversation-unlink --session '$7' --created-at 1700000000
 Use the actual tmux identity, thread ID reported by the selected CLI, and matching
 absolute rollout path. The command validates the transcript header and stores a
 private record under the configured Home state directory. The web reader visibly
-labels manual links. These links do not affect agent execution or automatic
-recovery/completion detection. They fail closed after process/session/file identity
+labels manual links. These links do not affect agent execution, catalog attribution
+or automatic recovery. Omit the optional `--notify` argument for a reader-only link.
+With `--notify`, completion notifications are pinned to the administrator-selected
+thread; existing links do not silently gain notification permission. They fail closed after process/session/file identity
 changes. Update or remove the link when changing threads in the same running CLI;
-that transition is not observable from the stored link. Deploy the matching web
+that transition is not observable from the stored link. Pinned notifications also
+require unlink/relink on same-process thread switches. Each opt-in relink creates a
+fresh notification baseline; historical completions are not replayed. Deploy the matching web
 reader before using the new `linked` response status.
 
 Manual conversation links use `ps lstart` as a best-effort restart guard (one-second

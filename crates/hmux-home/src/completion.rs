@@ -1,11 +1,15 @@
 //! One best-effort completion observer per connected Home. A single replaceable
 //! pending snapshot contains only identities/PIDs, never catalog/transcript text.
+use crate::catalog::TmuxCatalogReader;
 use crate::{
     completion_tracker::{Observation, Tracker},
     inspection::{self, Inspector, ScanPurpose},
     peer,
 };
 use hmux_model::{Catalog, SessionIdentity};
+use std::path::PathBuf;
+#[path = "completion_links.rs"]
+mod links;
 use hmux_protocol::{
     protobuf::{types as p, Negotiated},
     transport::Sender,
@@ -22,6 +26,7 @@ const MAX_TARGETS: usize = 4096;
 const OBSERVE_TIMEOUT: Duration = Duration::from_secs(3);
 const COOLDOWN: Duration = Duration::from_secs(5);
 
+#[derive(Clone)]
 struct Target {
     identity: SessionIdentity,
     pane: Option<i32>,
@@ -68,6 +73,8 @@ impl Inbox {
 pub(crate) async fn run(
     inbox: Arc<Inbox>,
     inspector: Arc<Inspector>,
+    reader: TmuxCatalogReader,
+    state_dir: PathBuf,
     sender: Sender,
     protocol: Negotiated,
     stop: CancellationToken,
@@ -88,6 +95,8 @@ pub(crate) async fn run(
             continue;
         };
         let inspector = inspector.clone();
+        let reader = reader.clone();
+        let state_dir = state_dir.clone();
         let child = stop.child_token();
         let _cancel = child.clone().drop_guard();
         let runtime = tokio::runtime::Handle::current();
@@ -105,14 +114,49 @@ pub(crate) async fn run(
             let scan = inspector.scan(&panes, ScanPurpose::Completion, &child, deadline, &runtime);
             let events = match scan {
                 Ok(scan) => {
-                    let observations: Vec<_> = targets
-                        .into_iter()
-                        .map(|t| Observation {
-                            identity: t.identity,
-                            binding: t.pane.and_then(|p| scan.bindings.get(&p).cloned()),
-                        })
-                        .collect();
-                    tracker.observe(&observations, &child, deadline).ok()
+                    let sources = links::Sources {
+                        state: &state_dir,
+                        reader: &reader,
+                        inspector: &inspector,
+                        stop: &child,
+                        deadline,
+                        runtime: &runtime,
+                    };
+                    match sources.observations(&targets, &scan) {
+                        Ok(observations) => {
+                            let mut events = tracker.observe(&observations, &child, deadline).ok();
+                            let pinned: Vec<_> = observations
+                                .iter()
+                                .filter(|o| o.ownership.starts_with("link:"))
+                                .cloned()
+                                .collect();
+                            if !pinned.is_empty() {
+                                // Revalidate after file scanning even when there is no event,
+                                // so an invalid source cannot retain an armed cursor.
+                                let pinned_targets: Vec<_> = targets
+                                    .iter()
+                                    .filter(|t| pinned.iter().any(|o| o.identity == t.identity))
+                                    .cloned()
+                                    .collect();
+                                let valid = sources
+                                    .revalidate(&pinned_targets, &pinned)
+                                    .unwrap_or_default();
+                                for old in &pinned {
+                                    if !valid.iter().any(|o| o.identity == old.identity) {
+                                        tracker.forget(&old.identity);
+                                        if let Some(events) = &mut events {
+                                            events.retain(|e| e.identity != old.identity);
+                                        }
+                                    }
+                                }
+                            }
+                            events
+                        }
+                        Err(_) => {
+                            tracker.clear();
+                            None
+                        }
+                    }
                 }
                 Err(_) => {
                     tracker.clear();

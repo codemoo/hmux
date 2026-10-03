@@ -437,6 +437,40 @@ fn conversation_link_cli_validates_and_unlinks_after_session_closes() {
     let value: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
     assert_eq!(value["status"], "linked");
     assert_eq!(value["messages"][0]["text"], "Fixture question");
+    let storage = root.join(".local/state/hmux/conversation-links/$7.json");
+    let old: serde_json::Value = serde_json::from_slice(&fs::read(&storage).unwrap()).unwrap();
+    assert!(old.get("notification_key").is_none());
+    let mut previous = String::new();
+    for _ in 0..2 {
+        let notified = cli(
+            &root,
+            &[
+                "conversation-link",
+                "--session",
+                "$7",
+                "--created-at",
+                "1700000000",
+                "--codex-thread",
+                "thread-test",
+                "--record",
+                path.to_str().unwrap(),
+                "--notify",
+            ],
+        )
+        .output()
+        .unwrap();
+        assert!(
+            notified.status.success(),
+            "{}",
+            String::from_utf8_lossy(&notified.stderr)
+        );
+        let value: serde_json::Value =
+            serde_json::from_slice(&fs::read(&storage).unwrap()).unwrap();
+        let key = value["notification_key"].as_str().unwrap();
+        assert_eq!(key.len(), 32);
+        assert_ne!(key, previous);
+        previous = key.into();
+    }
     fs::write(root.join("sessions"), "").unwrap();
     let out = cli(
         &root,

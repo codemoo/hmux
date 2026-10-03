@@ -100,6 +100,49 @@ async fn completion_is_sent_in_both_codecs_and_never_replayed_on_reconnect() {
 }
 
 #[tokio::test]
+async fn pinned_completion_opt_in_is_sent_in_both_codecs() {
+    use std::{io::Write, os::unix::fs::MetadataExt};
+    let _serial = SERIAL.lock().await;
+    for protocol in [Negotiated::JsonV1, Negotiated::ProtobufV2] {
+        let mut f = Fixture::new();
+        f.script("fake-ps", "#!/bin/sh\nroot=${0%/*}\nif [ \"$1\" = -p ]; then printf '%s\\n' 'synthetic-start'; else /bin/cat \"$root/ps-data\"; fi\n");
+        let path = f.codex(
+            "pinned-private",
+            "{\"type\":\"event_msg\",\"payload\":{\"type\":\"task_started\"}}\n",
+        );
+        let stat = fs::metadata(&path).unwrap();
+        let mut link = serde_json::json!({"version":1,"identity":{"id":"$7","created_at":1700000000},"pane":80,"provider_pid":90,"process_stamp":"synthetic-start","record_id":"pinned-private","path":path,"device":stat.dev(),"inode":stat.ino()});
+        fs::DirBuilder::new()
+            .mode(0o700)
+            .create(f.dir.join("conversation-links"))
+            .unwrap();
+        f.put("conversation-links/$7.json", &link.to_string());
+        let (stop, owner, mut g) = boot_with_completions(&f, protocol, true).await;
+        no_completion_for(&mut g, protocol, Duration::from_secs(6)).await;
+        link["notification_key"] = serde_json::json!("0123456789abcdef0123456789abcdef");
+        f.put("conversation-links/$7.json", &link.to_string());
+        no_completion_for(&mut g, protocol, Duration::from_secs(6)).await;
+        fs::OpenOptions::new().append(true).open(&path).unwrap().write_all(b"{\"type\":\"event_msg\",\"timestamp\":\"2026-10-03T01:00:00Z\",\"payload\":{\"type\":\"task_complete\"}}\n").unwrap();
+        let complete = timeout(Duration::from_secs(8), async {
+            loop {
+                match receive(&mut g, protocol).await {
+                    p::envelope::Body::TaskComplete(event) => break event,
+                    p::envelope::Body::Catalog(_) => {}
+                    _ => panic!("unexpected peer message"),
+                }
+            }
+        })
+        .await
+        .unwrap();
+        let identity = complete.session.unwrap();
+        assert_eq!(identity.id, "$7");
+        assert_eq!(identity.created_at, 1700000000);
+        assert_eq!(complete.completed_at, "2026-10-03T01:00:00Z");
+        close(stop, owner).await;
+    }
+}
+
+#[tokio::test]
 async fn completion_discovery_cancel_joins_all_inspection_children() {
     let _serial = SERIAL.lock().await;
     let mut f = Fixture::new();
@@ -259,11 +302,20 @@ async fn send(
     g.send(frame).await.unwrap();
 }
 async fn receive(g: &mut WebSocketStream<DuplexStream>, protocol: Negotiated) -> p::envelope::Body {
-    let frame = timeout(Duration::from_secs(8), g.next())
-        .await
-        .unwrap()
-        .unwrap()
-        .unwrap();
+    let frame = loop {
+        let frame = timeout(Duration::from_secs(8), g.next())
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap();
+        match frame {
+            Message::Ping(data) => {
+                g.send(Message::Pong(data)).await.unwrap();
+            }
+            Message::Pong(_) => {}
+            other => break other,
+        }
+    };
     let envelope = match protocol {
         Negotiated::JsonV1 => {
             let message = wire::Message::decode(&frame.into_data()).unwrap();

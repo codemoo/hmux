@@ -35,7 +35,7 @@ pub(crate) struct Job {
 impl Job {
     pub async fn link(
         self,
-        record: Option<(String, PathBuf)>,
+        record: Option<(String, PathBuf, bool)>,
         permit: OwnedSemaphorePermit,
     ) -> Result<(), Error> {
         let runtime = tokio::runtime::Handle::current();
@@ -48,7 +48,7 @@ impl Job {
                 return conversation_link::save(&self.state_dir, &self.identity, None);
             }
             let pane = self.pane(&runtime, deadline)?.ok_or(Error::Unavailable)?;
-            let linked = if let Some(record) = record {
+            let linked = if let Some((thread, path, notify)) = record {
                 let (base, status) = self.automatic_binding(pane, &runtime, deadline)?;
                 if status != Status::Unavailable {
                     return Err(Error::Unavailable);
@@ -60,15 +60,18 @@ impl Job {
                     deadline,
                     &runtime,
                 )?;
-                let link = Link::new(
+                let mut link = Link::new(
                     self.identity.clone(),
                     pane,
                     &base,
                     stamp.clone(),
-                    record,
+                    (thread, path),
                     &self.stop,
                     deadline,
                 )?;
+                if notify {
+                    link.enable_notifications()?;
+                }
                 let (after, status) = self.automatic_binding(pane, &runtime, deadline)?;
                 let after = after.ok_or(Error::Unavailable)?;
                 if status != Status::Unavailable

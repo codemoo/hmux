@@ -90,8 +90,11 @@ manual link. The failure view points to Codex's `/status` Session ID in that cas
 Codex clients using a shared app-server daemon may not expose a per-client rollout
 file descriptor. In that case a Home administrator can explicitly link a known
 thread using `hmux-agent conversation-link` (see [Operations](OPERATIONS.md#administration)).
-The reader labels these responses as manually linked. Links are reader-only and
-never supply recovery, catalog attribution or completion notifications. Exact
+The reader labels these responses as manually linked. Default links are reader-only;
+links never supply recovery or catalog attribution. An administrator can separately
+opt into pinned-thread completion notifications with `conversation-link --notify`;
+existing reader-only links remain excluded. A same-process thread switch requires
+unlink/relink, because the link cannot identify the daemon client’s active thread. Exact
 automatic bindings take precedence; ambiguous bindings remain unavailable.
 A link expires when the tmux lifetime, pane process, Codex process/start time or
 record inode changes. Switching threads inside the same running CLI (`/new` or

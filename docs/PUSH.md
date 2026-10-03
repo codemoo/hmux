@@ -29,6 +29,21 @@ when it completes. Discovery errors leave terminal operation available. The
 connector must be running and Home awake; this is not a durable offline event
 queue or a notification for Claude/shell completion.
 
+For a shared daemon without a client-owned rollout descriptor, an administrator
+may explicitly enable a pinned-thread source with `hmux-agent conversation-link`
+and its optional `--notify` argument (see [Operations](OPERATIONS.md#administration)).
+Old/default links remain reader-only. The existing observer validates the tmux
+lifetime/pane, provider PID/start stamp, transcript header/device/inode and saved
+notification generation before and after scanning. An exact or ambiguous automatic
+binding suppresses this fallback. Changing/unlinking a source resets its baseline;
+old completions are not replayed. The additional reads use the existing worker,
+three-second scan deadline and bounded storage, without a new poller or service.
+
+This source means completion in the selected thread while the recorded process
+lifetime remains valid, not authoritative detection of the active daemon thread.
+Switching threads inside the same Codex process cannot be detected: unlink/relink
+is required. Process start stamps are a best-effort guard with one-second precision.
+
 The gateway checks each subscribed login against its account's authoritative
 shared workspace and sends only for matching open tabs. Visible/focused clients
 report only their selected session; a live presence lease suppresses that login's

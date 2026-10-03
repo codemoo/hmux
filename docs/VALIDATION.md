@@ -1,6 +1,6 @@
 # Validation status
 
-Evidence summary updated 2026-09-30. Deployment observations describe one maintained
+Evidence summary updated 2026-10-03. Deployment observations describe one maintained
 installation, not every HMux deployment. [Rust runtime status](RUST_MIGRATION.md)
 owns the remaining acceptance queue; [Rust verification](../tests/RUST.md) owns
 runnable checks. Detailed investigations, earlier CI failures and per-change
@@ -28,6 +28,30 @@ parallel build resumed with two build jobs. These are automated fixture results,
 not physical-device or long-running stability acceptance. Earlier CI outcomes
 are checkpoint-specific; see the dated record rather than inferring current CI
 status from a prior local result.
+
+## Pinned Codex completion notifications (2026-10-03)
+
+Administrators can separately opt a selected conversation into completion detection
+with `conversation-link --notify`. Older/default links stay reader-only. Generation
+and provenance establish fresh baselines; pre/post validation rejects changes to
+session lifetime, pane, provider PID/start stamp, permission/generation or transcript
+identity. Automatic exact/ambiguous bindings are never overridden. The source is
+explicitly pinned: same-process thread switches still require unlink/relink.
+
+Rust formatting, strict Home/helper Clippy, 320 Home/helper tests and optimized
+native builds passed with Rust 1.88. Nine opt-in/external/device tests were ignored;
+this is not acceptance of those gates. Synthetic regressions cover historical
+suppression, running baselines, deduplication, opt-in/relink and identity changes.
+Peer integration verifies notification transport in both JSON and protobuf codecs.
+Initial fixture runs exposed an undriven test runtime and unhandled WebSocket
+heartbeat; both were corrected before the passing full run. Independent review
+found no material defects.
+
+The maintained macOS Home/helper installation was updated with backup/rollback
+support. The connector reconnected, binary hashes matched, configuration and all
+33 pre-existing tmux lifetimes were preserved, and the selected reader remained
+available with notification permission enabled. Gateway and web assets were not
+replaced. Actual OS/PWA receipt of a subsequent real completion remains unverified.
 
 ## Conversation reader recovery
 

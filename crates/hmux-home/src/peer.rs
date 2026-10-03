@@ -852,6 +852,8 @@ async fn run_owned(
         tokio::spawn(completion::run(
             inbox.clone(),
             inspector.as_ref().expect("configured").clone(),
+            catalog.clone(),
+            config.state_dir.clone(),
             sender.clone(),
             protocol,
             stop.clone(),
