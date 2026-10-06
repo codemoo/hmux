@@ -51,6 +51,20 @@ CARGO_HOME=/tmp/hmux-cargo cargo test -p hmux-home --lib \
 Run it with normal host inspection permissions. Passing it verifies collection,
 not the authenticated browser's rendering or its clock/freshness behavior.
 
+An opt-in conversation-repair check creates its own disposable tmux socket and
+raw-mode synthetic TUI. It verifies guarded `/status\r` delivery, status-screen
+UUID parsing, exact rollout linking and an expired lifetime guard. Process/provider
+discovery is synthetic; it does not operate an existing Codex session. Set absolute
+paths to the test executables:
+
+```sh
+HMUX_TEST_TMUX=/absolute/path/to/tmux \
+HMUX_TEST_PYTHON=/absolute/path/to/python3 \
+cargo test --locked -p hmux-home --lib \
+  status_probe::tests::isolated_real_tmux_status_send_and_exact_link \
+  -- --ignored --exact
+```
+
 The compatibility names `rust-check`, `rust-build`, `rust-package`,
 `rust-bundle-check`, `rust-native-cli` and `rust-native-matrix` invoke current Rust
 checks/builds. They do not compile the retired Go implementation.

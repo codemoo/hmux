@@ -5,7 +5,7 @@ use crate::{
     catalog::{CatalogError, TmuxCatalogReader},
     conversation_link::{self, Link},
     inspection::{self, Error, Inspector, ScanPurpose},
-    records, transcript,
+    records, status_probe, transcript,
 };
 use bytes::Bytes;
 use hmux_model::{
@@ -211,7 +211,33 @@ impl Job {
             let Some(first) = self.pane(runtime, deadline)? else {
                 return Ok(self.empty(Status::Unavailable));
             };
-            let (binding, status, linked) = self.binding(first, runtime, deadline)?;
+            let (mut binding, mut status, mut linked) = match self.binding(first, runtime, deadline)
+            {
+                Ok(value) => value,
+                Err(error @ (Error::Busy | Error::Cancelled)) => return Err(error),
+                Err(_) => (None, Status::Unavailable, false),
+            };
+            if status == Status::Unavailable {
+                let (base, automatic) = self.automatic_binding(first, runtime, deadline)?;
+                if automatic == Status::Unavailable {
+                    if let Some(base) = base {
+                        let probe = status_probe::Probe {
+                            identity: &self.identity,
+                            pane: first,
+                            base: &base,
+                            reader: &self.reader,
+                            inspector: &self.inspector,
+                            state_dir: &self.state_dir,
+                            stop: &self.stop,
+                            deadline,
+                            runtime,
+                        };
+                        if probe.run().is_ok() {
+                            (binding, status, linked) = self.binding(first, runtime, deadline)?;
+                        }
+                    }
+                }
+            }
             if status != Status::Ready {
                 return Ok(self.empty(status));
             }

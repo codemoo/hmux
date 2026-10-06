@@ -73,9 +73,21 @@ impl Target {
         stop: &CancellationToken,
         deadline: Instant,
     ) -> Result<Vec<u8>, Error> {
-        self.command_os(
+        self.command_bounded(runner, args, OUTPUT_LIMIT, stop, deadline)
+            .await
+    }
+    pub(crate) async fn command_bounded(
+        &self,
+        runner: &CommandRunner,
+        args: Vec<String>,
+        output_limit: usize,
+        stop: &CancellationToken,
+        deadline: Instant,
+    ) -> Result<Vec<u8>, Error> {
+        self.command_os_bounded(
             runner,
             args.into_iter().map(OsString::from).collect(),
+            output_limit,
             stop,
             deadline,
         )
@@ -88,6 +100,20 @@ impl Target {
         stop: &CancellationToken,
         deadline: Instant,
     ) -> Result<Vec<u8>, Error> {
+        self.command_os_bounded(runner, args, OUTPUT_LIMIT, stop, deadline)
+            .await
+    }
+    async fn command_os_bounded(
+        &self,
+        runner: &CommandRunner,
+        args: Vec<OsString>,
+        output_limit: usize,
+        stop: &CancellationToken,
+        deadline: Instant,
+    ) -> Result<Vec<u8>, Error> {
+        if !(1..=65536).contains(&output_limit) {
+            return Err(Error::Invalid);
+        }
         if stop.is_cancelled() {
             return Err(Error::Cancelled);
         }
@@ -95,7 +121,7 @@ impl Target {
         if remaining.is_zero() {
             return Err(Error::Command);
         }
-        let spec = CommandSpec::new(self.executable.clone(), OUTPUT_LIMIT, remaining)
+        let spec = CommandSpec::new(self.executable.clone(), output_limit, remaining)
             .args(self.args_os(args));
         let (sender, receiver) = oneshot::channel();
         let work = runner.run_cancelable(spec, receiver);

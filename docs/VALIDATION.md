@@ -1,6 +1,6 @@
 # Validation status
 
-Evidence summary updated 2026-10-03. Deployment observations describe one maintained
+Evidence summary updated 2026-10-06. Deployment observations describe one maintained
 installation, not every HMux deployment. [Rust runtime status](RUST_MIGRATION.md)
 owns the remaining acceptance queue; [Rust verification](../tests/RUST.md) owns
 runnable checks. Detailed investigations, earlier CI failures and per-change
@@ -28,6 +28,47 @@ parallel build resumed with two build jobs. These are automated fixture results,
 not physical-device or long-running stability acceptance. Earlier CI outcomes
 are checkpoint-specific; see the dated record rather than inferring current CI
 status from a prior local result.
+
+## Guarded Codex status repair (2026-10-06)
+
+Unavailable conversation discovery can now send one fixed `/status\r` to a stable,
+foreground Codex pane with a recognized empty composer. A fresh status-panel UUID
+is matched against a bounded, no-symlink rollout scan and validated headers/inodes.
+Drafts, busy/approval screens, stale displayed status, copy mode, queued input,
+changed identities and duplicate records fail closed. Saved repaired links are
+reader-only and conditional writes preserve concurrent administrator links.
+
+Independent review found and corrected a long-held input gate, the Linux `state`
+versus `stat` foreground flag difference and an inherited 4 KiB capture ceiling.
+The final send gate has a shared 350 ms deadline; process/file discovery and the
+two-second status wait do not hold it. New HMux input abandons later repair. Captures
+have an explicit 64 KiB cap. External native typing and same-process thread switches
+remain limitations, as described in [Web](WEB.md#conversation-reader).
+
+All seven focused checks passed on macOS, including an opt-in real tmux check on a
+disposable isolated socket with a synthetic provider graph/raw-mode TUI. It verified
+exact `/status\r` bytes, the status UUID link and expired lifetime rejection. Other
+regressions cover >4 KiB screens, responsive input during delayed status output,
+cooldown, cancellation, prompt/identity rejection, duplicates, symlinks and headers.
+This is automated/synthetic-provider evidence, not actual Codex or browser-device
+acceptance. Strict Home/helper Clippy, formatting and optimized native builds passed.
+Independent follow-up review found no remaining material defect.
+
+The final two-thread Home/helper regression passed 327 tests with ten opt-in or
+external checks ignored. The separate opt-in status/tmux check above was executed.
+An initial unbounded-concurrency run failed the existing synthetic refresh test
+with a command error; the prescribed two-thread run and final rerun passed. This
+is targeted Home/helper validation, not a new full-workspace/Linux/device run.
+
+The maintained macOS Home/helper were deployed with native binary backups and
+rollback support. The connector reconnected; both installed hashes matched the
+build, configuration and LaunchAgent bytes were unchanged, and all 33 original
+tmux lifetimes and three existing link records (including notification permissions)
+were preserved. The installed helper read the existing selected Codex conversation
+with `linked` attribution. The portable macOS foreground check returned true.
+Gateway PID/restart count stayed unchanged; public HTTP 200 and anonymous session
+HTTP 401 checks passed. Gateway/web assets were not replaced. A real Codex automatic
+status-repair failure flow and physical-device/PWA behavior remain unverified.
 
 ## Pinned Codex completion notifications (2026-10-03)
 
@@ -62,8 +103,8 @@ controls after failure. Ambiguous, malformed, authentication and protocol failur
 stop immediately; HTTP 502 is not replayed because Gateway also uses it for
 invalid protocol responses. Long/invalid server backoffs stop the foreground cycle.
 Tab/reader/account cancellation covers active requests and delay timers. Every
-retry uses existing Home discovery; missing daemon thread associations still need
-an explicit link and are never inferred from directory/file recency.
+retry uses existing Home discovery. Missing daemon thread associations now also
+have the guarded status repair described below; directory/file recency is never used.
 
 Web TypeScript/formatting, 209 tests and production build passed. Regression tests
 cover finite attempts, nested-retry avoidance, account expiry, cancellation/late

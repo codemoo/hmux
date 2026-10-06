@@ -1,7 +1,7 @@
 //! One bounded terminal job. The shared peer never waits on PTY input or output
 //! credit. Its owner joins the child and guarded view cleanup before returning.
 use crate::{
-    observation,
+    input_gate, observation,
     peer::{self, Error},
     pty, view,
 };
@@ -76,8 +76,13 @@ impl Credit {
 
 pub(crate) struct Handle {
     pub(crate) stop: CancellationToken,
-    input: mpsc::Sender<Input>,
+    input: mpsc::Sender<Frame>,
+    activity: Arc<input_gate::State>,
     credit: Option<Arc<Credit>>,
+}
+pub(crate) struct Frame {
+    value: Input,
+    ticket: input_gate::Ticket,
 }
 impl Handle {
     pub(crate) fn input(&self, input: Input) {
@@ -87,7 +92,11 @@ impl Handle {
             Input::Data(data) => Input::Data(Bytes::copy_from_slice(&data)),
             other => other,
         };
-        if self.input.try_send(input).is_err() {
+        let frame = Frame {
+            value: input,
+            ticket: input_gate::Ticket::new(self.activity.clone()),
+        };
+        if self.input.try_send(frame).is_err() {
             self.stop.cancel();
         }
     }
@@ -104,7 +113,8 @@ impl Handle {
 pub(crate) fn channel(
     flow_control: bool,
     parent: &CancellationToken,
-) -> (Handle, mpsc::Receiver<Input>) {
+    identity: &SessionIdentity,
+) -> (Handle, mpsc::Receiver<Frame>) {
     let (input, receiver) = mpsc::channel(INPUT_FRAMES);
     let credit = flow_control.then(|| {
         Arc::new(Credit {
@@ -117,6 +127,7 @@ pub(crate) fn channel(
             stop: parent.child_token(),
             input,
             credit,
+            activity: input_gate::state(identity),
         },
         receiver,
     )
@@ -175,7 +186,7 @@ struct InputContext<'a> {
 }
 async fn input(
     mut writer: pty::WriteHalf,
-    mut receiver: mpsc::Receiver<Input>,
+    mut receiver: mpsc::Receiver<Frame>,
     context: InputContext<'_>,
 ) -> End {
     let InputContext {
@@ -190,20 +201,23 @@ async fn input(
     let mut refreshed = None;
     loop {
         let value = tokio::select! { biased; _=stop.cancelled()=>return End::Closed,value=receiver.recv()=>value };
+        let Some(Frame { value, ticket }) = value else {
+            return End::Closed;
+        };
+        let _gate = tokio::select! { biased; _=stop.cancelled()=>return End::Closed, gate=ticket.state.gate.lock()=>gate };
         match value {
-            None => return End::Closed,
-            Some(Input::Data(data)) => {
+            Input::Data(data) => {
                 let result = tokio::select! { biased; _=stop.cancelled()=>return End::Closed,value=writer.write_all(&data)=>value };
                 if result.is_err() {
                     return End::Closed;
                 }
             }
-            Some(Input::Resize(cols, rows)) => {
+            Input::Resize(cols, rows) => {
                 if writer.resize(cols, rows).is_err() {
                     return End::Closed;
                 }
             }
-            Some(Input::Refresh) => {
+            Input::Refresh => {
                 let now = Instant::now();
                 if refreshed.is_some_and(|last| now.duration_since(last) < Duration::from_secs(1)) {
                     continue;
@@ -250,7 +264,7 @@ impl Job {
     pub(crate) async fn run(
         self,
         handle: &Handle,
-        receiver: mpsc::Receiver<Input>,
+        receiver: mpsc::Receiver<Frame>,
     ) -> Result<(), Error> {
         let Self {
             request,

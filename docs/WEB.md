@@ -82,15 +82,31 @@ rather than being shortened. The failure view offers **Try again** and **Return 
 terminal**. Conversation retry belongs to the reader only, avoiding nested HTTP
 retry loops. No transcript is cached by this recovery flow.
 
-Automatic retry can recover transient discovery and transport failures. A shared
-Codex daemon without an observable thread binding still needs the exact thread ID
-for an explicit link; retries do not select the newest file or rebind an expired
-manual link. The failure view points to Codex's `/status` Session ID in that case.
+For unavailable Codex discovery, Home can repair the reader by sending `/status`
+to the exact active tmux pane and reading its newly displayed Session UUID. It
+requires a stable foreground Codex process and a recognized empty composer. Drafts,
+working/approval screens, queued HMux input, copy mode, ambiguous bindings and an
+already displayed Session field skip the probe. The status output remains visible.
+One process-wide probe runs at a time; sends have a 30-second per-lifetime cooldown
+and wait at most two seconds for the status panel, within the reader deadline.
+
+Only the exact UUID under the trusted Home `~/.codex/sessions` date directories
+is considered. The bounded, no-symlink lookup rejects duplicates or mismatched
+headers; no directory/newest-file guesses or private databases are used. Session,
+pane, provider process/start stamp and transcript identity are rechecked. A
+concurrent administrative link change is preserved. New repaired links are
+reader-only; existing valid links and explicit notification permissions are retained.
+Process scans and file lookup run outside the input gate. Final screen checks and
+the guarded send use a shared 350 ms deadline; new HMux input abandons subsequent
+repair. Screen capture is capped at 64 KiB. HMux views share the gate in the
+connector, but typing from native tmux clients
+or another process is outside that gate and cannot be made atomic with screen inspection.
+If a probe cannot run safely, retry when idle or use the explicit link below.
 
 Codex clients using a shared app-server daemon may not expose a per-client rollout
 file descriptor. In that case a Home administrator can explicitly link a known
 thread using `hmux-agent conversation-link` (see [Operations](OPERATIONS.md#administration)).
-The reader labels these responses as manually linked. Default links are reader-only;
+The reader labels explicit and repaired responses as linked. Default links are reader-only;
 links never supply recovery or catalog attribution. An administrator can separately
 opt into pinned-thread completion notifications with `conversation-link --notify`;
 existing reader-only links remain excluded. A same-process thread switch requires

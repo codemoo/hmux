@@ -502,6 +502,96 @@ fn entries(
     }
     Ok(names)
 }
+/// Exact status-reported UUID lookup. Every matching path is inspected; an
+/// incomplete/ambiguous traversal never returns the first candidate.
+pub(crate) fn find_codex_thread(
+    root: &Path,
+    id: &str,
+    cancel: &CancellationToken,
+    deadline: Instant,
+) -> Result<PathBuf, Error> {
+    struct Search<'a> {
+        root: &'a Path,
+        id: &'a str,
+        remaining: usize,
+        bytes: usize,
+        found: Option<PathBuf>,
+        cancel: &'a CancellationToken,
+        deadline: Instant,
+    }
+    impl Search<'_> {
+        fn walk(&mut self, dir: File, path: &Path, depth: usize) -> Result<(), Error> {
+            if !owned(dir.metadata().map_err(|_| Error::Unavailable)?.uid()) {
+                return Err(Error::Unavailable);
+            }
+            let mut reader = Dir::read_from(&dir).map_err(|_| Error::Unavailable)?;
+            while let Some(entry) = reader.read() {
+                check(self.cancel, self.deadline)?;
+                let entry = entry.map_err(|_| Error::Unavailable)?;
+                let name = entry.file_name().to_str().map_err(|_| Error::Unavailable)?;
+                if name == "." || name == ".." {
+                    continue;
+                }
+                self.remaining = self.remaining.checked_sub(1).ok_or(Error::Limit)?;
+                self.bytes = self.bytes.checked_sub(name.len()).ok_or(Error::Limit)?;
+                if depth < 3 {
+                    let digits = if depth == 0 { 4 } else { 2 };
+                    if name.len() != digits || !name.bytes().all(|b| b.is_ascii_digit()) {
+                        continue;
+                    }
+                    let child = File::from(
+                        fs::openat(&dir, name, dir_flags(), Mode::empty())
+                            .map_err(|_| Error::Unavailable)?,
+                    );
+                    self.walk(child, &path.join(name), depth + 1)?;
+                } else if name.starts_with("rollout-")
+                    && name.ends_with(&format!("-{}.jsonl", self.id))
+                {
+                    let candidate = path.join(name);
+                    let held = fs::statat(&dir, name, AtFlags::SYMLINK_NOFOLLOW)
+                        .map_err(|_| Error::Unavailable)?;
+                    let binding = bind_codex(
+                        Binding::unavailable(crate::binding::Provider::Codex, 1),
+                        0,
+                        std::slice::from_ref(&candidate),
+                        false,
+                        self.cancel,
+                        self.deadline,
+                    );
+                    if binding.status != Status::Ready
+                        || binding.record_id != self.id
+                        || self.found.is_some()
+                    {
+                        return Err(Error::Unavailable);
+                    }
+                    let stat = open_record(self.root, &candidate)?
+                        .metadata()
+                        .map_err(|_| Error::Unavailable)?;
+                    if i128::from(held.st_dev) != i128::from(stat.dev())
+                        || held.st_ino != stat.ino()
+                    {
+                        return Err(Error::Unavailable);
+                    }
+                    self.found = Some(candidate);
+                }
+            }
+            Ok(())
+        }
+    }
+    let mut search = Search {
+        root,
+        id,
+        remaining: 32768,
+        bytes: 4 << 20,
+        found: None,
+        cancel,
+        deadline,
+    };
+    search.walk(open_dir(root)?, root, 0)?;
+    check(cancel, deadline)?;
+    search.found.ok_or(Error::Unavailable)
+}
+
 fn claude_roots(
     home: &Path,
     cancel: &CancellationToken,

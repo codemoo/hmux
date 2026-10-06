@@ -1100,7 +1100,7 @@ async fn run_owned(
                             if result.is_err() { break; }
                             continue;
                         }
-                        let (handle, receiver) = terminal::channel(open.capabilities.iter().any(|cap| cap == hmux_protocol::flow::CAPABILITY), &stop);
+                        let (handle, receiver) = terminal::channel(open.capabilities.iter().any(|cap| cap == hmux_protocol::flow::CAPABILITY), &stop, &hmux_model::SessionIdentity { id: open.session.as_ref().expect("validated identity").id.clone(), created_at: open.session.as_ref().expect("validated identity").created_at });
                         let handle = Arc::new(handle);
                         let id = open.id.clone();
                         pending.insert(id.clone(), handle.stop.clone());

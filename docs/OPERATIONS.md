@@ -320,8 +320,16 @@ operations, not an alternate user interface. Destructive termination requires
 both `--confirmed` and `--created-at`; ordinary browser tab closing never terminates work.
 Optional workflow hooks use [CODEX_WORKFLOWS.md](CODEX_WORKFLOWS.md).
 
-For a Codex daemon client without an exact automatic rollout binding, explicitly
-select a known transcript for the reader using synthetic example arguments below:
+For a Codex daemon client without an exact automatic rollout binding, the reader
+first attempts a guarded `/status` repair at a recognized idle, empty CLI prompt.
+It links only the freshly reported UUID with a matching trusted rollout header.
+There is no interrupt, draft clearing or notification opt-in. The bounded conditions
+and external-input limitation are described in [Web](WEB.md#conversation-reader).
+An expired link can be replaced after a fresh status response; valid existing links
+are kept and concurrent administrator changes are never overwritten.
+
+If the automatic probe is skipped or fails, explicitly select a known transcript
+for the reader using synthetic example arguments below:
 
 ```sh
 hmux-agent conversation-link --session '$7' --created-at 1700000000 \

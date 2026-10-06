@@ -116,10 +116,15 @@ rendering does not execute raw HTML. See [WEB.md](WEB.md#conversation-reader).
 The web reader retries transient failures automatically, at most three attempts
 within 45 seconds. If it still fails, use **Try again** after the connection returns,
 or **Return to terminal**. Ambiguous bindings and authentication/protocol errors
-are not automatically replayed. The retry only reads the same exact tmux lifetime.
+are not automatically replayed. Every retry targets the same exact tmux lifetime.
 
-For a shared Codex daemon with no per-client rollout descriptor, supply the exact
-thread ID shown by the CLI and its matching rollout path to the Home administrator.
+For a shared Codex daemon with no per-client rollout descriptor, Home automatically
+tries `/status` when the selected CLI is idle with a recognized empty input field.
+It reads a fresh Session UUID and validates the exact rollout header before linking.
+The command is visible in tmux and sends no interrupt/clear keys. Busy/draft/approval
+screens, copy mode or an already displayed Session field skip the probe; attempted
+sends cool down for 30 seconds. Return to an empty prompt and retry. If automatic
+repair cannot run, supply the exact thread ID and matching rollout path to the Home administrator.
 Use the reader-only link command documented in [Operations](OPERATIONS.md#administration).
 Do not select the newest file or match only by working directory. Relink after
 switching threads inside the same CLI; this does not restart the provider.

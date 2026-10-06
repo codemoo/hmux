@@ -58,6 +58,35 @@ pub(crate) fn save(
     identity: &SessionIdentity,
     link: Option<&Link>,
 ) -> Result<(), Error> {
+    save_checked(state, identity, link, None)
+}
+pub(crate) fn snapshot(state: &Path, identity: &SessionIdentity) -> Result<Option<Vec<u8>>, Error> {
+    let name = name(identity)?;
+    let dir = match PrivateDir::open_existing_trusted(&state.join("conversation-links")) {
+        Ok(dir) => dir,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(None),
+        Err(_) => return Err(Error::Unavailable),
+    };
+    match dir.read_private(OsStr::new(&name), LIMIT) {
+        Ok(raw) => Ok(Some(raw)),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
+        Err(_) => Err(Error::Unavailable),
+    }
+}
+pub(crate) fn save_recovered(
+    state: &Path,
+    identity: &SessionIdentity,
+    link: &Link,
+    previous: Option<Vec<u8>>,
+) -> Result<(), Error> {
+    save_checked(state, identity, Some(link), Some(previous))
+}
+fn save_checked(
+    state: &Path,
+    identity: &SessionIdentity,
+    link: Option<&Link>,
+    expected: Option<Option<Vec<u8>>>,
+) -> Result<(), Error> {
     let name = name(identity)?;
     let raw = serde_json::to_vec(&link).map_err(|_| Error::Invalid)?;
     if raw.len() > LIMIT {
@@ -74,6 +103,9 @@ pub(crate) fn save(
         Err(e) if e.kind() == io::ErrorKind::NotFound => None,
         Err(_) => return Err(Error::Unavailable),
     };
+    if expected.is_some_and(|previous| previous != existing) {
+        return Err(Error::Unavailable);
+    }
     if link.is_none() {
         if let Some(raw) = existing {
             let previous: Option<Link> =
@@ -264,6 +296,27 @@ mod tests {
         assert!(link.resolve("other-start", &stop, deadline).is_err());
         assert_eq!(link.resolve("stamp", &stop, deadline).unwrap().file_pid, 0);
         save(&dir, &identity, Some(&link)).unwrap();
+        let previous = snapshot(&dir, &identity).unwrap();
+        assert!(save_recovered(&dir, &identity, &link, None).is_err());
+        assert!(save_recovered(&dir, &identity, &link, previous.clone()).is_ok());
+        let mut newer = Link::new(
+            identity.clone(),
+            80,
+            &base,
+            "stamp".into(),
+            ("thread-one".into(), path.clone()),
+            &stop,
+            deadline,
+        )
+        .unwrap();
+        newer.enable_notifications().unwrap();
+        save(&dir, &identity, Some(&newer)).unwrap();
+        assert!(save_recovered(&dir, &identity, &link, previous).is_err());
+        assert!(load(&dir, &identity)
+            .unwrap()
+            .unwrap()
+            .notification_owner()
+            .is_some());
         assert_eq!(
             fs::metadata(dir.join("conversation-links/$7.json"))
                 .unwrap()

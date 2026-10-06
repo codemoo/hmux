@@ -168,6 +168,28 @@ pub(crate) async fn command(
     }
 }
 impl Inspector {
+    pub(crate) fn sessions_root(&self) -> PathBuf {
+        self.home.join(".codex/sessions")
+    }
+    pub(crate) fn foreground(
+        &self,
+        pid: i32,
+        stop: &CancellationToken,
+        deadline: Instant,
+        runtime: &tokio::runtime::Handle,
+    ) -> Result<bool, Error> {
+        let raw = runtime.block_on(command(
+            CommandSpec::new(self.ps.clone(), 128, Duration::from_secs(2)).args([
+                "-p",
+                &pid.to_string(),
+                "-o",
+                "stat=",
+            ]),
+            stop,
+            deadline,
+        ))?;
+        Ok(std::str::from_utf8(&raw).is_ok_and(|s| s.trim().len() < 16 && s.trim().contains('+')))
+    }
     pub(crate) fn process_stamp(
         &self,
         pid: i32,
