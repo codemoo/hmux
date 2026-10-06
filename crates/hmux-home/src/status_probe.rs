@@ -6,6 +6,7 @@ use crate::{
     conversation_link::{self, Link},
     input_gate,
     inspection::{self, Error, Inspector, ScanPurpose},
+    observation::{self, Reason},
     records,
     view::Target,
 };
@@ -16,6 +17,8 @@ use std::{
     time::{Duration, Instant},
 };
 use tokio_util::sync::CancellationToken;
+#[path = "status_probe_size.rs"]
+mod size;
 const FORMAT: &str = "#{session_id}|#{session_created}|#{pane_id}|#{pane_pid}|#{cursor_x}|#{cursor_y}|#{pane_width}|#{pane_height}|#{pane_in_mode}|#{pane_dead}|#{alternate_on}|#{pane_current_command}";
 static PROBE: Mutex<()> = Mutex::new(());
 static SENT: OnceLock<Mutex<HashMap<SessionIdentity, Instant>>> = OnceLock::new();
@@ -36,10 +39,9 @@ impl Pane {
             || f[0] != identity.id
             || f[1] != identity.created_at.to_string()
             || f[3] != pane_pid.to_string()
-            || f[4] != "2"
             || f[8] != "0"
             || f[9] != "0"
-            || f[10] != "1"
+            || !["0", "1"].contains(&f[10].as_str())
         {
             return Err(Error::Unavailable);
         }
@@ -49,11 +51,13 @@ impl Pane {
         {
             return Err(Error::Unavailable);
         }
+        let x = f[4].parse::<usize>().map_err(|_| Error::Unavailable)?;
         let y = f[5].parse::<usize>().map_err(|_| Error::Unavailable)?;
         let width = f[6].parse::<usize>().map_err(|_| Error::Unavailable)?;
         let height = f[7].parse::<usize>().map_err(|_| Error::Unavailable)?;
         if !(48..=500).contains(&width)
             || !(12..=300).contains(&height)
+            || x >= width
             || y >= height
             || f[11].is_empty()
             || !f[11]
@@ -67,6 +71,16 @@ impl Pane {
             fields: f,
             y,
         })
+    }
+    fn owner_guard(&self) -> String {
+        [0, 1, 2, 3]
+            .iter()
+            .map(|&i| {
+                let key = ["session_id", "session_created", "pane_id", "pane_pid"][i];
+                format!("#{{==:#{{{key}}},{}}}", self.fields[i])
+            })
+            .reduce(|a, b| format!("#{{&&:{a},{b}}}"))
+            .expect("fields")
     }
     fn guard(&self) -> String {
         let names = [
@@ -92,6 +106,9 @@ impl Pane {
     }
 }
 fn empty_prompt(screen: &str, pane: &Pane) -> bool {
+    if pane.fields[4] != "2" {
+        return false;
+    }
     let lines: Vec<_> = screen.lines().collect();
     let prompt = lines.get(pane.y).map(|s| s.trim_end());
     if !matches!(
@@ -110,6 +127,20 @@ fn empty_prompt(screen: &str, pane: &Pane) -> bool {
         return false;
     }
     lines.get(pane.y + 1).is_some_and(|s| s.trim().is_empty())
+}
+fn owned_prompt(screen: &str, pane: &Pane) -> bool {
+    let lines: Vec<_> = screen.lines().collect();
+    pane.fields[4] == "9"
+        && lines.get(pane.y + 1).is_some_and(|s| s.trim().is_empty())
+        && screen
+            .lines()
+            .nth(pane.y)
+            .is_some_and(|s| matches!(s.trim_end(), "» /status" | "› /status"))
+}
+fn same_input_owner(before: &Pane, typed: &Pane) -> bool {
+    [0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11]
+        .iter()
+        .all(|&i| before.fields[i] == typed.fields[i])
 }
 fn uuid(s: &str) -> bool {
     s.len() == 36
@@ -158,6 +189,7 @@ fn status_panel(screen: &str) -> bool {
 }
 #[derive(Clone, Copy)]
 pub(crate) struct Probe<'a> {
+    pub reporter: Option<&'a observation::Reporter>,
     pub identity: &'a SessionIdentity,
     pub pane: i32,
     pub base: &'a Binding,
@@ -265,10 +297,30 @@ impl Probe<'_> {
         Ok(())
     }
     pub fn run(&self) -> Result<(), Error> {
+        let started = Instant::now();
+        let mut reason = Reason::ProbeProcess;
+        let result = self.run_inner(&mut reason);
+        if let Some(report) = self.reporter {
+            report(observation::Event::new(
+                observation::Stage::StatusProbe,
+                Some(hmux_protocol::protobuf::types::Operation::Conversation),
+                if result.is_ok() {
+                    Reason::Recovered
+                } else {
+                    reason
+                },
+                started,
+            ));
+        }
+        result
+    }
+    fn run_inner(&self, reason: &mut Reason) -> Result<(), Error> {
         if self.base.provider != Provider::Codex || self.base.provider_pid < 1 {
             return Err(Error::Unavailable);
         }
+        *reason = Reason::Busy;
         let _one = PROBE.try_lock().map_err(|_| Error::Busy)?;
+        *reason = Reason::ProbeCooldown;
         if SENT.get().is_some_and(|sent| {
             sent.lock()
                 .unwrap_or_else(|e| e.into_inner())
@@ -277,21 +329,30 @@ impl Probe<'_> {
         }) {
             return Err(Error::Busy);
         }
+        *reason = Reason::ProbeInput;
         let input = input_gate::state(self.identity);
         if !input.quiet() {
             return Err(Error::Unavailable);
         }
         let epoch = input.epoch.load(Ordering::SeqCst);
+        *reason = Reason::ProbeSave;
         let previous = conversation_link::snapshot(self.state_dir, self.identity)?;
         let target = self
             .reader
             .terminal_target()
             .map_err(|_| Error::Unavailable)?;
+        *reason = Reason::ProbePane;
         let pane = self.metadata(&target, &self.identity.id)?;
         let before = self.screen(&target, &pane)?;
-        if !empty_prompt(&before, &pane) || session_id(&before)?.is_some() {
+        *reason = Reason::ProbePrompt;
+        if !empty_prompt(&before, &pane) {
             return Err(Error::Unavailable);
         }
+        *reason = Reason::ProbeStale;
+        if session_id(&before)?.is_some() {
+            return Err(Error::Unavailable);
+        }
+        *reason = Reason::ProbeProcess;
         let stamp = self.inspector.process_stamp(
             self.base.provider_pid,
             self.stop,
@@ -301,13 +362,18 @@ impl Probe<'_> {
         self.current(&stamp)?;
         // Expensive process discovery stays outside the writer gate. Only the
         // final fresh-screen checks and fixed guarded send pause HMux input.
+        *reason = Reason::ProbeInput;
         let critical = Self {
             deadline: self
                 .deadline
                 .min(Instant::now() + Duration::from_millis(350)),
             ..*self
         };
+        // Declare cleanup first so every early return releases input before
+        // the cancellation-independent size restoration runs.
+        let width;
         let gate=critical.runtime.block_on(async {tokio::select! {biased;_ = critical.stop.cancelled()=>Err(Error::Cancelled),_ = tokio::time::sleep_until(critical.deadline.into())=>Err(Error::Cancelled),guard = input.gate.lock()=>Ok(guard)}})?;
+        *reason = Reason::ProbeChanged;
         if critical.metadata(&target, &self.identity.id)? != pane
             || critical.screen(&target, &pane)? != before
             || !input.quiet()
@@ -315,6 +381,43 @@ impl Probe<'_> {
         {
             return Err(Error::Unavailable);
         }
+        // Narrow status boxes clip the UUID rather than wrapping it. Widen only
+        // this exact single-pane window and restore its size/policy on every exit.
+        *reason = Reason::ProbeWidth;
+        width = if pane.fields[6]
+            .parse::<usize>()
+            .map_err(|_| Error::Unavailable)?
+            < 80
+        {
+            Some(size::Width::widen(critical, &target, &pane)?)
+        } else {
+            None
+        };
+        let (pane, before) = if width.is_some() {
+            let until = critical.deadline;
+            loop {
+                let current = critical.metadata(&target, &self.identity.id)?;
+                let screen = critical.screen(&target, &current)?;
+                if current.id == pane.id && empty_prompt(&screen, &current) {
+                    // Resize reflow can reveal an older status panel. Establish
+                    // a new baseline and reject it before sending anything.
+                    *reason = Reason::ProbeStale;
+                    if session_id(&screen)?.is_some() {
+                        return Err(Error::Unavailable);
+                    }
+                    break (current, screen);
+                }
+                inspection::check(self.stop, until)?;
+                self.runtime
+                    .block_on(async { tokio::time::sleep(Duration::from_millis(10)).await });
+            }
+        } else {
+            (pane, before)
+        };
+        if !input.quiet() || input.epoch.load(Ordering::SeqCst) != epoch {
+            return Err(Error::Unavailable);
+        }
+        *reason = Reason::ProbeCooldown;
         {
             let now = Instant::now();
             let mut sent = SENT
@@ -327,9 +430,11 @@ impl Probe<'_> {
             }
             sent.insert(self.identity.clone(), now);
         }
-        // One fixed hexadecimal write under a tmux-format identity/cursor guard.
-        // No shell command is evaluated; no text/Enter split can leave a partial probe.
-        let send = format!("send-keys -t {} -H 2f 73 74 61 74 75 73 0d", pane.id);
+        // Codex treats text + CR in one burst as multiline input. Send only the
+        // fixed literal command, let its paste burst settle, then submit a named
+        // Enter only if the entire composer still contains exactly our command.
+        let send = format!("send-keys -t {} -H 2f 73 74 61 74 75 73", pane.id);
+        *reason = Reason::ProbeSend;
         critical.command(
             &target,
             vec![
@@ -341,6 +446,49 @@ impl Probe<'_> {
                 send,
             ],
         )?;
+        critical.runtime.block_on(async {
+            tokio::select! {
+                biased;
+                _ = critical.stop.cancelled() => Err(Error::Cancelled),
+                _ = tokio::time::sleep_until(critical.deadline.into()) => Err(Error::Cancelled),
+                _ = tokio::time::sleep(Duration::from_millis(120)) => Ok(())
+            }
+        })?;
+        let typed = critical.metadata(&target, &self.identity.id)?;
+        let typed_screen = critical.screen(&target, &typed)?;
+        if !same_input_owner(&pane, &typed)
+            || !owned_prompt(&typed_screen, &typed)
+            || !input.quiet()
+            || input.epoch.load(Ordering::SeqCst) != epoch
+        {
+            return Err(Error::Unavailable);
+        }
+        if critical.inspector.process_stamp(
+            self.base.provider_pid,
+            self.stop,
+            critical.deadline,
+            self.runtime,
+        )? != stamp
+            || !critical.inspector.foreground(
+                self.base.provider_pid,
+                self.stop,
+                critical.deadline,
+                self.runtime,
+            )?
+        {
+            return Err(Error::Unavailable);
+        }
+        critical.command(
+            &target,
+            vec![
+                "if-shell".into(),
+                "-F".into(),
+                "-t".into(),
+                self.identity.id.clone(),
+                typed.guard(),
+                format!("send-keys -t {} Enter", typed.id),
+            ],
+        )?;
         drop(gate);
         let unchanged_input = || input.quiet() && input.epoch.load(Ordering::SeqCst) == epoch;
         let until = (Instant::now() + Duration::from_secs(2)).min(self.deadline);
@@ -348,6 +496,7 @@ impl Probe<'_> {
             deadline: until,
             ..*self
         };
+        *reason = Reason::ProbeStatus;
         let id = loop {
             inspection::check(self.stop, until)?;
             let after = polling.screen(&target, &pane)?;
@@ -355,17 +504,20 @@ impl Probe<'_> {
                 return Err(Error::Unavailable);
             }
             if after != before && status_panel(&after) {
-                if let Some(id) = session_id(&after)? {
+                if let Ok(Some(id)) = session_id(&after) {
                     break id;
                 }
             }
             self.runtime.block_on(async {tokio::select!{biased;_=self.stop.cancelled()=>Err(Error::Cancelled),_=tokio::time::sleep(Duration::from_millis(80))=>Ok(())}})?;
         };
+        drop(width);
+        *reason = Reason::ProbeProcess;
         self.current(&stamp)?;
         let after = self.metadata(&target, &self.identity.id)?;
         if after.id != pane.id {
             return Err(Error::Unavailable);
         }
+        *reason = Reason::ProbeRecord;
         let path = records::find_codex_thread(
             &self.inspector.sessions_root(),
             &id,
@@ -382,11 +534,14 @@ impl Probe<'_> {
             self.stop,
             self.deadline,
         )?;
+        *reason = Reason::ProbeProcess;
         self.current(&stamp)?;
+        *reason = Reason::ProbeInput;
         if !unchanged_input() {
             return Err(Error::Unavailable);
         }
         inspection::check(self.stop, self.deadline)?;
+        *reason = Reason::ProbeSave;
         conversation_link::save_recovered(self.state_dir, self.identity, &link, previous)
     }
 }

@@ -52,9 +52,13 @@ Run it with normal host inspection permissions. Passing it verifies collection,
 not the authenticated browser's rendering or its clock/freshness behavior.
 
 An opt-in conversation-repair check creates its own disposable tmux socket and
-raw-mode synthetic TUI. It verifies guarded `/status\r` delivery, status-screen
-UUID parsing, exact rollout linking and an expired lifetime guard. Process/provider
-discovery is synthetic; it does not operate an existing Codex session. Set absolute
+raw-mode synthetic TUI. It verifies guarded literal `/status`, delayed named Enter
+and status-screen
+UUID parsing, exact rollout linking and an expired lifetime guard. It starts at
+62 columns and verifies width restoration, explicit/inherited sizing policies,
+request cancellation, external resize and switching the active window during
+cleanup. A separate regression rejects an old status panel revealed by reflow.
+Process/provider discovery is synthetic; it does not operate an existing Codex session. Set absolute
 paths to the test executables:
 
 ```sh

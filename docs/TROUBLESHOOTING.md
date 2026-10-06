@@ -121,7 +121,13 @@ are not automatically replayed. Every retry targets the same exact tmux lifetime
 For a shared Codex daemon with no per-client rollout descriptor, Home automatically
 tries `/status` when the selected CLI is idle with a recognized empty input field.
 It reads a fresh Session UUID and validates the exact rollout header before linking.
-The command is visible in tmux and sends no interrupt/clear keys. Busy/draft/approval
+The command is visible in tmux and sends no interrupt/clear keys. Text and named
+Enter are separated so Codex does not treat them as multiline input. Narrow,
+single-pane windows temporarily widen to 80 columns to avoid a clipped UUID;
+original dimensions and sizing policy are restored. Check Home/helper diagnostics
+for `stage=status-probe` and its fixed failure reason. A `restore` event or leftover
+`@hmux_status_probe` window option requires administrator inspection of that window
+before another narrow probe. Do not infer a thread from a clipped ID. Busy/draft/approval
 screens, copy mode or an already displayed Session field skip the probe; attempted
 sends cool down for 30 seconds. Return to an empty prompt and retry. If automatic
 repair cannot run, supply the exact thread ID and matching rollout path to the Home administrator.

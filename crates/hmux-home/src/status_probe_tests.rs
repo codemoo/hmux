@@ -61,10 +61,10 @@ fn prompt_and_identity_guard_fail_closed() {
     for (from, to) in [
         ("|42|", "|43|"),
         ("|%80|", "|%80;bad|"),
-        ("|2|2|", "|3|2|"),
+        ("|2|2|", "|80|2|"),
         ("|0|0|1|", "|1|0|1|"),
         ("|0|0|1|", "|0|1|1|"),
-        ("|0|0|1|", "|0|0|0|"),
+        ("|0|0|1|", "|0|0|2|"),
         ("|bash", "|bash,evil"),
     ] {
         let modified = std::str::from_utf8(raw).unwrap().replace(from, to);
@@ -73,6 +73,10 @@ fn prompt_and_identity_guard_fail_closed() {
             "{modified}"
         );
     }
+    let normal = Pane::parse(b"$7|42|%80|80|2|2|80|24|0|0|0|bash\n", &identity, 80).unwrap();
+    assert!(empty_prompt(screen, &normal));
+    let moved = Pane::parse(b"$7|42|%80|80|10|2|80|24|0|0|0|bash\n", &identity, 80).unwrap();
+    assert!(!empty_prompt(screen, &moved));
     assert!(pane.guard().contains("#{==:#{session_created},42}"));
     assert!(pane.guard().contains("#{==:#{pane_id},%80}"));
 }
@@ -107,7 +111,21 @@ impl Fixture {
         write("ps","#!/bin/sh\nroot=${0%/*}\nif [ \"$1\" = -p ]; then if [ \"$4\" = stat= ]; then printf '%s\\n' 'S+'; else /bin/cat \"$root/stamp\"; fi; else printf '%s\\n' '80 1 S 0.0 bash' '90 80 S+ 0.0 codex'; fi\n",0o700);
         write("stamp", "start-one\n", 0o600);
         write("lsof", "#!/bin/sh\nexit 0\n", 0o700);
-        write("tmux","#!/bin/sh\nroot=${0%/*}\ncase \"$1\" in\nlist-sessions) /bin/cat \"$root/sessions\" ;;\nlist-windows) /bin/cat \"$root/windows\" ;;\ndisplay-message) /bin/cat \"$root/metadata\" ;;\ncapture-pane) if [ -f \"$root/sent\" ]; then /bin/cat \"$root/after\"; else /bin/cat \"$root/before\"; fi ;;\nif-shell) printf '%s\\n' \"$@\" > \"$root/sent\"; if [ -f \"$root/change-stamp\" ]; then printf '%s\\n' 'start-two' > \"$root/stamp\"; fi ;;\n*) exit 99 ;;\nesac\n",0o700);
+        write(
+            "tmux",
+            r#"#!/bin/sh
+root=${0%/*}
+case "$1" in
+list-sessions) /bin/cat "$root/sessions" ;;
+list-windows) /bin/cat "$root/windows" ;;
+display-message) if [ -f "$root/submitted" ] && [ -f "$root/metadata-after" ]; then /bin/cat "$root/metadata-after"; elif [ -f "$root/sent" ] && [ ! -f "$root/submitted" ]; then /bin/cat "$root/metadata-typed"; else /bin/cat "$root/metadata"; fi ;;
+capture-pane) if [ -f "$root/submitted" ]; then /bin/cat "$root/after"; elif [ -f "$root/sent" ]; then /bin/cat "$root/typed"; else /bin/cat "$root/before"; fi ;;
+if-shell) printf '%s\n' "$@" >> "$root/sent"; case "$6" in *' Enter') printf '' > "$root/submitted" ;; esac; if [ -f "$root/change-stamp" ]; then printf '%s\n' 'start-two' > "$root/stamp"; fi ;;
+*) exit 99 ;;
+esac
+"#,
+            0o700,
+        );
         write("sessions",&format!("{}|:hmux-sep-v1:|fixture|:hmux-sep-v1:|42|:hmux-sep-v1:|43|:hmux-sep-v1:|0|:hmux-sep-v1:|1|:hmux-sep-v1:||:hmux-sep-v1:|\n",identity.id),0o600);
         write("windows",&format!("{}|:hmux-sep-v1:|main|:hmux-sep-v1:|1|:hmux-sep-v1:|/synthetic|:hmux-sep-v1:|bash|:hmux-sep-v1:|80|:hmux-sep-v1:|24|:hmux-sep-v1:|80\n",identity.id),0o600);
         write(
@@ -115,6 +133,12 @@ impl Fixture {
             &format!("{}|42|%80|80|2|2|80|24|0|0|1|bash\n", identity.id),
             0o600,
         );
+        write(
+            "metadata-typed",
+            &format!("{}|42|%80|80|9|2|80|24|0|0|1|bash\n", identity.id),
+            0o600,
+        );
+        write("typed", "output\n\n» /status\n\nGPT-6-Astra\n", 0o600);
         write(
             "before",
             "output\n\n» Ask Codex to do anything\n\nGPT-6-Astra\n",
@@ -147,6 +171,7 @@ impl Fixture {
     }
     fn run(&self) -> Result<(), Error> {
         Probe {
+            reporter: None,
             identity: &self.identity,
             pane: 80,
             base: &Binding::unavailable(Provider::Codex, 90),
@@ -182,7 +207,9 @@ fn probe_sends_once_links_exact_id_and_cools_down_failed_attempts() {
         )
         .is_ok());
     let sent = fs::read_to_string(f.dir.join("sent")).unwrap();
-    assert!(sent.contains("-H 2f 73 74 61 74 75 73 0d"));
+    assert!(sent.contains("-H 2f 73 74 61 74 75 73"));
+    assert!(!sent.contains("73 0d"));
+    assert!(sent.contains("send-keys -t %80 Enter"));
     assert!(!sent.contains("C-c"));
     fs::remove_file(f.dir.join("sent")).unwrap();
     assert!(f.run().is_err());
@@ -220,6 +247,75 @@ fn busy_drafts_stale_status_queued_input_and_cancel_do_not_send() {
     assert!(!f.dir.join("sent").exists());
 }
 #[test]
+fn changed_composer_or_new_input_never_submits_enter() {
+    let _serial = SERIAL.lock().unwrap();
+    let f = Fixture::new();
+    fs::write(f.dir.join("typed"), "output\n\n» /status user draft\n\n").unwrap();
+    assert!(f.run().is_err());
+    assert!(!fs::read_to_string(f.dir.join("sent"))
+        .unwrap()
+        .contains(" Enter"));
+    let f = Fixture::new();
+    std::thread::scope(|scope| {
+        let probe = scope.spawn(|| f.run());
+        let until = Instant::now() + Duration::from_secs(3);
+        while !f.dir.join("sent").exists() {
+            assert!(Instant::now() < until);
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        let ticket = input_gate::Ticket::new(input_gate::state(&f.identity));
+        assert!(probe.join().unwrap().is_err());
+        drop(ticket);
+    });
+    assert!(!fs::read_to_string(f.dir.join("sent"))
+        .unwrap()
+        .contains(" Enter"));
+    assert!(conversation_link::load(&f.dir, &f.identity)
+        .unwrap()
+        .is_none());
+}
+
+#[test]
+fn normal_screen_and_post_status_cursor_change_can_recover() {
+    let _serial = SERIAL.lock().unwrap();
+    let f = Fixture::new();
+    let before = format!("{}|42|%80|80|2|2|80|24|0|0|0|bash\n", f.identity.id);
+    let after = format!("{}|42|%80|80|30|5|80|24|0|0|0|bash\n", f.identity.id);
+    fs::write(f.dir.join("metadata"), before).unwrap();
+    fs::write(f.dir.join("metadata-after"), after).unwrap();
+    fs::write(
+        f.dir.join("metadata-typed"),
+        format!("{}|42|%80|80|9|2|80|24|0|0|0|bash\n", f.identity.id),
+    )
+    .unwrap();
+    assert!(f.run().is_ok());
+    assert!(conversation_link::load(&f.dir, &f.identity)
+        .unwrap()
+        .is_some());
+}
+
+#[test]
+fn partial_status_render_waits_for_complete_uuid() {
+    let _serial = SERIAL.lock().unwrap();
+    let f = Fixture::new();
+    fs::write(
+        f.dir.join("partial"),
+        "Model: test\nDirectory: /synthetic\nSession: 01234567-89ab-\n",
+    )
+    .unwrap();
+    let script = fs::read_to_string(f.dir.join("tmux")).unwrap().replace(
+        "/bin/cat \"$root/after\"",
+        "if [ -f \"$root/partial-seen\" ]; then /bin/cat \"$root/after\"; else printf '' > \"$root/partial-seen\"; /bin/cat \"$root/partial\"; fi",
+    );
+    fs::write(f.dir.join("tmux"), script).unwrap();
+    assert!(f.run().is_ok());
+    assert!(f.dir.join("partial-seen").exists());
+    assert!(conversation_link::load(&f.dir, &f.identity)
+        .unwrap()
+        .is_some());
+}
+
+#[test]
 fn large_screen_capture_and_input_during_status_poll() {
     let _serial = SERIAL.lock().unwrap();
     let f = Fixture::new();
@@ -230,6 +326,11 @@ fn large_screen_capture_and_input_during_status_poll() {
     fs::write(
         f.dir.join("metadata"),
         format!("{}|42|%80|80|2|2|80|100|0|0|1|bash\n", f.identity.id),
+    )
+    .unwrap();
+    fs::write(
+        f.dir.join("metadata-typed"),
+        format!("{}|42|%80|80|9|2|80|100|0|0|1|bash\n", f.identity.id),
     )
     .unwrap();
     assert!(f.run().is_ok());
@@ -259,6 +360,44 @@ fn large_screen_capture_and_input_during_status_poll() {
         assert!(probe.join().unwrap().is_err());
         drop(ticket);
     });
+    assert!(conversation_link::load(&f.dir, &f.identity)
+        .unwrap()
+        .is_none());
+}
+
+#[test]
+fn resize_revealing_an_old_status_panel_never_sends_or_links() {
+    let _serial = SERIAL.lock().unwrap();
+    let f = Fixture::new();
+    let narrow = fs::read_to_string(f.dir.join("metadata"))
+        .unwrap()
+        .replace("|80|24|", "|62|24|");
+    fs::write(f.dir.join("metadata-narrow"), narrow).unwrap();
+    let wide = format!(
+        "Model: old\nDirectory: /synthetic\nSession: {ID}\n\n» Ask Codex to do anything\n\n"
+    );
+    fs::write(f.dir.join("before-wide"), wide).unwrap();
+    let metadata = fs::read_to_string(f.dir.join("metadata"))
+        .unwrap()
+        .replace("|2|2|80|", "|2|4|80|");
+    fs::write(f.dir.join("metadata-wide"), metadata).unwrap();
+    fs::write(f.dir.join("tmux"), r#"#!/bin/sh
+root=${0%/*}
+case "$1" in
+list-sessions) /bin/cat "$root/sessions" ;;
+list-windows) /bin/cat "$root/windows" ;;
+display-message)
+ case "$5" in *window_id*) printf '%s\n' '@1|1|62|24|latest' ;;
+ *) if [ -f "$root/widened" ]; then /bin/cat "$root/metadata-wide"; else /bin/cat "$root/metadata-narrow"; fi ;; esac ;;
+show-options) exit 0 ;;
+capture-pane) if [ -f "$root/widened" ]; then /bin/cat "$root/before-wide"; else /bin/cat "$root/before"; fi ;;
+if-shell) case "$6" in *send-keys*) printf '' > "$root/sent" ;; *resize-window*) printf '' > "$root/widened" ;; esac ;;
+*) exit 99 ;;
+esac
+"#).unwrap();
+    assert!(f.run().is_err());
+    assert!(f.dir.join("widened").exists());
+    assert!(!f.dir.join("sent").exists());
     assert!(conversation_link::load(&f.dir, &f.identity)
         .unwrap()
         .is_none());
@@ -347,6 +486,8 @@ sys.stdout.write('\x1b[?1049h\x1b[2J\x1b[3;1H» Ask Codex to do anything\x1b[3;3
 data=b''
 while not data.endswith(b'\r'):
     data+=os.read(0,1)
+    if data==b'/status':
+        sys.stdout.write('\x1b[3;1H\x1b[2K» /status\x1b[3;10H');sys.stdout.flush()
 Path(__file__).with_name('received').write_bytes(data)
 sys.stdout.write('\x1b[2J\x1b[HModel: synthetic\r\nDirectory: /synthetic\r\nSession: {ID}\r\n\r\n» Ask Codex to do anything\x1b[5;3H');sys.stdout.flush()
 while True:
@@ -357,7 +498,7 @@ while True:
         "new-session",
         "-d",
         "-x",
-        "100",
+        "62",
         "-y",
         "30",
         "-s",
@@ -401,6 +542,7 @@ while True:
         std::thread::sleep(Duration::from_millis(30));
     }
     Probe {
+        reporter: None,
         identity: &f.identity,
         pane: pane_pid,
         base: &Binding::unavailable(Provider::Codex, 90),
@@ -414,6 +556,32 @@ while True:
     .run()
     .unwrap();
     assert_eq!(fs::read(f.dir.join("received")).unwrap(), b"/status\r");
+    assert_eq!(
+        server
+            .text(&[
+                "display-message",
+                "-p",
+                "-t",
+                &f.identity.id,
+                "#{window_width}"
+            ])
+            .trim(),
+        "62"
+    );
+    assert!(server
+        .text(&[
+            "show-options",
+            "-wqv",
+            "-t",
+            &f.identity.id,
+            "@hmux_status_probe"
+        ])
+        .trim()
+        .is_empty());
+    assert!(server
+        .text(&["show-options", "-wqv", "-t", &f.identity.id, "window-size"])
+        .trim()
+        .is_empty());
     let link = conversation_link::load(&f.dir, &f.identity)
         .unwrap()
         .unwrap();
@@ -428,6 +596,130 @@ while True:
         .record_id,
         ID
     );
+    // Cleanup runs independently of request cancellation; explicit manual and
+    // automatic policies retain their local/inherited option semantics.
+    let base = Binding::unavailable(Provider::Codex, 90);
+    let cleanup_stop = CancellationToken::new();
+    let probe = Probe {
+        reporter: None,
+        identity: &f.identity,
+        pane: pane_pid,
+        base: &base,
+        reader: &f.reader,
+        inspector: &f.inspector,
+        state_dir: &f.dir,
+        stop: &cleanup_stop,
+        deadline: Instant::now() + Duration::from_secs(5),
+        runtime: f.runtime.handle(),
+    };
+    let target = f.reader.terminal_target().unwrap();
+    for policy in ["manual", "latest"] {
+        server.text(&[
+            "set-option",
+            "-w",
+            "-t",
+            &f.identity.id,
+            "window-size",
+            policy,
+        ]);
+        let original = probe.metadata(&target, &f.identity.id).unwrap();
+        let lease = size::Width::widen(probe, &target, &original).unwrap();
+        assert_eq!(
+            probe.metadata(&target, &f.identity.id).unwrap().fields[6],
+            "80"
+        );
+        drop(lease);
+        assert_eq!(
+            probe.metadata(&target, &f.identity.id).unwrap().fields[6],
+            "62"
+        );
+        assert_eq!(
+            server
+                .text(&["show-options", "-wqv", "-t", &f.identity.id, "window-size"])
+                .trim(),
+            policy
+        );
+    }
+    let original = probe.metadata(&target, &f.identity.id).unwrap();
+    let window = server
+        .text(&[
+            "display-message",
+            "-p",
+            "-t",
+            &f.identity.id,
+            "#{window_id}",
+        ])
+        .trim()
+        .to_owned();
+    let selector = format!("{}:{}.{}", f.identity.id, window, original.id);
+    let lease = size::Width::widen(probe, &target, &original).unwrap();
+    server.text(&[
+        "new-window",
+        "-t",
+        &f.identity.id,
+        "-n",
+        "hmux-e2e-other",
+        "/bin/sh",
+    ]);
+    drop(lease);
+    assert_eq!(
+        server
+            .text(&["display-message", "-p", "-t", &selector, "#{window_width}"])
+            .trim(),
+        "62"
+    );
+    assert!(server
+        .text(&["show-options", "-wqv", "-t", &window, "@hmux_status_probe"])
+        .trim()
+        .is_empty());
+    server.text(&["select-window", "-t", &window]);
+    let original = probe.metadata(&target, &f.identity.id).unwrap();
+    let lease = size::Width::widen(probe, &target, &original).unwrap();
+    // An observable external resize wins; cleanup only removes its own marker.
+    server.text(&["resize-window", "-t", &f.identity.id, "-x", "90"]);
+    drop(lease);
+    assert_eq!(
+        probe.metadata(&target, &f.identity.id).unwrap().fields[6],
+        "90"
+    );
+    assert_eq!(
+        server
+            .text(&["show-options", "-wqv", "-t", &f.identity.id, "window-size"])
+            .trim(),
+        "manual"
+    );
+    server.text(&["resize-window", "-t", &f.identity.id, "-x", "62"]);
+    server.text(&["set-option", "-wu", "-t", &f.identity.id, "window-size"]);
+    let original = probe.metadata(&target, &f.identity.id).unwrap();
+    let lease = size::Width::widen(probe, &target, &original).unwrap();
+    cleanup_stop.cancel();
+    drop(lease);
+    assert_eq!(
+        server
+            .text(&[
+                "display-message",
+                "-p",
+                "-t",
+                &f.identity.id,
+                "#{window_width}"
+            ])
+            .trim(),
+        "62"
+    );
+    assert!(server
+        .text(&["show-options", "-wqv", "-t", &f.identity.id, "window-size"])
+        .trim()
+        .is_empty());
+    assert!(server
+        .text(&[
+            "show-options",
+            "-wqv",
+            "-t",
+            &f.identity.id,
+            "@hmux_status_probe"
+        ])
+        .trim()
+        .is_empty());
     // An expired lifetime guard cannot deliver another key to the same pane.
     let raw = server.text(&["display-message", "-p", "-t", &f.identity.id, FORMAT]);
     let pane = Pane::parse(raw.as_bytes(), &f.identity, pane_pid).unwrap();

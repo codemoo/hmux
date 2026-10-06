@@ -29,9 +29,50 @@ not physical-device or long-running stability acceptance. Earlier CI outcomes
 are checkpoint-specific; see the dated record rather than inferring current CI
 status from a prior local result.
 
+## Codex status repair runtime follow-up (2026-10-06)
+
+Actual Codex exposed two gaps in the initial synthetic check: a text/CR burst
+left a multiline composer instead of executing `/status`, and a 62-column status
+box clipped the UUID. Delivery now separates literal text, a 120 ms settle, an
+exact owned-composer/process check and guarded named Enter. Normal screens and
+post-submit cursor movement are accepted; incomplete status rendering is polled.
+Narrow single-pane windows temporarily widen to 80 columns and restore dimensions
+plus local/inherited sizing policy. Reflow must not reveal a stale panel eligible
+for linking. Cleanup targets the original window/pane after active-window changes
+and releases the input gate before its independent 250 ms deadline after lease
+acquisition. A failure inside lease acquisition may hold the gate during cleanup,
+for a combined maximum of 600 ms; the ordinary critical deadline remains 350 ms.
+
+Actual maintained Codex repairs succeeded with 142 and 27 public messages in two
+idle sessions. Three previous failed probes were repaired by submitting only the
+unchanged, owned `/status` composer or reading its displayed status at full width;
+reader-only links returned 50, 25 and 10 messages, and original sizing was restored.
+This is native operational evidence, not authenticated browser/mobile validation.
+No drafts were cleared, providers interrupted or notification permissions changed.
+
+The focused synthetic/isolated checks additionally cover manual/inherited policy,
+cancellation, external resizing, active-window switching and stale reflow. Fixed
+privacy-safe diagnostics distinguish prompt/input/width/status/record/restore
+failures. Native typing races, same-value external changes and cleanup after hard
+process termination remain explicit limits; see [Web](WEB.md#conversation-reader).
+All eleven focused checks passed, including the opt-in isolated real tmux check.
+Strict Home/helper Clippy and workspace formatting passed. The final two-thread
+Home/helper suite passed 331 tests with ten opt-in/external checks ignored; the
+status/tmux opt-in was separately executed. Independent source review found and
+corrected stale reflow and active-window cleanup defects. Its remaining exceptional
+input-gate cleanup bound is stated above. This is targeted macOS native validation,
+not a new full-workspace, Linux or authenticated browser/device acceptance run.
+
+The optimized macOS Home/helper were deployed with backups and rollback support.
+The Home reconnected, installed hashes matched the tested binaries, and all 33
+original tmux lifetimes, eight conversation links, configuration and service plist
+were preserved. Five existing linked sessions were read successfully using the
+installed helper after activation. Public root/auth boundary checks remained
+200/401, and the unchanged Gateway remained active with zero service restarts.
+
 ## Guarded Codex status repair (2026-10-06)
 
-Unavailable conversation discovery can now send one fixed `/status\r` to a stable,
+The initial guarded repair sent one fixed `/status\r` to a stable,
 foreground Codex pane with a recognized empty composer. A fresh status-panel UUID
 is matched against a bounded, no-symlink rollout scan and validated headers/inodes.
 Drafts, busy/approval screens, stale displayed status, copy mode, queued input,

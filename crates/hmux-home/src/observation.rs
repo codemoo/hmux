@@ -13,6 +13,7 @@ pub enum Stage {
     WorkspaceCatalog,
     ViewCleanup,
     Usage,
+    StatusProbe,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -36,6 +37,19 @@ pub enum Reason {
     Recovered,
     Published,
     Quarantined,
+    ProbePane,
+    ProbePrompt,
+    ProbeStale,
+    ProbeProcess,
+    ProbeChanged,
+    ProbeCooldown,
+    ProbeSend,
+    ProbeStatus,
+    ProbeRecord,
+    ProbeSave,
+    ProbeInput,
+    ProbeWidth,
+    ProbeRestore,
 }
 
 impl Reason {
@@ -80,6 +94,7 @@ impl fmt::Display for Event {
             Stage::WorkspaceCatalog => "workspace-catalog",
             Stage::ViewCleanup => "view-cleanup",
             Stage::Usage => "usage",
+            Stage::StatusProbe => "status-probe",
         };
         let reason = match self.reason {
             Reason::Busy => "busy",
@@ -101,6 +116,19 @@ impl fmt::Display for Event {
             Reason::Recovered => "recovered",
             Reason::Published => "published",
             Reason::Quarantined => "quarantined",
+            Reason::ProbePane => "pane",
+            Reason::ProbePrompt => "prompt",
+            Reason::ProbeStale => "stale-status",
+            Reason::ProbeProcess => "process",
+            Reason::ProbeChanged => "changed-screen",
+            Reason::ProbeCooldown => "cooldown",
+            Reason::ProbeSend => "send",
+            Reason::ProbeStatus => "status-output",
+            Reason::ProbeRecord => "record",
+            Reason::ProbeSave => "save",
+            Reason::ProbeInput => "input",
+            Reason::ProbeWidth => "width",
+            Reason::ProbeRestore => "restore",
         };
         write!(
             f,

@@ -169,6 +169,7 @@ impl AgentSupport {
             .ok_or("conversation unavailable for this session")?;
         let permit = inspection::admit().ok_or("conversation unavailable for this session")?;
         conversation::Job {
+            reporter: Some(std::sync::Arc::new(|event| eprintln!("{event}"))),
             state_dir: self.config.state_dir.clone(),
             inspector,
             reader: self.reader.clone(),
@@ -193,6 +194,7 @@ impl AgentSupport {
             .ok_or("conversation inspector unavailable")?;
         let permit = inspection::admit().ok_or("Home is busy")?;
         conversation::Job {
+            reporter: Some(std::sync::Arc::new(|event| eprintln!("{event}"))),
             inspector,
             reader: self.reader.clone(),
             identity,

@@ -83,7 +83,11 @@ terminal**. Conversation retry belongs to the reader only, avoiding nested HTTP
 retry loops. No transcript is cached by this recovery flow.
 
 For unavailable Codex discovery, Home can repair the reader by sending `/status`
-to the exact active tmux pane and reading its newly displayed Session UUID. It
+as literal text, waiting 120 ms, verifying the composer contains exactly that
+command, then sending named Enter to the exact pane and reading the newly
+displayed Session UUID. A single text/CR burst is not used: actual Codex may
+interpret it as multiline input. Both normal and alternate terminal screens are
+supported; the cursor may move after submission. It
 requires a stable foreground Codex process and a recognized empty composer. Drafts,
 working/approval screens, queued HMux input, copy mode, ambiguous bindings and an
 already displayed Session field skip the probe. The status output remains visible.
@@ -96,12 +100,29 @@ headers; no directory/newest-file guesses or private databases are used. Session
 pane, provider process/start stamp and transcript identity are rechecked. A
 concurrent administrative link change is preserved. New repaired links are
 reader-only; existing valid links and explicit notification permissions are retained.
+For a single-pane window narrower than 80 columns, the probe temporarily widens
+it to read the full UUID; Codex can clip rather than wrap that field. It rejects
+stale status revealed by reflow, then restores original dimensions and local or
+inherited `window-size` policy before record lookup. Cleanup targets the original
+pane/window even if another window becomes active. Observable external resizing or
+policy changes take priority. Cleanup uses its own 250 ms deadline. Once the lease has been acquired, every
+exit releases the input gate before cleanup, including request cancellation.
+A failure during lease acquisition can run cleanup while still holding the gate,
+so that exceptional gate interval can total up to 600 ms (350 + 250). Hard process termination cannot
+run cleanup; a leftover `@hmux_status_probe` marker blocks further widening until
+an administrator checks/restores that window. Same-value external changes cannot
+be distinguished from the probe's own resize.
+
 Process scans and file lookup run outside the input gate. Final screen checks and
 the guarded send use a shared 350 ms deadline; new HMux input abandons subsequent
 repair. Screen capture is capped at 64 KiB. HMux views share the gate in the
 connector, but typing from native tmux clients
 or another process is outside that gate and cannot be made atomic with screen inspection.
 If a probe cannot run safely, retry when idle or use the explicit link below.
+Cancellation or changed input after text delivery can leave `/status` in the
+composer; HMux never clears it or submits a changed draft. Bounded diagnostics use
+`stage=status-probe` and fixed reasons (`prompt`, `input`, `width`, `status-output`,
+`record`, `restore`, etc.), without transcripts, paths or thread identifiers.
 
 Codex clients using a shared app-server daemon may not expose a per-client rollout
 file descriptor. In that case a Home administrator can explicitly link a known

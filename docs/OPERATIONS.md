@@ -322,7 +322,13 @@ Optional workflow hooks use [CODEX_WORKFLOWS.md](CODEX_WORKFLOWS.md).
 
 For a Codex daemon client without an exact automatic rollout binding, the reader
 first attempts a guarded `/status` repair at a recognized idle, empty CLI prompt.
-It links only the freshly reported UUID with a matching trusted rollout header.
+It separates text delivery and named Enter, and links only the freshly reported
+full UUID with a matching trusted rollout header. A narrow single-pane window is
+temporarily widened to 80 columns, then its dimensions and local/inherited sizing
+policy are restored. Fixed `status-probe` diagnostics are emitted by Home and the
+helper. `restore` reports failed cleanup; inspect the original window's dimensions,
+`window-size` and `@hmux_status_probe` marker before retrying. Hard process death
+can leave that marker; do not blindly remove it or overwrite external resizing.
 There is no interrupt, draft clearing or notification opt-in. The bounded conditions
 and external-input limitation are described in [Web](WEB.md#conversation-reader).
 An expired link can be replaced after a fresh status response; valid existing links

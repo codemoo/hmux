@@ -5,7 +5,7 @@ use crate::{
     catalog::{CatalogError, TmuxCatalogReader},
     conversation_link::{self, Link},
     inspection::{self, Error, Inspector, ScanPurpose},
-    records, status_probe, transcript,
+    observation, records, status_probe, transcript,
 };
 use bytes::Bytes;
 use hmux_model::{
@@ -31,6 +31,7 @@ pub(crate) struct Job {
     pub identity: SessionIdentity,
     pub stop: CancellationToken,
     pub state_dir: PathBuf,
+    pub reporter: Option<observation::Reporter>,
 }
 impl Job {
     pub async fn link(
@@ -222,6 +223,7 @@ impl Job {
                 if automatic == Status::Unavailable {
                     if let Some(base) = base {
                         let probe = status_probe::Probe {
+                            reporter: self.reporter.as_ref(),
                             identity: &self.identity,
                             pane: first,
                             base: &base,
