@@ -321,7 +321,10 @@ both `--confirmed` and `--created-at`; ordinary browser tab closing never termin
 Optional workflow hooks use [CODEX_WORKFLOWS.md](CODEX_WORKFLOWS.md).
 
 For a Codex daemon client without an exact automatic rollout binding, the reader
-first attempts a guarded `/status` repair at a recognized idle, empty CLI prompt.
+first attempts a guarded `/status` repair at a recognized empty CLI composer.
+Working turns and provider-queued follow-ups do not prevent this local command;
+existing work and queued messages are preserved. Drafts, approvals and pending HMux
+input remain excluded.
 It separates text delivery and named Enter, and links only the freshly reported
 full UUID with a matching trusted rollout header. A narrow single-pane window is
 temporarily widened to 80 columns, then its dimensions and local/inherited sizing

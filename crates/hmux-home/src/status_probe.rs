@@ -117,13 +117,14 @@ fn empty_prompt(screen: &str, pane: &Pane) -> bool {
     ) {
         return false;
     }
-    if lines.iter().any(|s| {
-        s.trim_start().starts_with("• Working (")
-            || s.contains("Queued follow-up inputs")
-            || s.contains("esc to interrupt")
-            || s.contains("Would you like to")
-            || s.contains("Approval required")
-    }) {
+    // `/status` is a local Codex command, accepted even while a turn runs or
+    // provider follow-ups are queued. Those indicators are not composer input.
+    // Approval dialogs remain excluded; HMux input tickets and exact owned-text
+    // checks separately reject changed drafts and queued HMux input.
+    if lines
+        .iter()
+        .any(|s| s.contains("Would you like to") || s.contains("Approval required"))
+    {
         return false;
     }
     lines.get(pane.y + 1).is_some_and(|s| s.trim().is_empty())

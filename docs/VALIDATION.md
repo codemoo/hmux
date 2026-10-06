@@ -29,6 +29,39 @@ not physical-device or long-running stability acceptance. Earlier CI outcomes
 are checkpoint-specific; see the dated record rather than inferring current CI
 status from a prior local result.
 
+## Working-turn conversation repair (2026-10-06)
+
+An actual failing tab mapped through Home's catalog alias to a Codex CLI with no
+reader link. Working and provider-queued indicators made `empty_prompt` reject the
+otherwise empty composer. These indicators no longer veto the local `/status`
+command; approval, exact composer, pending HMux input, epoch, process, lifetime,
+record and conditional-save checks remain intact.
+
+The installed Codex CLI 0.160.0 was exercised on an isolated tmux socket/HOME with
+only a local synthetic Responses HTTP server. `/status` displayed its Session UUID
+while work continued, retained the provider-queued follow-up and caused no extra
+model request (two before and two after status). The first queue assertion expected
+an older heading; after matching the actually observed new heading, the check passed.
+No production account or external model was used by that synthetic-provider test.
+
+The affected production tab then recovered automatically and returned 19 public
+messages. Work and queued-input indicators remained present before and after.
+The twelve focused checks, including the isolated real tmux regression, passed.
+The new regression exercises working and provider-queue indicators together while
+still verifying fixed text/Enter, no interrupt keys and a reader-only link. This is
+native operational verification; authenticated browser/device acceptance is separate.
+
+Strict Home/helper Clippy, workspace formatting and optimized native builds passed.
+The two-thread Home/helper suite passed 332 tests, with ten opt-in/external checks
+ignored in the default run. The focused isolated status/tmux check was separately
+executed. The served web bundle was checked to accept `linked` status. Source
+review found no blocking defect; the actual CLI semantics above were verified by
+the main session beyond the mocked regression. Disposable test background servers
+were identified by their isolated test socket paths and terminated.
+The maintained macOS Home/helper were deployed with backups and rollback support;
+Home reconnected, installed hashes matched the candidates, and all 33 original tmux
+lifetimes, nine existing links, configuration and service plist were preserved.
+
 ## Codex status repair runtime follow-up (2026-10-06)
 
 Actual Codex exposed two gaps in the initial synthetic check: a text/CR burst

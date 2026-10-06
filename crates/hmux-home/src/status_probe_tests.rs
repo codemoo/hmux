@@ -46,7 +46,7 @@ fn prompt_and_identity_guard_fail_closed() {
         &screen.replace("Ask Codex to do anything", "draft text"),
         &pane
     ));
-    assert!(!empty_prompt(
+    assert!(empty_prompt(
         &screen.replace("old output", "• Working (3s • esc to interrupt)"),
         &pane
     ));
@@ -225,11 +225,11 @@ fn probe_sends_once_links_exact_id_and_cools_down_failed_attempts() {
     assert!(!f.dir.join("sent").exists());
 }
 #[test]
-fn busy_drafts_stale_status_queued_input_and_cancel_do_not_send() {
+fn drafts_approvals_stale_status_queued_hmux_input_and_cancel_do_not_send() {
     let _serial = SERIAL.lock().unwrap();
     for screen in [
         "output\n\n» draft\n\n",
-        "• Working (2s • esc to interrupt)\n\n» Ask Codex to do anything\n\n",
+        "Approval required\n\n» Ask Codex to do anything\n\n",
         "Session: 01234567-89ab-7cde-8fab-0123456789ab\n\n» Ask Codex to do anything\n\n",
     ] {
         let f = Fixture::new();
@@ -246,6 +246,27 @@ fn busy_drafts_stale_status_queued_input_and_cancel_do_not_send() {
     assert!(f.run().is_err());
     assert!(!f.dir.join("sent").exists());
 }
+#[test]
+fn working_and_provider_queued_followups_can_recover_without_interrupts() {
+    let _serial = SERIAL.lock().unwrap();
+    let f = Fixture::new();
+    fs::write(f.dir.join("before"), "• Working (2s • esc to interrupt)\n• Queued follow-up inputs\n» Ask Codex to do anything\n\n").unwrap();
+    fs::write(
+        f.dir.join("typed"),
+        "• Working (2s • esc to interrupt)\n• Queued follow-up inputs\n» /status\n\n",
+    )
+    .unwrap();
+    f.run().unwrap();
+    let sent = fs::read_to_string(f.dir.join("sent")).unwrap();
+    assert!(sent.contains("-H 2f 73 74 61 74 75 73"));
+    assert!(sent.contains(" Enter"));
+    assert!(!sent.contains("C-c") && !sent.contains("Escape"));
+    let link = conversation_link::load(&f.dir, &f.identity)
+        .unwrap()
+        .unwrap();
+    assert!(link.notification_owner().is_none());
+}
+
 #[test]
 fn changed_composer_or_new_input_never_submits_enter() {
     let _serial = SERIAL.lock().unwrap();

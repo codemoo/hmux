@@ -88,8 +88,11 @@ command, then sending named Enter to the exact pane and reading the newly
 displayed Session UUID. A single text/CR burst is not used: actual Codex may
 interpret it as multiline input. Both normal and alternate terminal screens are
 supported; the cursor may move after submission. It
-requires a stable foreground Codex process and a recognized empty composer. Drafts,
-working/approval screens, queued HMux input, copy mode, ambiguous bindings and an
+requires a stable foreground Codex process and a recognized empty composer.
+Codex's local `/status` command can run while a turn is working or provider
+follow-ups are queued; those indicators alone do not block repair. Existing work
+and provider-queued input continue. Drafts, approval screens, queued HMux input,
+copy mode, ambiguous bindings and an
 already displayed Session field skip the probe. The status output remains visible.
 One process-wide probe runs at a time; sends have a 30-second per-lifetime cooldown
 and wait at most two seconds for the status panel, within the reader deadline.
@@ -118,7 +121,7 @@ the guarded send use a shared 350 ms deadline; new HMux input abandons subsequen
 repair. Screen capture is capped at 64 KiB. HMux views share the gate in the
 connector, but typing from native tmux clients
 or another process is outside that gate and cannot be made atomic with screen inspection.
-If a probe cannot run safely, retry when idle or use the explicit link below.
+If a probe cannot run safely, return to an empty composer and retry, or use the explicit link below.
 Cancellation or changed input after text delivery can leave `/status` in the
 composer; HMux never clears it or submits a changed draft. Bounded diagnostics use
 `stage=status-probe` and fixed reasons (`prompt`, `input`, `width`, `status-output`,
