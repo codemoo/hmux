@@ -243,10 +243,13 @@ fn rejects_oversized_and_unsafe_files_without_exposing_paths() {
     )
     .unwrap();
     let mut c = catalog(vec![live.clone()]);
-    assert_eq!(store.apply(&mut c), Err(Error::Unavailable));
+    assert!(matches!(
+        store.apply(&mut c),
+        Err(Error::Storage(StorageStage::Read, _))
+    ));
     fs::remove_file(dir.sessions().join("sessions.json")).unwrap();
     symlink("/dev/null", dir.sessions().join("sessions.json")).unwrap();
-    assert_eq!(
+    assert!(matches!(
         store.set_profile(
             &live,
             &Profile {
@@ -256,8 +259,8 @@ fn rejects_oversized_and_unsafe_files_without_exposing_paths() {
             CancellationToken::new(),
             deadline()
         ),
-        Err(Error::Unavailable)
-    );
+        Err(Error::Storage(StorageStage::Read, _))
+    ));
     assert!(!format!("{}", Error::Unavailable).contains("/private"));
 }
 

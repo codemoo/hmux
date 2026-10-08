@@ -1,6 +1,6 @@
 # Validation status
 
-Evidence summary updated 2026-10-06. Deployment observations describe one maintained
+Evidence summary updated 2026-10-08. Deployment observations describe one maintained
 installation, not every HMux deployment. [Rust runtime status](RUST_MIGRATION.md)
 owns the remaining acceptance queue; [Rust verification](../tests/RUST.md) owns
 runnable checks. Detailed investigations, earlier CI failures and per-change
@@ -28,6 +28,31 @@ parallel build resumed with two build jobs. These are automated fixture results,
 not physical-device or long-running stability acceptance. Earlier CI outcomes
 are checkpoint-specific; see the dated record rather than inferring current CI
 status from a prior local result.
+
+## Alias error classification and diagnostics (2026-10-08)
+
+ALIAS failures had been flattened into the same unavailable reply and HTTP 502,
+without Home action diagnostics. The cause now survives through metadata/catalog
+operations. Both codecs distinguish invalid input, stale exact identity, query
+failure, unsafe storage and lock contention; rejected updates preserve the old
+metadata. A post-rename sync failure has its own commit-stage category, since the
+value may already have changed. No automatic mutation replay was introduced.
+
+Home library and session-peer checks passed 245 tests, with five opt-in checks
+ignored. Gateway library checks passed 107 tests, with five opt-in checks ignored.
+Formatting, strict Clippy and independent read-only review passed. Native release
+builds succeeded on macOS ARM64 and Linux AMD64. No web source changed; browser
+interaction was not verified by these tests.
+
+The maintained Gateway and Home/helper binaries were replaced with backups and
+rollback checks. Static assets and unauthenticated API boundaries remained intact;
+Home reconnected and published a catalog. All 29 original tmux lifetimes and nine
+existing conversation links were preserved. Thirteen native same-value alias
+updates succeeded and their values survived a catalog reread; workspace read
+also succeeded. Native helper verification does not prove an authenticated browser
+alias edit. The original transient storage failure was not reproduced, so its
+root cause remains unconfirmed; this deployment improves classification and
+diagnostics rather than establishing that the underlying incident is resolved.
 
 ## Working-turn conversation repair (2026-10-06)
 

@@ -172,6 +172,18 @@ async fn boot(
     WebSocketStream<DuplexStream>,
     hmux_model::Catalog,
 ) {
+    boot_reported(f, protocol, None).await
+}
+async fn boot_reported(
+    f: &Fixture,
+    protocol: Negotiated,
+    reporter: Option<hmux_home::observation::Reporter>,
+) -> (
+    CancellationToken,
+    tokio::task::JoinHandle<Result<(), Error>>,
+    WebSocketStream<DuplexStream>,
+    hmux_model::Catalog,
+) {
     f.inventory(&format!("schema_version=1\nrevision='synthetic'\n[[profiles]]\nid='codex'\nlabel='Codex'\ndefault_directory='{}'\ncommand=['codex','literal; $(false)']\ntags=['test']\n",f.dir.join("work").display()));
     fs::write(f.dir.join("codex"), "#!/bin/sh\nexit 0\n").unwrap();
     fs::set_permissions(f.dir.join("codex"), fs::Permissions::from_mode(0o700)).unwrap();
@@ -199,6 +211,7 @@ async fn boot(
         f.reader(),
         CommandRunner::new(2).unwrap(),
         Services {
+            reporter,
             providers: Some(Arc::new(provider_service)),
             inspector: None,
             uploads: None,
@@ -903,5 +916,142 @@ async fn provider_actions_both_codecs_keep_keys_private_and_configured_workspace
                 .is_empty());
         }
         close(stop, owner).await;
+    }
+}
+
+#[tokio::test]
+async fn alias_failures_keep_identity_query_input_lock_and_storage_categories() {
+    let _serial = SERIAL.lock().await;
+    for protocol in [Negotiated::JsonV1, Negotiated::ProtobufV2] {
+        let f = Fixture::new(&tmux_script().replace(
+            "list-sessions) if",
+            "list-sessions) if [ -f \"$root/broken-query\" ]; then exit 7; fi; if",
+        ));
+        fs::write(f.dir.join("identities"), "$1|:hmux-sep-v1:|synthetic|:hmux-sep-v1:|1700000000|:hmux-sep-v1:|1700000000|:hmux-sep-v1:|0|:hmux-sep-v1:|1|:hmux-sep-v1:||:hmux-sep-v1:|\n").unwrap();
+        let events = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let received = events.clone();
+        let reporter = Arc::new(move |event: hmux_home::observation::Event| {
+            received.lock().unwrap().push(event.to_string())
+        });
+        let (stop, owner, mut g, _) = boot_reported(&f, protocol, Some(reporter)).await;
+        send(
+            &mut g,
+            protocol,
+            request(
+                "initial-alias",
+                p::Operation::Alias,
+                serde_json::json!({"alias":"synthetic alias"}),
+                identity(),
+            ),
+        )
+        .await;
+        assert!(response(&mut g, protocol, p::Operation::Alias)
+            .await
+            .error
+            .is_empty());
+        let original = fs::read(f.dir.join("sessions/sessions.json")).unwrap();
+        let mut stale = identity().unwrap();
+        stale.created_at -= 1;
+        send(
+            &mut g,
+            protocol,
+            request(
+                "stale",
+                p::Operation::Alias,
+                serde_json::json!({"alias":"changed"}),
+                Some(stale),
+            ),
+        )
+        .await;
+        assert_eq!(
+            response(&mut g, protocol, p::Operation::Alias).await.error,
+            "Session identity changed"
+        );
+        send(
+            &mut g,
+            protocol,
+            request(
+                "invalid",
+                p::Operation::Alias,
+                serde_json::json!({"alias":"bad\u{202e}alias"}),
+                identity(),
+            ),
+        )
+        .await;
+        assert_eq!(
+            response(&mut g, protocol, p::Operation::Alias).await.error,
+            "Invalid Home request"
+        );
+        fs::write(f.dir.join("broken-query"), "").unwrap();
+        send(
+            &mut g,
+            protocol,
+            request(
+                "query",
+                p::Operation::Alias,
+                serde_json::json!({"alias":"changed"}),
+                identity(),
+            ),
+        )
+        .await;
+        assert_eq!(
+            response(&mut g, protocol, p::Operation::Alias).await.error,
+            "Home metadata unavailable"
+        );
+        fs::remove_file(f.dir.join("broken-query")).unwrap();
+        fs::set_permissions(f.dir.join("sessions"), fs::Permissions::from_mode(0o755)).unwrap();
+        send(
+            &mut g,
+            protocol,
+            request(
+                "unsafe-directory",
+                p::Operation::Alias,
+                serde_json::json!({"alias":"changed"}),
+                identity(),
+            ),
+        )
+        .await;
+        assert_eq!(
+            response(&mut g, protocol, p::Operation::Alias).await.error,
+            "Home metadata unavailable"
+        );
+        fs::set_permissions(f.dir.join("sessions"), fs::Permissions::from_mode(0o700)).unwrap();
+        let dir = hmux_core::PrivateDir::open(&f.dir.join("sessions")).unwrap();
+        let held = dir
+            .try_lock(std::ffi::OsStr::new("sessions.lock"))
+            .unwrap()
+            .unwrap();
+        send(
+            &mut g,
+            protocol,
+            request(
+                "lock",
+                p::Operation::Alias,
+                serde_json::json!({"alias":"changed"}),
+                identity(),
+            ),
+        )
+        .await;
+        assert_eq!(
+            response(&mut g, protocol, p::Operation::Alias).await.error,
+            "Home is busy"
+        );
+        drop(held);
+        assert_eq!(
+            fs::read(f.dir.join("sessions/sessions.json")).unwrap(),
+            original
+        );
+        close(stop, owner).await;
+        let rows = events.lock().unwrap().join("\n");
+        for expected in [
+            "reason=session-changed",
+            "reason=parse",
+            "stage=session-catalog operation=ALIAS reason=query-failure",
+            "stage=session-directory operation=ALIAS reason=permission-denied",
+            "operation=ALIAS reason=busy",
+        ] {
+            assert!(rows.contains(expected), "{rows}");
+        }
+        assert!(!rows.contains("synthetic alias") && !rows.contains(&f.dir.display().to_string()));
     }
 }

@@ -220,6 +220,36 @@ fn workspace_failure(
         unsupported(id)
     }
 }
+fn session_failure(id: String, error: sessions::Error, cancelled: bool) -> p::envelope::Body {
+    use crate::sessionstate::Error as StateError;
+    match error {
+        sessions::Error::State(StateError::Busy) | sessions::Error::Catalog(Reason::Busy) => {
+            response(id, None, BUSY)
+        }
+        sessions::Error::Cancelled
+        | sessions::Error::State(StateError::Cancelled)
+        | sessions::Error::Catalog(Reason::Cancelled | Reason::QueryTimeout)
+            if !cancelled =>
+        {
+            response(id, None, TIMED_OUT)
+        }
+        sessions::Error::Invalid => response(id, None, "Invalid Home request"),
+        sessions::Error::State(StateError::Changed) => {
+            response(id, None, "Session identity changed")
+        }
+        sessions::Error::State(
+            StateError::Storage(..) | StateError::Invalid | StateError::Unavailable,
+        )
+        | sessions::Error::Catalog(Reason::Parse | Reason::QueryFailure) => {
+            response(id, None, "Home metadata unavailable")
+        }
+        sessions::Error::CreatedUnrecorded => {
+            response(id, None, "Session created; metadata unavailable")
+        }
+        _ => unsupported(id),
+    }
+}
+
 fn inspection_reason(error: inspection::Error) -> Reason {
     match error {
         inspection::Error::Busy => Reason::Busy,
@@ -1065,6 +1095,7 @@ async fn run_owned(
                             });
                         } else if sessions::supported(request.operation) && session_context.is_some() {
                             let Some(action_permit) = sessions::admit() else {
+                                report_action(&reporter, operation, Reason::Busy, started);
                                 result = send(&sender, protocol, response(request.id, None, BUSY), stop.clone()).await;
                                 if result.is_err() { break; }
                                 continue;
@@ -1076,13 +1107,20 @@ async fn run_owned(
                             let sender = sender.clone();
                             let stop = stop.clone();
                             let changed = changed.clone();
+                            let reporter = reporter.clone();
                             jobs.spawn(async move {
                                 let outcome = job.run(action_permit).await;
                                 changed.notify_one();
                                 let body = match outcome {
-                                    Ok(value) if !cancellation.is_cancelled() => response(id.clone(), Some(value), ""),
-                                    Err(sessions::Error::CreatedUnrecorded) => response(id.clone(), None, "Session created; metadata unavailable"),
-                                    _ => unsupported(id.clone()),
+                                    Ok(value) if !cancellation.is_cancelled() => { report_slow_action(&reporter, operation, started); response(id.clone(), Some(value), "") },
+                                    Err(error) => {
+                                        if let Some(report) = &reporter {
+                                            let (stage, reason) = error.diagnostic();
+                                            report(observation::Event::new(stage, operation, reason, started));
+                                        }
+                                        session_failure(id.clone(), error, cancellation.is_cancelled())
+                                    },
+                                    _ => { report_action(&reporter, operation, Reason::Cancelled, started); unsupported(id.clone()) },
                                 };
                                 let sent = if stop.is_cancelled() { Ok(()) } else { send(&sender, protocol, body, stop).await };
                                 drop(permit);

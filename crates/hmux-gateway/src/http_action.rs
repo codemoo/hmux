@@ -25,6 +25,20 @@ fn home_error_status(error: HomeError) -> StatusCode {
     }
 }
 
+fn home_operation_status(error: &str) -> (ActionFailure, StatusCode) {
+    match error {
+        "Home is busy" => (ActionFailure::HomeBusy, StatusCode::SERVICE_UNAVAILABLE),
+        "Home operation timed out" => (ActionFailure::Deadline, StatusCode::GATEWAY_TIMEOUT),
+        "Invalid Home request" => (ActionFailure::HomeOperation, StatusCode::BAD_REQUEST),
+        "Session identity changed" => (ActionFailure::HomeOperation, StatusCode::CONFLICT),
+        "Home metadata unavailable" => (
+            ActionFailure::HomeOperation,
+            StatusCode::SERVICE_UNAVAILABLE,
+        ),
+        _ => (ActionFailure::HomeOperation, StatusCode::BAD_GATEWAY),
+    }
+}
+
 #[derive(Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct WorkspaceRequest {
@@ -176,13 +190,8 @@ impl Gateway {
                 Err(error) => return failed(ActionFailure::HomeRequest, home_error_status(error)),
             };
             if !reply.error.is_empty() {
-                return if reply.error == "Home is busy" {
-                    failed(ActionFailure::HomeBusy, StatusCode::SERVICE_UNAVAILABLE)
-                } else if reply.error == "Home operation timed out" {
-                    failed(ActionFailure::Deadline, StatusCode::GATEWAY_TIMEOUT)
-                } else {
-                    failed(ActionFailure::HomeOperation, StatusCode::BAD_GATEWAY)
-                };
+                let (failure, status) = home_operation_status(&reply.error);
+                return failed(failure, status);
             }
             let raw = match actions::response_payload(&reply) {
                 Ok(raw) => raw,
@@ -206,6 +215,24 @@ impl Gateway {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn known_session_failures_are_not_bad_gateways() {
+        for (error, status) in [
+            ("Home is busy", StatusCode::SERVICE_UNAVAILABLE),
+            ("Home operation timed out", StatusCode::GATEWAY_TIMEOUT),
+            ("Invalid Home request", StatusCode::BAD_REQUEST),
+            ("Session identity changed", StatusCode::CONFLICT),
+            ("Home metadata unavailable", StatusCode::SERVICE_UNAVAILABLE),
+            ("unknown private error text", StatusCode::BAD_GATEWAY),
+            (
+                "Session created; metadata unavailable",
+                StatusCode::BAD_GATEWAY,
+            ),
+        ] {
+            assert_eq!(home_operation_status(error).1, status);
+        }
+    }
 
     #[test]
     fn transient_home_failures_keep_protocol_failures_distinct() {

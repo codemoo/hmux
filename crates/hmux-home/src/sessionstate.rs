@@ -37,6 +37,16 @@ pub enum Error {
     Cancelled,
     Changed,
     Busy,
+    Storage(StorageStage, io::ErrorKind),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StorageStage {
+    Directory,
+    Read,
+    Lock,
+    Write,
+    Commit,
 }
 
 impl std::fmt::Display for Error {
@@ -47,6 +57,7 @@ impl std::fmt::Display for Error {
             Self::Cancelled => "session state operation cancelled",
             Self::Changed => "session identity changed",
             Self::Busy => "session state lock busy",
+            Self::Storage(_, _) => "session state storage unavailable",
         };
         f.write_str(text)
     }
@@ -234,6 +245,13 @@ fn validate_metadata(entry: &MetadataEntry) -> Result<(), Error> {
 fn validate_visibility(entry: &VisibilityEntry) -> Result<(), Error> {
     validate_identity(&entry.id, &entry.name, entry.created_at)
 }
+fn storage_write_error(error: hmux_core::WriteError) -> Error {
+    match error {
+        hmux_core::WriteError::BeforeCommit(e) => Error::Storage(StorageStage::Write, e.kind()),
+        hmux_core::WriteError::AfterCommit(e) => Error::Storage(StorageStage::Commit, e.kind()),
+    }
+}
+
 fn updated_at() -> String {
     chrono::DateTime::<chrono::Utc>::from(SystemTime::now())
         .to_rfc3339_opts(chrono::SecondsFormat::Nanos, true)
@@ -280,26 +298,26 @@ impl Store {
         match PrivateDir::open(&self.state_dir.join("sessions")) {
             Ok(dir) => Ok(Some(dir)),
             Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),
-            Err(_) => Err(Error::Unavailable),
+            Err(e) => Err(Error::Storage(StorageStage::Read, e.kind())),
         }
     }
     fn write_dir(&self) -> Result<PrivateDir, Error> {
         PrivateDir::open_or_create_trusted(&self.state_dir)
             .and_then(|dir| dir.create_private_child(OsStr::new("sessions")))
-            .map_err(|_| Error::Unavailable)
+            .map_err(|e| Error::Storage(StorageStage::Directory, e.kind()))
     }
     fn read_metadata(dir: &PrivateDir) -> Result<Option<MetadataState>, Error> {
         match dir.read_private(OsStr::new("sessions.json"), METADATA_LIMIT) {
             Ok(data) => parse_metadata(&data).map(Some),
             Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),
-            Err(_) => Err(Error::Unavailable),
+            Err(e) => Err(Error::Storage(StorageStage::Read, e.kind())),
         }
     }
     fn read_visibility(dir: &PrivateDir) -> Result<Option<VisibilityState>, Error> {
         match dir.read_private(OsStr::new("session-visibility.json"), VISIBILITY_LIMIT) {
             Ok(data) => parse_visibility(&data).map(Some),
             Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),
-            Err(_) => Err(Error::Unavailable),
+            Err(e) => Err(Error::Storage(StorageStage::Read, e.kind())),
         }
     }
     fn lock(
@@ -313,7 +331,7 @@ impl Store {
             check(cancel, deadline)?;
             if let Some(lock) = dir
                 .try_lock(OsStr::new(name))
-                .map_err(|_| Error::Unavailable)?
+                .map_err(|e| Error::Storage(StorageStage::Lock, e.kind()))?
             {
                 check(cancel, deadline)?;
                 return Ok(lock);
@@ -398,7 +416,7 @@ impl Store {
         // Once atomic persistence begins, report its outcome. Cancellation
         // after rename/sync cannot undo a committed update.
         dir.write_atomic_private(OsStr::new("sessions.json"), &data)
-            .map_err(|_| Error::Unavailable)
+            .map_err(storage_write_error)
     }
     fn update_visibility(
         &self,
@@ -436,7 +454,7 @@ impl Store {
         // Once atomic persistence begins, report its outcome. Cancellation
         // after rename/sync cannot undo a committed update.
         dir.write_atomic_private(OsStr::new("session-visibility.json"), &data)
-            .map_err(|_| Error::Unavailable)
+            .map_err(storage_write_error)
     }
 
     /// Initialize a new lifetime with its display alias. Profile updates keep

@@ -13,6 +13,21 @@ A missing tab retains its `{id, created_at}`; do not reconnect by a matching nam
 Close/reopen only the browser view if necessary. Never kill original tmux sessions
 or reset private state to troubleshoot a transport problem.
 
+## Session alias or visibility fails
+
+A 409 means the exact session lifetime no longer matches the selected tab.
+Refresh the session list and reopen its settings; never substitute a session by
+name. A 400 means rejected input. A 503 means contention or unavailable
+metadata/catalog storage; inspect Home's fixed `session-*` diagnostic stage.
+A `session-commit` failure may have committed the value before durability failed,
+so check the current alias before retrying. Do not delete metadata or loosen
+private-file checks. An unclassified 502 requires comparing Gateway and Home logs.
+
+Native helper success verifies its own config, tmux server and permissions; it
+does not by itself prove the resident connector or browser request uses the same
+environment. Run host-state commands in the Home account outside an agent's
+restricted runner when that runner cannot write the configured state directory.
+
 ## Automatic Home service
 
 Use `hmux-web service status` and the private `<state_dir>/home-service.log` (plus

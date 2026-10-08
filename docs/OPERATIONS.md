@@ -399,6 +399,15 @@ held through response delivery, and inspection capacity stays with the worker un
 `request-admission-timeout` and `inspection-admission-timeout`.
 `stage=workspace-catalog` identifies a slow or failed catalog read within a
 workspace request. Known command/store contention retains its busy classification.
+Alias and visibility updates retain their cause: busy returns 503, a deadline
+returns 504, invalid input returns 400 and an exact session-lifetime mismatch
+returns 409. Storage/catalog failures return 503; malformed or unknown replies
+still return 502. Mutations are never automatically replayed. Home diagnostics
+distinguish `session-catalog`, `session-directory`, `session-read`, `session-lock`,
+`session-write` and `session-commit`. The last category means rename completed
+but directory synchronization failed; do not assume the update was rolled back.
+Only fixed reason categories are logged, including `session-changed`,
+`permission-denied` and `storage-failure`.
 
 Logs omit tokens, addresses, account/session identifiers, arbitrary operation strings, terminal
 content and arbitrary error text. Correlate UTC timestamps with browser diagnostics.

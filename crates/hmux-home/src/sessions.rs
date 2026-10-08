@@ -6,6 +6,7 @@ use hmux_core::command::CommandRunner;
 use hmux_model::{Catalog, Session, SessionIdentity};
 use hmux_protocol::protobuf::types as p;
 use std::{
+    cell::Cell,
     ffi::OsString,
     os::unix::ffi::OsStrExt,
     path::PathBuf,
@@ -27,6 +28,43 @@ pub enum Error {
     Cancelled,
     CreatedUnrecorded,
     Worker,
+    State(sessionstate::Error),
+    Catalog(crate::observation::Reason),
+}
+
+impl Error {
+    pub(crate) fn diagnostic(self) -> (crate::observation::Stage, crate::observation::Reason) {
+        use crate::observation::{Reason, Stage};
+        use sessionstate::{Error as StateError, StorageStage};
+        match self {
+            Self::Catalog(reason) => (Stage::SessionCatalog, reason),
+            Self::State(StateError::Storage(stage, kind)) => (
+                match stage {
+                    StorageStage::Directory => Stage::SessionDirectory,
+                    StorageStage::Read => Stage::SessionRead,
+                    StorageStage::Lock => Stage::SessionLock,
+                    StorageStage::Write => Stage::SessionWrite,
+                    StorageStage::Commit => Stage::SessionCommit,
+                },
+                if kind == std::io::ErrorKind::PermissionDenied {
+                    Reason::PermissionDenied
+                } else {
+                    Reason::StorageFailure
+                },
+            ),
+            Self::State(StateError::Changed) => (Stage::Action, Reason::SessionChanged),
+            Self::State(StateError::Busy) => (Stage::Action, Reason::Busy),
+            Self::State(StateError::Cancelled) | Self::Cancelled => {
+                (Stage::Action, Reason::Cancelled)
+            }
+            Self::Invalid | Self::State(StateError::Invalid) => (Stage::Action, Reason::Parse),
+            Self::Worker => (Stage::Action, Reason::Worker),
+            Self::CreatedUnrecorded => (Stage::Action, Reason::Metadata),
+            Self::Unavailable | Self::State(StateError::Unavailable) => {
+                (Stage::Action, Reason::Unavailable)
+            }
+        }
+    }
 }
 
 /// Snapshot host inputs once. No environment changes or private state I/O occur
@@ -184,6 +222,7 @@ impl Job {
                     id: session.id,
                     created_at: session.created_at,
                 };
+                let query_failure = Cell::new(None);
                 let resolve = || {
                     let catalog = runtime
                         .block_on(
@@ -195,7 +234,10 @@ impl Job {
                                     .into(),
                             ),
                         )
-                        .map_err(|_| sessionstate::Error::Changed)?;
+                        .map_err(|error| {
+                            query_failure.set(Some(crate::observation::Reason::catalog(&error)));
+                            sessionstate::Error::Unavailable
+                        })?;
                     catalog
                         .sessions
                         .unwrap_or_default()
@@ -203,33 +245,36 @@ impl Job {
                         .find(|s| s.id == identity.id)
                         .ok_or(sessionstate::Error::Changed)
                 };
-                if self.request.operation == p::Operation::Alias as i32 {
+                let result = if self.request.operation == p::Operation::Alias as i32 {
                     let Some(p::request::Payload::Alias(q)) = self.request.payload else {
                         return Err(Error::Invalid);
                     };
-                    store
-                        .set_alias_expected(
-                            &identity,
-                            q.alias.as_deref().unwrap_or_default(),
-                            self.stop.clone(),
-                            deadline,
-                            resolve,
-                        )
-                        .map_err(|_| Error::Unavailable)?;
+                    sessionstate::validate_alias(q.alias.as_deref().unwrap_or_default().trim())
+                        .map_err(|_| Error::Invalid)?;
+                    store.set_alias_expected(
+                        &identity,
+                        q.alias.as_deref().unwrap_or_default(),
+                        self.stop.clone(),
+                        deadline,
+                        resolve,
+                    )
                 } else {
                     let Some(p::request::Payload::Hidden(q)) = self.request.payload else {
                         return Err(Error::Invalid);
                     };
-                    store
-                        .set_hidden_expected(
-                            &identity,
-                            q.hidden,
-                            self.stop.clone(),
-                            deadline,
-                            resolve,
-                        )
-                        .map_err(|_| Error::Unavailable)?;
-                }
+                    store.set_hidden_expected(
+                        &identity,
+                        q.hidden,
+                        self.stop.clone(),
+                        deadline,
+                        resolve,
+                    )
+                };
+                result.map_err(|error| {
+                    query_failure
+                        .get()
+                        .map_or(Error::State(error), Error::Catalog)
+                })?;
                 Ok(p::response::Result::Ok(p::Empty {}))
             }
             _ => Err(Error::Invalid),
