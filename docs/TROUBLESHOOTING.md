@@ -13,6 +13,22 @@ A missing tab retains its `{id, created_at}`; do not reconnect by a matching nam
 Close/reopen only the browser view if necessary. Never kill original tmux sessions
 or reset private state to troubleshoot a transport problem.
 
+## Gateway disk is full
+
+Check free blocks and inodes on the filesystem containing Gateway's private state
+with `df -h` and `df -i`. Static HTTPS pages and an online Home can remain healthy
+while login/session writes fail. A partially written final log line can also be
+evidence of storage exhaustion; do not treat a quiet log as healthy service.
+
+Reclaim only confirmed disposable build caches that no running executable uses.
+Retain installed releases, credentials, persisted sessions, workspace metadata,
+user work and incident logs. Once private create/write/fsync succeeds again as
+the Gateway account, restart only the Gateway service and confirm Home reconnect,
+fresh catalog publication and successful authenticated workspace/terminal requests.
+The authentication store deliberately remains closed after a failed session save;
+freeing space alone may not clear that in-memory guard. Preserve the guard and
+reload persisted state through a normal service restart.
+
 ## Session alias or visibility fails
 
 A 409 means the exact session lifetime no longer matches the selected tab.

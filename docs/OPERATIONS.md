@@ -420,6 +420,16 @@ so a delayed scheduler tick alone cannot close an unprobed connection. Neither a
 log entry nor a socket handshake
 alone establishes that an authenticated browser terminal is usable.
 
+### Build storage on Gateway hosts
+
+Native debug/test artifacts can be much larger than the installed HMux binaries.
+When building on an operating Gateway host, check free space before and after the
+build. After verification and activation, remove only that build's disposable
+intermediate/cache directories once no running executable depends on them. Keep
+source/check evidence, installed release binaries and rollback copies. Do not let
+temporary Rust validation caches accumulate on the private-state filesystem.
+Storage-exhaustion recovery is described in [Troubleshooting](TROUBLESHOOTING.md#gateway-disk-is-full).
+
 ### macOS service-manager access errors
 
 Run Home installation/update commands in the host account's normal Terminal.

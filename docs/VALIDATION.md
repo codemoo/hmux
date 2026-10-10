@@ -1,6 +1,6 @@
 # Validation status
 
-Evidence summary updated 2026-10-08. Deployment observations describe one maintained
+Evidence summary updated 2026-10-10. Deployment observations describe one maintained
 installation, not every HMux deployment. [Rust runtime status](RUST_MIGRATION.md)
 owns the remaining acceptance queue; [Rust verification](../tests/RUST.md) owns
 runnable checks. Detailed investigations, earlier CI failures and per-change
@@ -28,6 +28,21 @@ parallel build resumed with two build jobs. These are automated fixture results,
 not physical-device or long-running stability acceptance. Earlier CI outcomes
 are checkpoint-specific; see the dated record rather than inferring current CI
 status from a prior local result.
+
+## Gateway disk exhaustion recovery (2026-10-10)
+
+The maintained Gateway filesystem reached 100%, leaving only a few MiB available.
+HTTPS still returned 200, Home remained running, and the transport log stopped
+mid-entry. Confirmed HMux Rust debug/build caches with no running executables
+were removed, restoring approximately 20 GB. Source, check evidence, installed
+releases, rollback binaries and private/user state were retained.
+
+A private write/fsync as the Gateway account succeeded after cleanup. Gateway
+was restarted without replacing binaries or restarting Home; Home reconnected
+and published a fresh catalog. Subsequent live authenticated workspace requests,
+provider queries and terminal-open requests succeeded. Public HTTPS returned 200
+and unauthenticated session/state requests returned 401. This is operational
+recovery evidence, not a new code release or full device acceptance.
 
 ## Alias error classification and diagnostics (2026-10-08)
 
