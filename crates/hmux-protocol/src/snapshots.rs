@@ -489,6 +489,7 @@ fn to_status(s: u::Status) -> p::UsageStatus {
         stale: s.stale,
         quota_observed_at: s.quota_observed_at,
         retry_at: s.retry_at,
+        quota_weighting: s.quota_weighting,
     }
 }
 fn from_status(s: p::UsageStatus) -> u::Status {
@@ -499,6 +500,7 @@ fn from_status(s: p::UsageStatus) -> u::Status {
         stale: s.stale,
         quota_observed_at: s.quota_observed_at,
         retry_at: s.retry_at,
+        quota_weighting: s.quota_weighting,
     }
 }
 fn to_account(a: u::Account) -> p::UsageAccount {
@@ -513,6 +515,7 @@ fn to_account(a: u::Account) -> p::UsageAccount {
         tokens_per_hour: a.tokens_per_hour,
         total_tokens: a.total_tokens,
         last_refresh_at: a.last_refresh_at,
+        quota_observed_at: a.quota_observed_at,
         plan_type: a.plan_type,
     }
 }
@@ -528,6 +531,7 @@ fn from_account(a: p::UsageAccount) -> u::Account {
         tokens_per_hour: a.tokens_per_hour,
         total_tokens: a.total_tokens,
         last_refresh_at: a.last_refresh_at,
+        quota_observed_at: a.quota_observed_at,
         plan_type: a.plan_type,
     }
 }
@@ -841,6 +845,7 @@ fn validate_usage_inner(s: &p::UsageSnapshot, child: bool) -> Result<(), Error> 
         || !usage_window(weekly)
         || status.state.is_empty()
         || status.state.len() > 64
+        || !u::model::valid_quota_weighting(&status.quota_weighting)
         || status.data_source.len() > 128
         || status.quota_source.len() > 128
         || !usage_timestamp(&status.quota_observed_at)
@@ -861,6 +866,7 @@ fn validate_usage_inner(s: &p::UsageSnapshot, child: bool) -> Result<(), Error> 
             || a.tokens_per_hour.is_some_and(|n| !n.is_finite() || n < 0.0)
             || a.total_tokens.is_some_and(|n| n < 0)
             || !usage_timestamp(&a.last_refresh_at)
+            || !usage_timestamp(&a.quota_observed_at)
             || a.plan_type != u::model::normalize_plan(&a.plan_type)
         {
             return Err(Error::Invalid);

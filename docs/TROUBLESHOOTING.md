@@ -80,19 +80,28 @@ Collection runs on Home as the existing signed-in CLI user. Check that user's
 CLI login and read-only credential accessibility. A CLI account switch is
 authoritative on the next collection pass. Do not copy credentials to browser devices, edit provider auth files through HMux or introduce a separate usage daemon.
 
-Codex LB shows the configured codex-lb account pool's weekly (`1w`) remaining
-quota. Its detailed account rows use only the aliases assigned in codex-lb;
-missing aliases show `Account N`, never an email fallback. Per-account detail
-comes from the existing Home `codex-lb-accounts.json` export; missing or expired
-rows are unavailable rather than invented. An unavailable configured codex-lb
-source remains visibly unavailable instead of switching to one OAuth account.
+Codex LB shows capacity-weighted remaining weekly quota for the usage key's
+account pool. Current fleet endpoints provide account plans and measured usage;
+without reported capacities HMux labels the result **Plan-weighted estimate**.
+A Pro label alone does not establish a particular Pro subtier's actual allowance.
+Unknown/expired eligible measurements suppress the aggregate; missing usage is
+never 100% available. Check `/api/fleet/summary` with the configured usage key for
+`planType`, `secondary.remainingPercent`, `secondary.windowMinutes` (10080),
+`secondary.resetAt` and `usageRefreshedAt`. Do not print keys or account identities
+in diagnostics. Successful empty/redacted results immediately clear the reading;
+network/server failures may retain a recent reading with its original timestamp.
+
+With older codex-lb versions returning 404 for the fleet endpoint, the aggregate
+comes from `/v1/usage`, labelled **Provider aggregate**, and account details from
+the local `codex-lb-accounts.json` export. The global export is never joined to
+key-scoped fleet aggregates. Alias fallback is `Account N`, never an email.
 
 Web source selection is explicit in Settings → 사용량 표시. The cswap web source
 uses the installed `cswap list --json`; inspect `usageStatus` and `usageFetchedAt`
 there when an account is unavailable. A keychain error is not zero usage. The
 CLI sources query the current signed-in provider account independently.
 
-Codex account plan badges require the existing export producer to preserve the
+For the legacy export, Codex account plan badges require the existing export producer to preserve the
 allowlisted upstream `/api/accounts` field `planType` as `planType` (also accepted:
 `plan_type` or `plan`). Older exporters may omit it even when codex-lb knows the
 plan. Preserve that field in the producer; never infer Pro/Plus from quota size.
@@ -100,7 +109,7 @@ The relevant producer mapping is, for example:
 
 ```python
 "planType": acct.get("planType") if acct.get("planType") in {
-    "free", "plus", "pro", "team", "business", "enterprise", "edu", "go"
+    "free", "plus", "pro", "prolite", "team", "business", "enterprise", "edu", "go"
 } else None,
 ```
 

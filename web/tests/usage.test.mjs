@@ -1,6 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { remaining, representative, validUsage } from "../src/usage.ts";
+import {
+  remaining,
+  representative,
+  validUsage,
+  accountObservation,
+  validAccountMeasurement,
+} from "../src/usage.ts";
 const now = Date.parse("2026-09-09T00:00:00Z");
 const snapshot = {
   provider: "codex",
@@ -173,4 +179,35 @@ test("usage time and number formatting follows the selected UI language", async 
   } finally {
     setLocale("en");
   }
+});
+
+test("fleet quota time survives new list fetch and failure cache, legacy retains list time", () => {
+  const measured = new Date(now - 29 * 60000).toISOString();
+  const fleet = {
+    ...snapshot,
+    accounts_updated_at: new Date(now).toISOString(),
+    status: { stale: false, quota_weighting: "plan_estimate" },
+  };
+  const account = {
+    status: "ok",
+    last_refresh_at: new Date(now).toISOString(),
+    quota_observed_at: measured,
+  };
+  assert.equal(accountObservation(fleet, account, true), measured);
+  assert.equal(
+    validAccountMeasurement(
+      accountObservation(fleet, account, true),
+      now + 2 * 60000,
+    ),
+    false,
+  );
+  assert.equal(accountObservation(fleet, { status: "ok" }, true), undefined);
+  const legacy = {
+    ...fleet,
+    status: { stale: false, quota_weighting: "upstream" },
+  };
+  assert.equal(
+    accountObservation(legacy, { status: "ok" }, true),
+    fleet.accounts_updated_at,
+  );
 });

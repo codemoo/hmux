@@ -1,5 +1,5 @@
 import { localeTag, t } from "./i18n.ts";
-import type { Quota, Usage } from "./types";
+import type { Account, Quota, Usage } from "./types";
 // Home normalizes every quota as a fraction in [0,1]. The codex-lb pool's
 // weighted weekly quota is authoritative; never sum per-account percentages.
 export function remaining(q?: Quota, now = Date.now()): string {
@@ -99,6 +99,7 @@ export function codexPlanLabel(plan?: string): string | undefined {
     free: "Free",
     plus: "Plus",
     pro: "Pro",
+    prolite: "Pro Lite",
     team: "Team",
     business: "Business",
     enterprise: "Enterprise",
@@ -139,4 +140,25 @@ export function validAccountMeasurement(
 ): boolean {
   const age = now - Date.parse(observedAt || "");
   return Number.isFinite(age) && age >= -60000 && age < 1800000;
+}
+
+// Fleet rows have a quota observation, independent of response/list fetch time.
+// Credential refresh and the legacy export's list timestamp retain their roles.
+export function accountObservation(
+  usage: Usage | undefined,
+  account: Account,
+  pooled: boolean,
+): string | undefined {
+  if (
+    pooled &&
+    (account.quota_observed_at !== undefined ||
+      (usage?.status.quota_weighting !== undefined &&
+        usage.status.quota_weighting !== "upstream"))
+  )
+    return account.quota_observed_at;
+  return pooled
+    ? usage?.accounts_updated_at
+    : account.last_refresh_at ||
+        usage?.status.quota_observed_at ||
+        (account.status === "ok" ? usage?.generated_at_utc : undefined);
 }

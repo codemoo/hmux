@@ -1,6 +1,6 @@
 # Validation status
 
-Evidence summary updated 2026-10-10. Deployment observations describe one maintained
+Evidence summary updated 2026-10-12. Deployment observations describe one maintained
 installation, not every HMux deployment. [Rust runtime status](RUST_MIGRATION.md)
 owns the remaining acceptance queue; [Rust verification](../tests/RUST.md) owns
 runnable checks. Detailed investigations, earlier CI failures and per-change
@@ -28,6 +28,36 @@ parallel build resumed with two build jobs. These are automated fixture results,
 not physical-device or long-running stability acceptance. Earlier CI outcomes
 are checkpoint-specific; see the dated record rather than inferring current CI
 status from a prior local result.
+
+## Scoped Codex capacity weighting (2026-10-12)
+
+Codex-lb headlines now use API-key-scoped Fleet account measurements and capacity
+weights. Reported capacities/remaining credits take priority; otherwise the
+codex-lb plan table is explicitly labelled a plan-weighted estimate. Missing,
+expired or invalid eligible measurements suppress aggregation. Exhausted accounts
+retain their capacity, while disabled accounts are excluded. Account observations
+remain separate from response fetch and credential refresh timestamps.
+
+Usage, protocol and Home checks passed 424 tests, with ten opt-in checks ignored.
+The Gateway/Home shared-usage reconnect integration passed with both JSON and
+protobuf. Rust formatting and strict Clippy passed; final web typechecking,
+formatting, 210 tests and production build passed. Native release builds passed
+on macOS ARM64 and Linux AMD64. These are automated checks, not physical-browser
+or long-running stability acceptance.
+
+Gateway was deployed before Home because older validators reject the new JSON
+fields and protobuf tags. Roll back Home before Gateway for the same reason.
+Installed binaries and configuration have timestamped rollback backups. Home
+reconnected; all 29 original tmux lifetimes and nine existing conversation links
+were preserved. Final public assets matched their local build hashes; PWA CSP,
+no-store and unauthenticated API rejection checks passed. A final-assets activation
+initially checked HTTP before its listener bound and rolled back; waiting for
+readiness before assertions allowed the next activation to pass.
+
+The scoped production response currently provides no explicit capacity fields,
+so its headline remains a plan-weighted estimate. Pro subtiers and flexible quota
+cannot be established from plan names alone; no claim of exact provider capacity
+is made.
 
 ## Gateway disk exhaustion recovery (2026-10-10)
 

@@ -5,7 +5,9 @@ use crate::{
 };
 use bytes::Bytes;
 use chrono::{DateTime, Duration as Span, Utc};
-use hmux_usage::{codex_lb, model::format_time, quota_state::Failure, Provider, Snapshot};
+use hmux_usage::{
+    codex_lb, codex_pool, model::format_time, quota_state::Failure, Provider, Snapshot,
+};
 use http::{header, Request, Uri};
 use http_body_util::Empty;
 use std::{
@@ -20,6 +22,7 @@ use tokio_util::sync::CancellationToken;
 pub struct Endpoint {
     authority: String,
     path: String,
+    fleet_path: String,
     loopback: Option<SocketAddr>,
 }
 impl fmt::Debug for Endpoint {
@@ -69,6 +72,7 @@ impl Endpoint {
         Ok(Self {
             authority: authority.to_string(),
             path: format!("{path}/v1/usage"),
+            fleet_path: format!("{path}/api/fleet/summary"),
             loopback,
         })
     }
@@ -82,6 +86,7 @@ pub struct Owner {
     next_attempt: Option<DateTime<Utc>>,
     good: Option<(Snapshot, DateTime<Utc>)>,
     seq: i64,
+    fleet_supported: Option<bool>,
 }
 impl Owner {
     pub fn new(endpoint: Endpoint, key: String, client: Client) -> Result<Self, Failure> {
@@ -94,6 +99,7 @@ impl Owner {
             next_attempt: None,
             good: None,
             seq: 0,
+            fleet_supported: None,
         })
     }
     pub async fn refresh(&mut self, now: DateTime<Utc>, cancel: &CancellationToken) -> Snapshot {
@@ -113,18 +119,49 @@ impl Owner {
         self.last_attempt = Some(now);
         // Mark backoff before awaiting so caller drop cannot create a busy loop.
         self.next_attempt = Some(now + Span::seconds(30));
-        match fetch(
-            &self.client,
-            &self.endpoint,
-            &self.key,
-            self.seq,
-            now,
-            cancel,
-        )
-        .await
-        {
-            Ok(Some(mut snap)) => {
-                snap.status.quota_observed_at = Some(format_time(now));
+        let result = if self.fleet_supported != Some(false) {
+            match fetch_fleet(
+                &self.client,
+                &self.endpoint,
+                &self.key,
+                self.seq,
+                now,
+                cancel,
+            )
+            .await
+            {
+                Ok(Some(snap)) => {
+                    self.fleet_supported = Some(true);
+                    Ok(Some(snap))
+                }
+                Ok(None) if self.fleet_supported.is_none() => {
+                    self.fleet_supported = Some(false);
+                    fetch(
+                        &self.client,
+                        &self.endpoint,
+                        &self.key,
+                        self.seq,
+                        now,
+                        cancel,
+                    )
+                    .await
+                }
+                Ok(None) => Err(Failure::Contract),
+                Err(error) => Err(error),
+            }
+        } else {
+            fetch(
+                &self.client,
+                &self.endpoint,
+                &self.key,
+                self.seq,
+                now,
+                cancel,
+            )
+            .await
+        };
+        match result {
+            Ok(Some(snap)) => {
                 self.good = Some((snap.clone(), now));
                 self.next_attempt = None;
                 snap
@@ -160,7 +197,7 @@ fn reemit(snapshot: &Snapshot, seq: i64, now: DateTime<Utc>, stale: bool) -> Sna
     let mut snap = snapshot.clone();
     snap.seq = seq;
     snap.generated_at_utc = format_time(now);
-    snap.status.stale = stale;
+    snap.status.stale |= stale;
     snap
 }
 async fn fetch(
@@ -171,6 +208,39 @@ async fn fetch(
     now: DateTime<Utc>,
     cancel: &CancellationToken,
 ) -> Result<Option<Snapshot>, Failure> {
+    let body = fetch_body(client, endpoint, key, now, cancel, false)
+        .await?
+        .ok_or(Failure::Contract)?;
+    match codex_lb::parse_usage(&body, seq, now) {
+        Ok(mut snapshot) => {
+            snapshot.status.quota_weighting = "upstream".into();
+            Ok(Some(snapshot))
+        }
+        Err(_) if empty_pool_supersedes_valid_limits(&body, seq, now) => Ok(None),
+        Err(_) => Err(Failure::Contract),
+    }
+}
+async fn fetch_fleet(
+    client: &Client,
+    endpoint: &Endpoint,
+    key: &str,
+    seq: i64,
+    now: DateTime<Utc>,
+    cancel: &CancellationToken,
+) -> Result<Option<Snapshot>, Failure> {
+    fetch_body(client, endpoint, key, now, cancel, true)
+        .await?
+        .map(|body| codex_pool::parse_fleet(&body, seq, now).map_err(|_| Failure::Contract))
+        .transpose()
+}
+async fn fetch_body(
+    client: &Client,
+    endpoint: &Endpoint,
+    key: &str,
+    now: DateTime<Utc>,
+    cancel: &CancellationToken,
+    fleet: bool,
+) -> Result<Option<Vec<u8>>, Failure> {
     let mut auth = http::HeaderValue::from_bytes(
         &[b"Bearer ", usage_http::secret_header(key, 4096)?.as_bytes()].concat(),
     )
@@ -178,7 +248,11 @@ async fn fetch(
     auth.set_sensitive(true);
     let request = Request::builder()
         .method("GET")
-        .uri(&endpoint.path)
+        .uri(if fleet {
+            &endpoint.fleet_path
+        } else {
+            &endpoint.path
+        })
         .header(header::HOST, &endpoint.authority)
         .header(header::AUTHORIZATION, auth)
         .header(header::ACCEPT, "application/json")
@@ -191,12 +265,7 @@ async fn fetch(
             None => client.dial.lb_tls(&endpoint.authority).await,
         }
         .map_err(|_| Failure::Network)?;
-        let body = usage_http::exchange_limited(stream, request, now, 1 << 20, true).await?;
-        match codex_lb::parse_usage(&body, seq, now) {
-            Ok(snapshot) => Ok(Some(snapshot)),
-            Err(_) if empty_pool_supersedes_valid_limits(&body, seq, now) => Ok(None),
-            Err(_) => Err(Failure::Contract),
-        }
+        usage_http::exchange_optional(stream, request, now, 1 << 20, !fleet, fleet).await
     };
     usage_http::bounded(work, cancel, Instant::now() + Duration::from_secs(5)).await
 }

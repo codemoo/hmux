@@ -283,6 +283,7 @@ message UsageStatus {
   bool stale = 4;
   optional string quota_observed_at = 5;
   optional string retry_at = 6;
+  string quota_weighting = 7;
 }
 message UsageAccount {
   int64 number = 1;
@@ -296,6 +297,7 @@ message UsageAccount {
   optional int64 total_tokens = 9;
   optional string last_refresh_at = 10;
   string plan_type = 11;
+  optional string quota_observed_at = 12;
 }
 message UsageSource {
   string name = 1;

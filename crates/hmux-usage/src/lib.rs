@@ -15,6 +15,7 @@ pub use model::{Account, AccountWindow, Provider, Snapshot, Status, Window};
 
 pub mod codex_accounts;
 pub mod codex_lb;
+pub mod codex_pool;
 pub mod cswap;
 pub mod quota_state;
 pub mod sources;

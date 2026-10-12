@@ -252,11 +252,11 @@ fn field(schema: Schema, tag: u32) -> Option<(Field, usize)> {
         (UsageWindow, 2) | (UsageAccount, 1 | 9) => Int64,
         (UsageWindow, 3) | (UsageAccountWindow, 2) => Text(128),
         (UsageStatus, 1) | (UsageAccount, 5) => Text(64),
-        (UsageStatus, 2 | 3 | 5 | 6) | (UsageAccount, 10) => Text(128),
+        (UsageStatus, 2 | 3 | 5 | 6) | (UsageAccount, 10 | 12) => Text(128),
         (UsageAccount, 2 | 3) => Text(256),
         (UsageStatus, 4) | (UsageAccount, 4) => Bool,
         (UsageAccount, 6 | 7) => Nested(UsageAccountWindow),
-        (UsageAccount, 11) => Text(32),
+        (UsageAccount, 11) | (UsageStatus, 7) => Text(32),
         _ => return None,
     };
     Some((f, 1))

@@ -99,12 +99,21 @@ async fn shared_sources_survive_reconnect_and_slow_lb_does_not_delay_catalog() {
         let release = release.clone();
         let stop = stop.clone();
         tokio::spawn(async move {
-            let (mut socket, _) = listener.accept().await.unwrap();
-            let mut raw = Vec::new();
-            while !raw.ends_with(b"\r\n\r\n") {
-                raw.push(socket.read_u8().await.unwrap());
-                assert!(raw.len() < 8192);
-            }
+            let socket = loop {
+                let (mut socket, _) = listener.accept().await.unwrap();
+                let mut probe = Vec::new();
+                while !probe.ends_with(b"\r\n\r\n") {
+                    probe.push(socket.read_u8().await.unwrap());
+                    assert!(probe.len() < 8192);
+                }
+                if probe.starts_with(b"GET /api/fleet/summary ") {
+                    socket.write_all(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n").await.unwrap();
+                    continue;
+                }
+                // Put the validated legacy request in the shared assertion below.
+                break (socket, probe);
+            };
+            let (mut socket, raw) = socket;
             let raw = String::from_utf8(raw).unwrap();
             assert!(raw.starts_with("GET /v1/usage HTTP/1.1"));
             assert!(raw

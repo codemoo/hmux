@@ -285,10 +285,14 @@ async fn lb_source(
             Some(owner) => owner.refresh(now, stop).await,
             None => usage_lb::unavailable(seq, now, "networkError"),
         };
-        if let Some(accounts) = &accounts {
-            if let Ok(export) = accounts.read(Utc::now(), stop).await {
-                snapshot.accounts = export.accounts;
-                snapshot.accounts_updated_at = export.updated_at;
+        // Fleet membership is API-key scoped. Never overwrite it with the
+        // global dashboard export, even for an empty/redacted fleet.
+        if snapshot.status.quota_weighting == "upstream" {
+            if let Some(accounts) = &accounts {
+                if let Ok(export) = accounts.read(Utc::now(), stop).await {
+                    snapshot.accounts = export.accounts;
+                    snapshot.accounts_updated_at = export.updated_at;
+                }
             }
         }
         output.send_replace(Lb { selected, snapshot });

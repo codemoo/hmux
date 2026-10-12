@@ -35,6 +35,7 @@ export type Account = {
   seven_day?: Quota;
   five_hour?: Quota;
   last_refresh_at?: string;
+  quota_observed_at?: string;
 };
 export type Usage = {
   sources?: Record<string, Usage>;
@@ -48,7 +49,12 @@ export type Usage = {
   rolling_5h_observed: boolean;
   accounts?: Account[];
   accounts_updated_at?: string;
-  status: { stale: boolean; state: string; quota_observed_at?: string };
+  status: {
+    stale: boolean;
+    state: string;
+    quota_observed_at?: string;
+    quota_weighting?: "plan_estimate" | "reported_capacity" | "upstream";
+  };
 };
 export type Snapshot = {
   usage_preferences?: import("./usage-preferences").UsagePreferences;

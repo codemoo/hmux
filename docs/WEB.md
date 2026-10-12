@@ -415,13 +415,36 @@ review and verification; log collection does not execute code or apply changes.
   device cannot overwrite a newer revision; it must reload the settings.
 - Source choices select genuinely separate quota snapshots. CLI means the current
   provider login; cswap means its registered accounts with the unique active
-  account as headline; codex-lb means the configured weighted account pool.
-  Codex-lb account details use `accounts_updated_at` from the account export,
-  independently of pool quota freshness. Its `last_refresh_at` is OAuth token
-  refresh time and must not hide recently observed account details. Account-list
-  observations over 30 minutes old or without a valid timestamp remain unknown.
-  This timestamp proves when the list was observed, not when the upstream provider
-  last measured its quota.
+  account as headline; codex-lb means the API-key-scoped account pool.
+  Codex-lb uses `/api/fleet/summary` with the existing usage key, once per shared
+  Home collector refresh (60 seconds). The headline is
+  `Σ(capacity × remaining fraction) / Σ(capacity)`, never the mean of account
+  percentages or a weighting by lifetime tokens. Reported credit capacities and
+  remaining credits take precedence; otherwise codex-lb's credit-equivalent plan
+  table is used and the UI explicitly shows **Plan-weighted estimate**. Plus,
+  Team/Business and Edu use 7,560 weekly credits, Pro/Enterprise 50,400, Pro Lite
+  37,800 and Free 1,134. These are codex-lb estimates, not guaranteed OpenAI quotas;
+  Pro subtiers, promotions and flexible workspace credits may differ. See
+  [OpenAI pricing](https://developers.openai.com/codex/pricing/) for that distinction.
+  Paused/deactivated/reauthentication accounts are excluded; temporarily limited
+  or exhausted accounts retain their measured capacity in the denominator.
+  Any eligible account with missing, invalid, expired, non-weekly or unknown
+  quota/capacity suppresses the headline instead of assuming unused allowance.
+  Missing five-hour windows suppress the combined five-hour gauge.
+  The reset countdown is the earliest participating account reset, not the time
+  when all accounts renew. Fleet `usageRefreshedAt` is the best available quota
+  observation time; it covers the latest account window observation and cannot
+  prove independent freshness of each weekly sample. Credential `lastRefreshAt`
+  is not a quota timestamp. Measurements older than 30 minutes remain unknown.
+  API-key scope is authoritative: the global dashboard export never overwrites
+  fleet membership, even for an empty or redacted response. Display names use
+  aliases with email fallback removed. Fleet errors retain the last reading for
+  at most ten minutes without changing its observation time; successfully fetched
+  missing/hidden data immediately replaces it with unknown quota.
+  Older codex-lb versions without the fleet endpoint use `/v1/usage` and display
+  **Provider aggregate**. Their account details still use `accounts_updated_at`
+  from the local export, independently of aggregate freshness. A fleet endpoint
+  disappearing after successful use does not switch back to a broader source.
   Missing/failed sources never silently use a different source. Account aliases
   come from codex-lb; cswap account details show authorized email labels. Never
   sum percentages or treat missing/expired quota as available capacity. Keychain

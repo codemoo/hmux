@@ -169,6 +169,7 @@ pub fn validate(s: &Snapshot) -> Result<(), Error> {
         || !window(&s.weekly)
         || s.status.state.is_empty()
         || s.status.state.len() > 64
+        || !valid_quota_weighting(&s.status.quota_weighting)
         || s.status.data_source.len() > 128
         || s.status.quota_source.len() > 128
         || !timestamp_len(&s.status.quota_observed_at)
@@ -208,6 +209,7 @@ pub fn validate(s: &Snapshot) -> Result<(), Error> {
             || a.tokens_per_hour.is_some_and(|n| !n.is_finite() || n < 0.0)
             || a.total_tokens.is_some_and(|n| n < 0)
             || !timestamp_len(&a.last_refresh_at)
+            || !timestamp_len(&a.quota_observed_at)
             || a.plan_type != normalize_plan(&a.plan_type)
         {
             return Err(Error::Invalid);

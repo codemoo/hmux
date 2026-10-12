@@ -21,7 +21,10 @@ to [the migration control](../../docs/RUST_MIGRATION.md).
   1024 fixed-size session digests; explicit cap/overflow diagnostics report undercount. The
   caller supplies local dates, file offsets, source enrichment and deduplication.
 - `oauth`: Claude/Codex API normalization, at most 64 KiB.
-- `codex_lb`: pool/key quota normalization, at most 1 MiB/128 limits.
+- `codex_lb`: legacy pool/key quota normalization, at most 1 MiB/128 limits.
+- `codex_pool`: API-key-scoped capacity-weighted fleet quota, at most 1 MiB/128
+  accounts. Reported capacities take priority; plan estimates are labelled.
+  Missing/expired eligible quota suppresses aggregation rather than inflating it.
 - `codex_accounts`, `cswap`: at most 8 MiB/128 accounts, original observation
   times and source-specific fallback behavior. Codex uses aliases with blank
   emails; cswap's bounded email labels are intentional.

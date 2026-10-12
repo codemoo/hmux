@@ -11,6 +11,7 @@ import {
   showFiveHourSummary,
   observationLabel,
   validAccountMeasurement,
+  accountObservation,
 } from "./usage.ts";
 import type { Snapshot } from "./types.ts";
 import {
@@ -187,6 +188,36 @@ export function renderUsagePanel(
     const plan =
       provider === "codex" ? codexPlanLabel(u?.plan_type) : undefined;
     if (plan) badges.append(text("span", plan, "usage-badge usage-plan"));
+    if (provider === "codex" && u?.status.quota_weighting) {
+      const weighting = u.status.quota_weighting;
+      const badge = text(
+        "span",
+        () =>
+          weighting === "plan_estimate"
+            ? t("Plan-weighted estimate", "플랜 가중 추정치")
+            : weighting === "reported_capacity"
+              ? t("Capacity-weighted", "한도 가중치")
+              : t("Provider aggregate", "제공처 통합값"),
+        "usage-badge",
+      );
+      bindAttribute(badge, "title", () =>
+        weighting === "plan_estimate"
+          ? t(
+              "Remaining quota is weighted by codex-lb plan capacity estimates. Pro subtiers may differ. The reset is the earliest account reset.",
+              "codex-lb의 플랜별 한도 환산값으로 잔여량을 계산합니다. Pro 세부 등급의 실제 한도는 다를 수 있습니다. 초기화는 가장 먼저 초기화되는 계정 기준입니다.",
+            )
+          : weighting === "reported_capacity"
+            ? t(
+                "Reported remaining credits divided by reported capacity. The reset belongs to the earliest account, not the entire pool.",
+                "제공처가 보고한 전체 잔여 한도를 전체 한도로 나눈 값입니다. 초기화 시간은 가장 먼저 초기화되는 계정 기준입니다.",
+              )
+            : t(
+                "This codex-lb version supplies only an aggregate. Individual capacity weights cannot be verified.",
+                "이 codex-lb 버전은 통합값만 제공합니다. 개별 계정의 한도 가중치는 확인할 수 없습니다.",
+              ),
+      );
+      badges.append(badge);
+    }
     header.append(heading, badges);
     const observed = observationLabel(u?.status.quota_observed_at);
 
@@ -276,14 +307,11 @@ export function renderUsagePanel(
           badges.append(
             text("span", () => accountStatus(a.status), "usage-account-status"),
           );
-        // codex-lb last_refresh_at describes account credential refresh,
-        // not this account-list observation. Pool quota is fetched separately.
-        const observedAt =
-          provider === "codex" && preferences.codex.source === "codex-lb"
-            ? u?.accounts_updated_at
-            : a.last_refresh_at ||
-              u?.status.quota_observed_at ||
-              (a.status === "ok" ? u?.generated_at_utc : undefined);
+        const observedAt = accountObservation(
+          u,
+          a,
+          provider === "codex" && preferences.codex.source === "codex-lb",
+        );
         const fresh = validAccountMeasurement(observedAt);
         const updated = observationLabel(observedAt);
         const timestamp = updated
@@ -372,6 +400,8 @@ function accountStatus(status: string) {
     stale: t("Update needed", "업데이트 필요"),
     token_expired: t("Refresh pending", "갱신 대기"),
     no_credentials: t("No sign-in information", "로그인 정보 없음"),
+    quota_exceeded: t("Quota exhausted", "한도 소진"),
+    deactivated: t("Deactivated", "비활성화"),
     rate_limited: t("Temporarily rate limited", "조회 일시 제한"),
     relogin_required: t("Sign in again", "재로그인 필요"),
     disabled: t("Disabled", "사용 안 함"),

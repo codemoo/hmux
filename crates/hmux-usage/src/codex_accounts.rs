@@ -201,6 +201,7 @@ pub fn parse_account_export(
             total_tokens: row.total_tokens,
             last_refresh_at: timestamp(row.last_refresh_at.as_deref()).map(format_time),
             plan_type: normalize_plan(&plan),
+            quota_observed_at: None,
         });
     }
     let mut source_time = timestamp(source.accounts_updated_at.as_deref()).unwrap_or(mtime);

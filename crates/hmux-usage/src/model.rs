@@ -50,12 +50,16 @@ pub struct Account {
     pub total_tokens: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_refresh_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub quota_observed_at: Option<String>,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub plan_type: String,
 }
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Status {
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub quota_weighting: String,
     pub state: String,
     pub data_source: String,
     pub quota_source: String,
@@ -136,7 +140,9 @@ pub fn normalize_plan(raw: &str) -> String {
         .replace("chatgpt_", "")
         .replace("chatgpt-", "");
     match value.as_str() {
-        "free" | "go" | "plus" | "pro" | "team" | "business" | "enterprise" | "edu" => value,
+        "free" | "go" | "plus" | "pro" | "prolite" | "team" | "business" | "enterprise" | "edu" => {
+            value
+        }
         _ => String::new(),
     }
 }
@@ -153,4 +159,8 @@ pub fn safe_label(raw: &str) -> String {
     } else {
         value.into()
     }
+}
+
+pub fn valid_quota_weighting(raw: &str) -> bool {
+    matches!(raw, "" | "reported_capacity" | "plan_estimate" | "upstream")
 }

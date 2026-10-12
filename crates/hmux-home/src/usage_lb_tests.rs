@@ -55,13 +55,16 @@ impl Drop for Server {
     }
 }
 async fn server(replies: Vec<Reply>) -> Server {
+    server_with_fleet(replies, false).await
+}
+async fn server_with_fleet(replies: Vec<Reply>, fleet: bool) -> Server {
     let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).await.unwrap();
     let address = listener.local_addr().unwrap();
     let requests = Arc::new(Mutex::new(Vec::new()));
     let observed = requests.clone();
     let task = tokio::spawn(async move {
         let mut replies = VecDeque::from(replies);
-        while let Some(reply) = replies.pop_front() {
+        while !replies.is_empty() {
             let Ok((mut stream, _)) = listener.accept().await else {
                 break;
             };
@@ -76,6 +79,15 @@ async fn server(replies: Vec<Reply>) -> Server {
                 }
                 request.extend_from_slice(&chunk[..n]);
             }
+            if !fleet && request.starts_with(b"GET /api/fleet/summary ") {
+                let _ = stream
+                    .write_all(
+                        b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+                    )
+                    .await;
+                continue;
+            }
+            let reply = replies.pop_front().unwrap();
             observed
                 .lock()
                 .unwrap()
@@ -284,4 +296,53 @@ async fn body_cap_cancel_and_deadline_are_bounded() {
     );
     task.await.unwrap();
     assert!(started.elapsed() < Duration::from_secs(2));
+}
+
+#[tokio::test]
+async fn scoped_fleet_missing_data_replaces_good_without_global_or_legacy_fallback() {
+    let _guard = NETWORK_TEST.lock().await;
+    let body = br#"{"accounts":[{"accountId":"synthetic-private-id","displayName":"Alias","email":"secret@example.test","status":"active","planType":"pro","usageRefreshedAt":"2026-09-24T04:59:00Z","secondary":{"remainingPercent":25,"windowMinutes":10080,"resetAt":"2026-09-25T00:00:00Z"}}]}"#;
+    let server = server_with_fleet(
+        vec![
+            Reply::ok(body.to_vec()),
+            Reply::status(503),
+            Reply::ok(br#"{"accounts":[]}"#.to_vec()),
+            Reply::status(404),
+        ],
+        true,
+    )
+    .await;
+    let mut owner = make_owner(&server).await;
+    let stop = CancellationToken::new();
+    let first = owner.refresh(now(), &stop).await;
+    assert_eq!(first.status.quota_weighting, "plan_estimate");
+    assert_eq!(first.weekly.used_pct, 0.75);
+    assert_eq!(first.accounts[0].display_name, "Alias");
+    assert!(!first.rolling_5h_observed);
+    assert_eq!(
+        owner.refresh(now() + Span::seconds(20), &stop).await.weekly,
+        first.weekly
+    );
+    assert_eq!(count(&server), 1);
+    let failed = owner.refresh(now() + Span::seconds(61), &stop).await;
+    assert!(failed.status.stale);
+    assert_eq!(
+        failed.status.quota_observed_at,
+        first.status.quota_observed_at
+    );
+    let empty = owner.refresh(now() + Span::seconds(92), &stop).await;
+    assert!(!empty.weekly_observed);
+    assert!(empty.accounts.is_empty());
+    let cached_empty = owner.refresh(now() + Span::seconds(100), &stop).await;
+    assert!(cached_empty.status.stale);
+    assert!(cached_empty.status.quota_observed_at.is_none());
+    let removed = owner.refresh(now() + Span::seconds(153), &stop).await;
+    assert!(!removed.weekly_observed);
+    assert!(removed.accounts.is_empty());
+    assert!(server
+        .requests
+        .lock()
+        .unwrap()
+        .iter()
+        .all(|r| r.starts_with("GET /api/fleet/summary HTTP/1.1")));
 }

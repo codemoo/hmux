@@ -102,6 +102,7 @@ fn usage_golden_roundtrip_preserves_sources_accounts_and_presence() {
         tokens_per_hour: Some(0.0),
         total_tokens: Some(0),
         last_refresh_at: Some("2026-09-24T00:00:00Z".into()),
+        quota_observed_at: Some("2026-09-23T23:59:00Z".into()),
         plan_type: "plus".into(),
     });
     s.accounts_updated_at = Some("2026-09-24T00:00:00Z".into());
@@ -270,4 +271,31 @@ fn workflow_node_boundary_is_128() {
         catalog_from_json(over.as_bytes()),
         Err(Error::Limit)
     ));
+}
+
+#[test]
+fn fleet_weighting_and_observation_survive_bounded_protobuf_and_legacy_json() {
+    use hmux_protocol::{
+        legacy,
+        protobuf::{self as pb, Direction},
+    };
+    let now = usage::model::parse_time("2026-10-12T00:00:00Z").unwrap();
+    let snap=usage::codex_pool::parse_fleet(br#"{"accounts":[{"accountId":"synthetic-id","status":"active","planType":"prolite","usageRefreshedAt":"2026-10-11T23:59:00Z","secondary":{"remainingPercent":50,"windowMinutes":10080,"resetAt":"2026-10-18T00:00:00Z"}}]}"#,1,now).unwrap();
+    let envelope = p::Envelope {
+        version: pb::VERSION,
+        body: Some(p::envelope::Body::Usage(Box::new(
+            usage_to_proto(snap.clone()).unwrap(),
+        ))),
+    };
+    let decoded = pb::decode(
+        pb::encode(&envelope, Direction::ToGateway).unwrap(),
+        Direction::ToGateway,
+    )
+    .unwrap();
+    let json = legacy::to_json(decoded, Direction::ToGateway).unwrap();
+    let restored = legacy::from_json(json, Direction::ToGateway).unwrap();
+    let Some(p::envelope::Body::Usage(restored)) = restored.body else {
+        panic!("usage expected")
+    };
+    assert_eq!(usage_from_proto(*restored).unwrap(), snap);
 }

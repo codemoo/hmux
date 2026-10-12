@@ -704,6 +704,8 @@ pub struct UsageStatus {
     pub quota_observed_at: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(string, optional, tag = "6")]
     pub retry_at: ::core::option::Option<::prost::alloc::string::String>,
+    #[prost(string, tag = "7")]
+    pub quota_weighting: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 #[prost(skip_debug)]
@@ -730,6 +732,8 @@ pub struct UsageAccount {
     pub last_refresh_at: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(string, tag = "11")]
     pub plan_type: ::prost::alloc::string::String,
+    #[prost(string, optional, tag = "12")]
+    pub quota_observed_at: ::core::option::Option<::prost::alloc::string::String>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 #[prost(skip_debug)]

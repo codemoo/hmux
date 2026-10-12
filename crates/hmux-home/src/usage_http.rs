@@ -118,6 +118,22 @@ pub(crate) async fn exchange_limited<S>(
 where
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
+    exchange_optional(stream, request, now, limit, lb, false)
+        .await?
+        .ok_or(Failure::Contract)
+}
+
+pub(crate) async fn exchange_optional<S>(
+    stream: S,
+    request: Request<Empty<Bytes>>,
+    now: DateTime<Utc>,
+    limit: usize,
+    lb: bool,
+    allow_missing: bool,
+) -> Result<Option<Vec<u8>>, Failure>
+where
+    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
     let mut builder = http1::Builder::new();
     builder
         .max_headers(MAX_HEADERS)
@@ -132,6 +148,9 @@ where
             .await
             .map_err(|_| Failure::Network)?;
         let status = response.status().as_u16();
+        if allow_missing && status == 404 {
+            return Ok(None);
+        }
         if lb && !(200..=299).contains(&status) {
             return Err(Failure::Network);
         }
@@ -168,7 +187,7 @@ where
             }
         }
         match status {
-            200..=299 => Ok(bytes),
+            200..=299 => Ok(Some(bytes)),
             429 => Err(Failure::RateLimited { retry_after: retry }),
             408 | 425 | 500..=599 => Err(Failure::Server),
             _ => Err(Failure::Contract),
