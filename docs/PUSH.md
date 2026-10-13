@@ -3,6 +3,40 @@
 Scoped reference for the [web/PWA interface](WEB.md). Repository and web input
 contracts remain authoritative; device evidence is distinct from synthetic checks.
 
+## Shared unread tab markers
+
+A small dot beside a tab name means an observed Codex completion has not been
+read by this web account. The same `task_complete` event used for notifications
+creates the marker, including when push is disabled or presence suppresses an
+OS notification. Claude/shell completion is not inferred from idle terminal output.
+
+Reading a visible, focused tab after its terminal connection has loaded/rendered,
+or successfully loading that tab's conversation, clears the marker. Selecting a
+cached tab, a failed connection, a hidden/background window, or a conversation
+load failure does not. This records a successfully displayed view, not proof that
+every final terminal byte arrived in causal order across HTTP and WebSocket.
+Conversation reads acknowledge only the completion known before their load.
+
+The gateway stores read receipts by authenticated username and profile, shared
+across that account's logins/devices. Other accounts retain independent markers.
+Read requests compare the exact `{id, created_at}` lifetime and completion event
+ID; a delayed receipt cannot clear a newer completion or a reused tmux session.
+Server-confirmed receipts are synchronized through existing visible-page state
+polling (normally five seconds); failures leave the marker until a successful read.
+Markers are historical unread completion receipts, not a new live activity monitor.
+
+`<credentials-path>.tab-completions/` is private gateway state (0700 directory,
+0600 files), with an exclusive store lock, atomic writes and restart retention.
+Keep it outside release archives and preserve it across upgrades. The ledger
+retains the latest completion for at most 256 session lifetimes; account files
+retain at most 256 receipts and the in-memory account cache holds 16 entries.
+State replies expose only still-catalogued lifetimes. This uses the existing
+single completion consumer, its bounded best-effort event queue, and two bounded
+I/O slots, without another observer, browser polling loop or resident process.
+Home must be connected/awake to observe new completions; historical events are
+not replayed after an observation gap. Gateway and web assets need updating;
+no Home protocol change is required for this marker feature.
+
 ## Codex completion notifications
 
 Settings → 완료 알림 enables Web Push for this browser/PWA and this login.

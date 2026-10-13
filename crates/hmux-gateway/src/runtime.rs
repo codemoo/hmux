@@ -8,7 +8,7 @@ use crate::{
     push::Push,
     push_state, push_transport,
     static_assets::Assets,
-    usage_preferences,
+    tab_completions, usage_preferences,
 };
 use hmux_core::{workspace, PrivateDir};
 use std::{
@@ -150,10 +150,11 @@ pub(crate) fn asset_boundary(options: &Options) -> io::Result<Vec<PathBuf>> {
         .file_name()
         .ok_or_else(|| invalid("invalid private name"))?;
     let preferences = parent.join(sibling_name(name, ".usage-preferences"));
+    let completions = parent.join(sibling_name(name, ".tab-completions"));
     let profiles = parent.join("web-profiles");
     let users = parent.join(sibling_name(name, ".users"));
     let backups = parent.join(sibling_name(name, ".backups"));
-    protected.extend([preferences, profiles, users, backups]);
+    protected.extend([preferences, completions, profiles, users, backups]);
     Ok(protected)
 }
 async fn read_token(path: PathBuf) -> io::Result<String> {
@@ -168,6 +169,7 @@ struct Startup {
     diagnostics: Option<diagnostics::Store>,
     push: Option<push_state::Store>,
     preferences: Option<usage_preferences::Store>,
+    completions: Option<tab_completions::Store>,
     workspaces: Option<workspace::Store>,
 }
 impl Startup {
@@ -183,6 +185,9 @@ impl Startup {
         }
         if let Some(preferences) = self.preferences {
             preferences.shutdown().await;
+        }
+        if let Some(completions) = self.completions {
+            completions.shutdown().await;
         }
         self.auth.shutdown().await;
     }
@@ -288,6 +293,7 @@ pub(crate) async fn build_gateway(
         diagnostics: None,
         push: None,
         preferences: None,
+        completions: None,
         workspaces: None,
     };
     let result: io::Result<()> = async {
@@ -305,6 +311,13 @@ pub(crate) async fn build_gateway(
         let preferences_dir = PrivateDir::open(credential_dir)?
             .create_private_child(&sibling_name(credential_name, ".usage-preferences"))?;
         startup.preferences = Some(usage_preferences::Store::new(preferences_dir));
+        let completions_dir = PrivateDir::open(credential_dir)?
+            .create_private_child(&sibling_name(credential_name, ".tab-completions"))?;
+        startup.completions = Some(
+            tab_completions::Store::open(completions_dir)
+                .await
+                .map_err(|_| unavailable("private completion storage unavailable"))?,
+        );
         let workspaces_dir =
             PrivateDir::open(credential_dir)?.create_private_child(OsStr::new("web-profiles"))?;
         startup.workspaces = Some(workspace::Store::new(workspaces_dir));
@@ -330,6 +343,7 @@ pub(crate) async fn build_gateway(
         .with_assets(assets)
         .with_diagnostics(startup.diagnostics.take().expect("diagnostics initialized"))
         .with_preferences(startup.preferences.take().expect("preferences initialized"))
+        .with_completions(startup.completions.take().expect("completions initialized"))
         .with_workspaces(startup.workspaces.take().expect("workspaces initialized"))
         .with_push(push);
     Ok(gateway)

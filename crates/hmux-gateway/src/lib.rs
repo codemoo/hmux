@@ -22,5 +22,6 @@ pub mod push_transport;
 pub mod runtime;
 pub mod session_location;
 pub mod static_assets;
+pub mod tab_completions;
 pub(crate) mod upload_contract;
 pub mod usage_preferences;

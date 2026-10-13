@@ -34,7 +34,7 @@ pub const MAX_HEADER_BYTES: usize = 8192;
 pub const MAX_JSON_BYTES: usize = 16 << 10;
 // A state reply includes a 4 MiB catalog, two 1 MiB usage snapshots and
 // bounded preferences/wrapper fields. Keep the aggregate retention cap separate.
-pub const MAX_REPLY_BYTES: usize = (6 << 20) + (8 << 10);
+pub const MAX_REPLY_BYTES: usize = (6 << 20) + (136 << 10);
 pub const MAX_RETAINED_JSON_BYTES: usize = 8 << 20;
 pub const HEADER_TIMEOUT: Duration = Duration::from_secs(5);
 pub const BODY_TIMEOUT: Duration = Duration::from_secs(15);

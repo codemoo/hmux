@@ -4,6 +4,7 @@ import {
   decodeWorkspaceCache,
 } from "./workspace-cache";
 import { bindTerminalKeyButton } from "./terminal-key-button.ts";
+import { createTabCompletions } from "./tab-completions.ts";
 import {
   createDiagnostics,
   diagnosticRoute,
@@ -139,6 +140,8 @@ const appearanceState = createTerminalAppearance(preferences, (palette) => {
 });
 const mark = '<img class="brandmark" src="/icons/hmux-symbol.svg" alt="">';
 let readerAbort: AbortController | undefined;
+let readerCompletionID: string | undefined;
+let tabCompletions: ReturnType<typeof createTabCompletions> | undefined;
 let layoutObserver: ResizeObserver | undefined;
 let layoutFrame = 0;
 let layoutSettledTimers: number[] = [];
@@ -366,6 +369,9 @@ function disposeAll() {
   attachments = undefined;
   pushPresence?.dispose();
   pushPresence = undefined;
+  tabCompletions?.dispose();
+  tabCompletions = undefined;
+  readerCompletionID = undefined;
   dialogCleanup?.();
   dialogCleanup = undefined;
   workspaceEpoch++;
@@ -996,7 +1002,9 @@ function renderTabs() {
         ),
       );
     }
-    box.className = "tab" + (k === active ? " active" : "");
+    const unread = tabCompletions?.unread(t.identity) === true;
+    box.className =
+      "tab" + (k === active ? " active" : "") + (unread ? " unread" : "");
     box.dataset.status = k === active ? t.status : "idle";
     const choose = box.firstElementChild as HTMLButtonElement;
     choose.setAttribute("aria-selected", String(k === active));
@@ -1004,6 +1012,14 @@ function renderTabs() {
       ? label(session)
       : tr("Session unavailable", "세션 없음");
     choose.title = `${choose.textContent} · ${tr("Drag to reorder", "드래그로 순서 변경")}`;
+    if (unread) {
+      const description = tr("Task complete · Unread", "작업 완료 · 안읽음");
+      choose.title += ` · ${description}`;
+      choose.setAttribute(
+        "aria-label",
+        `${choose.textContent} · ${description}`,
+      );
+    } else choose.removeAttribute("aria-label");
     if (list.children[position] !== box)
       list.insertBefore(box, list.children[position] || null);
     position++;
@@ -1085,6 +1101,7 @@ function selectTab(k: string) {
   ctrl = false;
   $("#ctrl").setAttribute("aria-pressed", "false");
   reading = false;
+  readerCompletionID = undefined;
   readEpoch++;
   $("#reader").hidden = true;
   $("#reader").replaceChildren();
@@ -1139,6 +1156,31 @@ function selectTab(k: string) {
   if (mobileSidebar.matches) setSidebar(false, false);
   notice("");
   pushPresence?.refresh();
+  readActiveCompletion();
+}
+function readActiveCompletion() {
+  const tab = tabs.get(active);
+  if (
+    !tab ||
+    !tabCompletions ||
+    !loggedIn ||
+    !catalogVerified ||
+    !snapshot.online ||
+    document.querySelector("dialog[open]") ||
+    !sessions.some((s) => key(s) === active)
+  )
+    return;
+  void tabCompletions.read({
+    session: tab.identity,
+    visible: document.visibilityState === "visible",
+    focused: document.hasFocus(),
+    ready: reading
+      ? readerCompletionID !== undefined
+      : tab.status === "connected" &&
+        tab.renderedGeneration === tab.generation &&
+        tab.output.pending() === 0,
+    event_id: reading ? readerCompletionID : undefined,
+  });
 }
 
 function openSession(s: Session, activate = true) {
@@ -1194,6 +1236,8 @@ function openSession(s: Session, activate = true) {
       (bytes, done) => t.term.write(bytes, done),
       () => {
         if (t.status === "disconnected") scheduleReconnect(t);
+        if (active === key(t.identity))
+          requestAnimationFrame(readActiveCompletion);
       },
     ),
   };
@@ -1453,6 +1497,9 @@ function connect(t: Tab, manual = false) {
       const bytes = new Uint8Array(e.data);
       if (
         !t.output.enqueue(bytes, () => {
+          if (t.generation === gen && ws.readyState === WebSocket.OPEN) {
+            t.renderedGeneration = gen;
+          }
           // Old xterm callbacks must never credit a replacement connection.
           if (
             outputFlow &&
@@ -2027,6 +2074,7 @@ async function toggleReader() {
   t.nativeInput?.flush();
   t.interaction?.hide();
   reading = true;
+  readerCompletionID = undefined;
   attachments?.invalidate();
   attachments?.refresh();
   readerAbort?.abort();
@@ -2058,16 +2106,21 @@ async function toggleReader() {
     if (current()) selectTab(active);
   };
   renderConversationLoading(reader, runtime);
+  let conversationCompletionID: string | undefined;
   try {
     const data = await loadConversation({
       signal: owner.signal,
-      request: async (signal) =>
-        (await action(
+      request: async (signal) => {
+        // Bind the response to the completion known before this request.
+        // A state poll during loading must not acknowledge a newer result.
+        conversationCompletionID = tabCompletions?.entry(identity)?.event_id;
+        return (await action(
           "conversation",
           identity,
           undefined,
           signal,
-        )) as Conversation,
+        )) as Conversation;
+      },
       retrying: (attempt, maximum) => {
         if (current())
           renderConversationLoading(reader, runtime, { attempt, maximum });
@@ -2079,8 +2132,10 @@ async function toggleReader() {
       return;
     }
     renderConversation(reader, data, returnToTerminal);
+    readerCompletionID = conversationCompletionID;
     requestAnimationFrame(() => {
       if (current()) reader.scrollTop = reader.scrollHeight;
+      if (current()) readActiveCompletion();
     });
   } catch (error) {
     if (current() && (error as Error).name !== "AbortError")
@@ -2128,6 +2183,7 @@ async function refresh() {
     if (!loggedIn || epoch !== accountEpoch || refreshRequest !== request)
       return;
     snapshot = next;
+    tabCompletions?.apply(next.tab_completions);
     if (!next.online || !next.catalog?.sessions) catalogVerified = false;
     const nextPreferences = parseUsagePreferences(next.usage_preferences);
     if (
@@ -2154,6 +2210,7 @@ async function refresh() {
     refreshUsageDialog?.();
     ensureActiveConnection();
     resolvePushTarget();
+    readActiveCompletion();
     if (next.online) {
       void syncSharedWorkspace();
       void checkProviderOnboarding();
@@ -2280,6 +2337,7 @@ async function start() {
     startFailures = 0;
     bootstrapping = true;
     shell();
+    tabCompletions = createTabCompletions(api, () => renderTabs());
     $("#username").textContent = session.username;
     pushPresence = installPushPresence(api, () => tabs.get(active)?.identity);
     try {
@@ -2728,3 +2786,4 @@ document.addEventListener("focusin", scheduleTerminalLayout);
 document.addEventListener("focusout", () =>
   setTimeout(scheduleTerminalLayout, 100),
 );
+window.addEventListener("focus", readActiveCompletion);

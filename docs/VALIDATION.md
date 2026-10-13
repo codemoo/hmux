@@ -1,6 +1,6 @@
 # Validation status
 
-Evidence summary updated 2026-10-12. Deployment observations describe one maintained
+Evidence summary updated 2026-10-13. Deployment observations describe one maintained
 installation, not every HMux deployment. [Rust runtime status](RUST_MIGRATION.md)
 owns the remaining acceptance queue; [Rust verification](../tests/RUST.md) owns
 runnable checks. Detailed investigations, earlier CI failures and per-change
@@ -28,6 +28,40 @@ parallel build resumed with two build jobs. These are automated fixture results,
 not physical-device or long-running stability acceptance. Earlier CI outcomes
 are checkpoint-specific; see the dated record rather than inferring current CI
 status from a prior local result.
+
+## Shared unread completion tabs (2026-10-13)
+
+Tabs show a small unread dot from the same admitted Codex completion events used
+for push. The Gateway persists a bounded event ledger and account/profile read
+receipts, including for users without push subscriptions. Existing visible-page
+state polling synchronizes receipts. Exact lifetimes, event-ID compare-and-set,
+login revocation and sequence/read-revision guards protect replacement sessions,
+newer completions and concurrent devices. See [marker behavior and limits](PUSH.md#shared-unread-tab-markers).
+
+The Gateway library suite passed 113 tests with five opt-in checks ignored; the
+new actual-HTTP completion receipt integration also passed. That test exercises
+Home events through the existing push consumer with subscriptions off, two
+logins for one account, separate accounts, CSRF rejection, stale-event conflict
+and restart retention. The final general HTTP suite passed 22 tests with two
+opt-in checks ignored; the native pair's single opt-in test was skipped. An
+initial receipt harness relied on host TLS trust and failed in the restricted
+environment; it was moved to the existing synthetic-trust fixture and passed.
+Formatting, strict Clippy, web typechecking, 216 web tests and production build
+passed. Native release builds succeeded on macOS ARM64 and Linux AMD64.
+
+Two isolated desktop Chrome contexts used synthetic API/PTY output. The unread
+tab's class, accessible label and dot color appeared; selecting it and rendering
+the terminal cleared the marker. A fresh second context for the same account
+also received the cleared state. This verifies browser integration against a
+fixture, not physical mobile behavior or production push delivery.
+
+Gateway and final web assets were deployed with a previous-release rollback.
+Public asset hashes, PWA CSP/no-store headers, unauthenticated API rejection and
+private completion storage modes passed. Home was not replaced or restarted;
+all 29 original tmux lifetimes were preserved. Disposable Linux build caches
+were removed after verification; source/logs and installed rollback releases
+were retained. Completion recording inherits the existing best-effort observer
+and queue; no long-running soak or new memory measurement was performed.
 
 ## Scoped Codex capacity weighting (2026-10-12)
 

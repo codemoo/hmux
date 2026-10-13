@@ -638,3 +638,156 @@ async fn browser_oracle_and_completion_delivery_preserve_scope_presence_and_deep
 
 #[path = "session_location_http_tests.rs"]
 mod location;
+
+// Uses synthetic trust so these account/storage tests never depend on the
+// host keychain or make an outbound request. All push subscriptions stay off.
+async fn unread_server(fixture: &Fixture) -> (BrowserServer, Hub) {
+    let auth = loop {
+        match AuthStore::open(fixture.0.join("credentials.json")).await {
+            Ok(auth) => break Arc::new(auth),
+            Err(ref e) if e.to_string() == "authentication startup is busy" => {
+                tokio::task::yield_now().await
+            }
+            Err(e) => panic!("{e:?}"),
+        }
+    };
+    let dir = hmux_core::PrivateDir::open(&fixture.0)
+        .unwrap()
+        .create_private_child(OsStr::new("completions"))
+        .unwrap();
+    let completions = crate::tab_completions::Store::open(dir).await.unwrap();
+    let store = push_state::Store::open(
+        hmux_core::PrivateDir::open(&fixture.0).unwrap(),
+        OsStr::new("credentials.json"),
+    )
+    .await
+    .unwrap();
+    let cert = rcgen::generate_simple_self_signed(vec!["hmux.example".into()]).unwrap();
+    let client = Client::with_test_roots(vec![cert.cert.der().clone()]).unwrap();
+    let (hub, events) = Hub::new();
+    let gateway = Arc::new(
+        Gateway::new(ORIGIN, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", auth)
+            .unwrap()
+            .with_home(hub.clone())
+            .with_completions(completions)
+            .with_push(Push::new(store, client, events)),
+    );
+    let listener = TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
+    let stop = CancellationToken::new();
+    let server = BrowserServer {
+        address: listener.local_addr().unwrap(),
+        task: tokio::spawn(gateway.serve(listener, stop.clone())),
+        stop,
+    };
+    (server, hub)
+}
+async fn unread_state(server: &BrowserServer, browser: &Browser) -> Value {
+    server.request(browser, "GET", "/api/state", "").await.body["tab_completions"].clone()
+}
+async fn wait_unread(server: &BrowserServer, browser: &Browser, event: &str) -> Value {
+    timeout(Duration::from_secs(3), async {
+        loop {
+            let value = unread_state(server, browser).await;
+            if value["entries"][0]["event_id"] == event {
+                return value;
+            }
+            tokio::time::sleep(Duration::from_millis(15)).await;
+        }
+    })
+    .await
+    .unwrap()
+}
+#[tokio::test]
+async fn completion_receipts_http_share_without_subscriptions_and_survive_restart() {
+    let fixture = Fixture::new();
+    let (server, hub) = unread_server(&fixture).await;
+    assert_eq!(
+        server
+            .request(&Browser::default(), "POST", "/api/completions/read", "{}")
+            .await
+            .status,
+        401
+    );
+    let one = server.login("primary").await;
+    let two = server.login("primary").await;
+    let other = server.login("guest").await;
+    let home = FakeHome::new(&hub).await;
+    let first = home.completion(1, "$1", 42).await;
+    assert_eq!(
+        wait_unread(&server, &one, &first).await["entries"][0]["unread"],
+        true
+    );
+    assert_eq!(
+        unread_state(&server, &two).await["entries"][0]["unread"],
+        true
+    );
+    assert_eq!(
+        unread_state(&server, &other).await["entries"][0]["unread"],
+        true
+    );
+    let request = json!({"session":{"id":"$1","created_at":42},"event_id":first});
+    let missing_csrf = Browser {
+        cookie: one.cookie.clone(),
+        csrf: String::new(),
+        id: one.id.clone(),
+    };
+    server
+        .post(&missing_csrf, "/api/completions/read", request.clone(), 403)
+        .await;
+    server
+        .post(
+            &one,
+            "/api/completions/read",
+            json!({"session":{"id":"$1","created_at":42},"event_id":"invalid"}),
+            400,
+        )
+        .await;
+    assert_eq!(
+        server
+            .post(&one, "/api/completions/read", request.clone(), 200)
+            .await["entries"][0]["unread"],
+        false
+    );
+    assert_eq!(
+        unread_state(&server, &two).await["entries"][0]["unread"],
+        false
+    );
+    assert_eq!(
+        unread_state(&server, &other).await["entries"][0]["unread"],
+        true
+    );
+    let next = home.completion(2, "$1", 42).await;
+    assert_eq!(
+        wait_unread(&server, &two, &next).await["entries"][0]["unread"],
+        true
+    );
+    server
+        .post(&one, "/api/completions/read", request, 409)
+        .await;
+    server
+        .post(
+            &one,
+            "/api/completions/read",
+            json!({"session":{"id":"$1","created_at":42},"event_id":next}),
+            200,
+        )
+        .await;
+    home.stop.cancel();
+    home.task.await.unwrap();
+    server.stop.cancel();
+    server.task.await.unwrap().unwrap();
+    let (server, hub) = unread_server(&fixture).await;
+    let home = FakeHome::new(&hub).await;
+    assert_eq!(
+        unread_state(&server, &two).await["entries"][0]["unread"],
+        false
+    );
+    assert_eq!(
+        unread_state(&server, &other).await["entries"][0]["unread"],
+        true
+    );
+    home.stop.cancel();
+    home.task.await.unwrap();
+    server.stop.cancel();
+    server.task.await.unwrap().unwrap();
+}

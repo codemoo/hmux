@@ -133,6 +133,7 @@ impl Push {
         auth: Arc<AuthStore>,
         home: Hub,
         workspaces: Option<workspace::Store>,
+        completions: Option<crate::tab_completions::Store>,
         origin: String,
         shutdown: CancellationToken,
     ) -> Option<tokio::task::JoinHandle<()>> {
@@ -152,7 +153,15 @@ impl Push {
                     _ = shutdown.cancelled() => break,
                     _ = owner.0.stop.cancelled() => break,
                     _ = tokio::time::sleep_until(deadline) => {},
-                    _ = owner.deliver(event, &auth, &home, workspaces.as_ref(), &origin, deadline) => {},
+                    _ = async {
+                        // Record before subscription/presence checks: unread tabs
+                        // are shared even when push is disabled on every device.
+                        let session = SessionIdentity { id: event.session.id.clone(), created_at: event.session.created_at };
+                        if current_tab(&home, &session).is_some() {
+                            if let Some(store) = &completions { let _ = store.record(&event).await; }
+                        }
+                        owner.deliver(event, &auth, &home, workspaces.as_ref(), &origin, deadline).await;
+                    } => {},
                 }
             }
             owner.0.stop.cancel();

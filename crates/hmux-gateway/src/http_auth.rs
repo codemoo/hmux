@@ -17,6 +17,8 @@ use tokio_util::sync::CancellationToken;
 
 #[path = "http_action.rs"]
 mod action;
+#[path = "http_completions.rs"]
+mod completion_routes;
 #[path = "http_push.rs"]
 mod push_routes;
 
@@ -26,6 +28,7 @@ pub struct Gateway {
     auth: Arc<AuthStore>,
     home: Option<crate::hub::Hub>,
     preferences: Option<crate::usage_preferences::Store>,
+    completions: Option<crate::tab_completions::Store>,
     workspaces: Option<hmux_core::workspace::Store>,
     assets: Option<crate::static_assets::Assets>,
     diagnostics: Option<crate::diagnostics::Store>,
@@ -46,6 +49,7 @@ impl Gateway {
             auth,
             home: None,
             preferences: None,
+            completions: None,
             workspaces: None,
             assets: None,
             diagnostics: None,
@@ -64,6 +68,10 @@ impl Gateway {
 
     pub fn with_preferences(mut self, store: crate::usage_preferences::Store) -> Self {
         self.preferences = Some(store);
+        self
+    }
+    pub fn with_completions(mut self, store: crate::tab_completions::Store) -> Self {
+        self.completions = Some(store);
         self
     }
 
@@ -124,6 +132,7 @@ impl Gateway {
                     self.auth.clone(),
                     home.clone(),
                     self.workspaces.clone(),
+                    self.completions.clone(),
                     self.origin.clone(),
                     shutdown.clone(),
                 )
@@ -143,6 +152,9 @@ impl Gateway {
         }
         if let Some(push) = &self.push {
             push.shutdown(push_worker).await;
+        }
+        if let Some(completions) = &self.completions {
+            completions.shutdown().await;
         }
         if let Some(diagnostics) = &self.diagnostics {
             diagnostics.shutdown().await;
@@ -262,6 +274,7 @@ impl Gateway {
             "/api/account/usage" => self.usage_preferences(request, &token, &access).await,
             "/api/state" if method == Method::GET => self.state(&token, &access).await,
             "/api/state" => boundary::error(StatusCode::METHOD_NOT_ALLOWED),
+            "/api/completions/read" => self.read_completion(request, &token).await,
             "/api/action" => self.action(request, &token).await,
             "/api/diagnostics" => self.diagnostics(request, &token, &access).await,
             "/api/session" | "/api/logout" | "/api/sessions" | "/api/sessions/revoke" => {
@@ -406,6 +419,8 @@ impl Gateway {
             usage: Usage<'a>,
             #[serde(skip_serializing_if = "Option::is_none")]
             usage_preferences: Option<crate::usage_preferences::Preferences>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            tab_completions: Option<crate::tab_completions::Snapshot>,
         }
         fn raw(value: &Option<bytes::Bytes>) -> Result<Option<&RawValue>, serde_json::Error> {
             value
@@ -430,6 +445,16 @@ impl Gateway {
             Some(store) => store.get(access).await.ok(),
             None => None,
         };
+        let tab_completions = match &self.completions {
+            Some(store) => store
+                .get(
+                    access,
+                    crate::tab_completions::live_sessions(snapshot.catalog.as_deref()),
+                )
+                .await
+                .ok(),
+            None => None,
+        };
         if let Err(status) = self.revalidate(token).await {
             return boundary::error(status);
         }
@@ -438,6 +463,7 @@ impl Gateway {
             catalog,
             usage: Usage { claude, codex },
             usage_preferences,
+            tab_completions,
         })
     }
 

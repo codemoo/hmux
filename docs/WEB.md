@@ -401,6 +401,10 @@ review and verification; log collection does not execute code or apply changes.
 - Neutral graphite chrome, restrained slate accents and compact 4–5px corners. A 44px tab
   bar contains 34px desktop tabs with visible inactive borders and an active muted
   top accent. The wide desktop sidebar is 268px; the status bar stays on one line.
+- A small dot beside a tab name marks an unread Codex completion, using the same
+  event as push notifications. Reading the tab clears it for the same account on
+  every device through existing state polling. See [shared unread tab markers](PUSH.md#shared-unread-tab-markers)
+  for read conditions, persistence and provider/observation limits.
 - Alt+1–9 selects the corresponding tab in current sidebar-independent tab order
   (an absent tab number does nothing); Alt+Shift+Left/Right changes tabs; Alt+L or Alt+Backquote (` / ₩ on Korean layouts) toggles sidebar;
   Alt+W closes the active shared tab without terminating its tmux session; Alt+Q logs out; Cmd/Ctrl+K searches.

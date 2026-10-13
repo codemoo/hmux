@@ -57,6 +57,7 @@ export type Usage = {
   };
 };
 export type Snapshot = {
+  tab_completions?: import("./tab-completions").CompletionState;
   usage_preferences?: import("./usage-preferences").UsagePreferences;
   online: boolean;
   catalog?: { sessions: Session[]; host_metrics?: Metrics };
@@ -74,6 +75,7 @@ export type Tab = {
   generation: number;
   recovery: ReturnType<typeof createConnectionRecovery>;
   output: ReturnType<typeof createTerminalOutput>;
+  renderedGeneration?: number;
   retryTimer?: number;
   openTimer?: number;
   heartbeat?: ReturnType<typeof createTerminalHeartbeat>;
