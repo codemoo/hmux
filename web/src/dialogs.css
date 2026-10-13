@@ -1,4 +1,26 @@
 /* Utility panels. Mobile viewport bounds remain in style.css. */
+.markdown-math {
+  display: inline-block;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  vertical-align: middle;
+  padding: 2px 0;
+}
+.markdown-math math {
+  font-family: "STIX Two Math", "Cambria Math", math;
+  font-size: 1.04em;
+}
+.markdown-math-display {
+  display: block;
+  margin: 12px 0;
+  padding: 8px 4px;
+  text-align: center;
+}
+.markdown-math.math-source {
+  font-family: var(--font-mono);
+  white-space: pre-wrap;
+}
 .settings-section + .settings-section {
   margin-top: 22px;
   padding-top: 20px;

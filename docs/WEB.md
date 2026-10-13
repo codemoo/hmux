@@ -155,6 +155,18 @@ with `textContent`. Raw HTML stays literal, only absolute HTTP(S) links without
 embedded credentials open in a new tab with `noopener noreferrer`, and images
 are explicit links rather than automatic external requests.
 
+LaTeX formulas use `$…$` or `\(...\)` inline and `$$…$$` or `\[…\]` for display
+math, including formulas in list items and table cells. Code spans/blocks and raw
+HTML stay literal; ordinary dollar amounts and escaped dollars are not math.
+KaTeX loads from the same origin only when a formula is present and constructs
+native MathML DOM, without external rendering, math-font downloads or transcript
+HTML parsing. Modern Safari, Chrome and Firefox support MathML. Invalid or
+unsupported formulas remain readable LaTeX. Trust-dependent HTML, link and image
+commands are disabled; each formula has fresh macros, bounded expansion/size and
+an 8,192-character parsing limit. A message renders at most 64 formulas/32,768
+LaTeX characters. Wide formulas scroll within the message; lazy rendering cannot
+replace a later message or pull a reader away from an earlier scroll position.
+
 Home filters internal Codex handoffs before returning conversation text. Private
 channels, tool records, injected environment/instruction wrappers and
 `codex_internal_context` goal reminders are excluded. Assistant text matching the

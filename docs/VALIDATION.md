@@ -1,6 +1,6 @@
 # Validation status
 
-Evidence summary updated 2026-10-13. Deployment observations describe one maintained
+Evidence summary updated 2026-10-14. Deployment observations describe one maintained
 installation, not every HMux deployment. [Rust runtime status](RUST_MIGRATION.md)
 owns the remaining acceptance queue; [Rust verification](../tests/RUST.md) owns
 runnable checks. Detailed investigations, earlier CI failures and per-change
@@ -28,6 +28,38 @@ parallel build resumed with two build jobs. These are automated fixture results,
 not physical-device or long-running stability acceptance. Earlier CI outcomes
 are checkpoint-specific; see the dated record rather than inferring current CI
 status from a prior local result.
+
+## Conversation formulas (2026-10-14)
+
+The reader recognizes inline/display LaTeX before Markdown escapes/emphasis and
+uses lazy same-origin KaTeX 0.19.0 to build native MathML DOM. Code, HTML and link
+destinations remain literal. Invalid/over-budget expressions retain their source.
+Fresh macros, disabled trust-dependent commands, bounded expansion/source/output
+and signed generated-dimension checks protect the reader. Discarded or replaced
+message roots cannot receive an asynchronous render. See [conversation behavior](WEB.md#conversation-reader)
+for supported delimiters and limits.
+
+Typechecking, formatting, 221 web tests and production build passed; npm audit
+reported no vulnerabilities after the existing source-map-js development dependency
+was updated to 1.2.2. Independent review found negative-size and abandoned-root
+gaps; both were fixed and independently rechecked. Browser validation additionally
+caught a currency opener consuming a later code span, now covered by a regression.
+
+An isolated Chrome conversation rendered six formulas, including three fractions,
+an integral, a matrix and a formula in a Markdown table. Inline code and prices
+stayed literal; an invalid command retained its LaTeX. The math chunk was absent
+before opening the reader and loaded only once when needed, without cross-origin
+requests. At a 390px viewport the page and reader stayed 390px wide while a 435px
+formula scrolled inside its 354px container. The captured narrow-screen layout
+was visually inspected. This is desktop Chrome with a resized viewport, not
+physical iOS/Android or separate Safari/Firefox acceptance.
+
+The math chunk is approximately 78 kB gzip; the application chunk grows by about
+1.6 kB gzip. No math-font assets or resident native services were added; these are
+build sizes, not process-memory measurements. Final web assets and the KaTeX
+license were deployed with atomic release switching and rollback, retaining the
+same Gateway binary/PID. Public asset hashes, PWA CSP/no-store headers and anonymous
+API rejection passed. Home was not updated or restarted.
 
 ## Shared unread completion tabs (2026-10-13)
 

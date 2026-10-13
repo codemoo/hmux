@@ -1,7 +1,21 @@
 import { msg, bindText, bindAttribute } from "./i18n.ts";
-import { Lexer, type MarkedToken, type Token } from "marked";
+import { Marked, type MarkedToken, type Token } from "marked";
 import { decodeHTMLStrict } from "entities";
 import { createTextFactory } from "./dom.ts";
+import {
+  mathExtensions,
+  renderEquation,
+  MAX_MESSAGE_EQUATIONS,
+  MAX_MESSAGE_MATH_LENGTH,
+  type MathToken,
+} from "./markdown-math.ts";
+
+const markdown = new Marked({
+  gfm: true,
+  breaks: true,
+  extensions: mathExtensions,
+});
+const renderEpochs = new WeakMap<HTMLElement, number>();
 
 // Parse Markdown into tokens, then create only known DOM elements. Transcript
 // HTML is displayed as text; no transcript string enters an HTML parser/sink.
@@ -12,9 +26,34 @@ export function renderMarkdown(
 ) {
   const doc = root.ownerDocument;
   const text = createTextFactory(doc);
+  const epoch = (renderEpochs.get(root) || 0) + 1;
+  renderEpochs.set(root, epoch);
+  let equations = 0,
+    mathLength = 0;
   const render = (parent: HTMLElement, tokens: Token[]) => {
     for (const entry of tokens) {
-      // The lexer is local and has no extensions or custom token types.
+      if (entry.type === "math_inline" || entry.type === "math_block") {
+        const token = entry as MathToken;
+        const node = text(
+          token.type === "math_block" ? "div" : "span",
+          token.raw,
+          `markdown-math math-source${token.display ? " markdown-math-display" : ""}`,
+        );
+        parent.append(node);
+        if (
+          ++equations <= MAX_MESSAGE_EQUATIONS &&
+          (mathLength += token.text.length) <= MAX_MESSAGE_MATH_LENGTH
+        )
+          void renderEquation(
+            node,
+            token,
+            () =>
+              renderEpochs.get(root) === epoch &&
+              root.isConnected &&
+              root.contains(node),
+          );
+        continue;
+      }
       const token = entry as MarkedToken;
       switch (token.type) {
         case "space":
@@ -169,7 +208,7 @@ export function renderMarkdown(
   };
   root.replaceChildren();
   try {
-    render(root, new Lexer({ gfm: true, breaks: true }).lex(source));
+    render(root, markdown.lexer(source));
   } catch {
     // A malformed/deep transcript must not take down the conversation reader.
     root.textContent = source;
