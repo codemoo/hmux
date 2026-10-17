@@ -21,7 +21,7 @@ impl<'a, 't> Width<'a, 't> {
                 "display-message".into(),
                 "-p".into(),
                 "-t".into(),
-                probe.identity.id.clone(),
+                probe.selector().into(),
                 FORMAT.into(),
             ],
         )?;
@@ -95,7 +95,7 @@ impl<'a, 't> Width<'a, 't> {
                 "if-shell".into(),
                 "-F".into(),
                 "-t".into(),
-                probe.identity.id.clone(),
+                probe.selector().into(),
                 guard,
                 format!(
                     "set-option -w -t {} @hmux_status_probe {} ; resize-window -t {} -x 80 -y {}",
@@ -103,7 +103,7 @@ impl<'a, 't> Width<'a, 't> {
                 ),
             ],
         )?;
-        let resized = probe.metadata(target, &probe.identity.id)?;
+        let resized = probe.metadata(target, probe.selector())?;
         if resized.fields[6] != "80" || resized.id != pane.id {
             return Err(Error::Unavailable);
         }

@@ -74,10 +74,12 @@ impl AgentSupport {
             })
             .map(Arc::new);
         let resolver = if let Some(ref inspector) = inspector {
-            recovery_binding::resolver(inspector.clone())
+            recovery_binding::resolver(inspector.clone(), reader.clone(), config.state_dir.clone())
         } else {
             Arc::new(
-                |panes: Vec<i32>| -> std::pin::Pin<
+                |panes: Vec<i32>,
+                 _|
+                 -> std::pin::Pin<
                     Box<dyn std::future::Future<Output = Result<_, recovery::Error>> + Send>,
                 > {
                     Box::pin(async move {

@@ -33,13 +33,43 @@ bindings. Every checkpoint resolves the running pane again, then checks a second
 observation. `/new`, explicit resume and provider restarts update the saved ID;
 ambiguous or changing bindings do not keep an old ID as the current conversation.
 The initial recovered checkpoint retains the intended launch reference until
-the next checkpoint. Every subsequent save replaces it with the current verified
-binding, including clearing unavailable/ambiguous references.
+the next checkpoint: restore captures the layout, verifies all mapped panes and
+merges its explicit saved IDs without requiring newly launched clients to expose
+a transcript yet. Other live panes keep only bindings confirmed by both inspection
+passes; missing observations are allowed only in this initial restored capture. Every subsequent save replaces it with the current verified
+binding. A missing, incomplete, ambiguous or changing provider observation rejects
+the whole save and leaves the previous checkpoint byte-for-byte intact. A verified
+shell-only pane can clear its old provider reference; an unresolved running provider
+cannot. Sessions sharing a working directory keep separate explicit conversation
+IDs; neither cwd nor the newest transcript selects a conversation.
+
+Codex background-server clients may not own a rollout file descriptor. For those
+clients, recovery can read a full UUID from the current, otherwise empty composer's
+footer when Codex is configured with `tui.status_line = ["session-id"]`. It verifies
+the exact pane, foreground provider process, trusted rollout header and unchanged
+HMux input epoch, then checks the footer again. The receipt exists only within
+that save. Cached reader links, retained `/status` panels and unchanged process IDs
+are insufficient recovery evidence.
+
+This fallback is read-only: recovery never submits `/status` or `/statusline`,
+changes display settings, widens windows, or replaces a draft. Missing/unsupported
+footer configuration, a busy composer or an unresolved provider defers the entire
+save. Existing clients need a visible full thread-ID footer or direct rollout
+ownership before a fresh checkpoint can be guaranteed. In Codex 0.163.0, use the
+interactive `/statusline` settings and select **thread-id**; inline arguments are
+not a verified configuration interface. A thread ID appears only after a thread
+has started. Other footer items can prevent the exact UUID-only fallback from
+matching. Direct input from another terminal is outside HMux's input coordination;
+see the reader's [limitations](WEB.md#conversation-reader).
 
 ## When it saves
 
-A Home connector checkpoints before its first catalog and approximately every
-30 seconds while running, including temporary Gateway/network disconnections.
+A Home connector synchronizes reboot recovery before its first catalog. A valid,
+completed checkpoint for the same boot, or no journal on first installation,
+lets the connector serve immediately;
+its shared background owner attempts a refresh after five seconds. Successful
+saves repeat approximately every 30 seconds, including temporary Gateway/network
+disconnections.
 Multiple browsers share that same locked checkpoint owner. Without a running
 Home connector, it does not continuously record changes. Before a planned reboot,
 make a fresh checkpoint on Home:
@@ -71,8 +101,11 @@ verifying an existing restored target and its exact pane map. An unresolved lega
 journal without that evidence is preserved with a `Changed` error; finish it with
 the previous binary before upgrading rather than deleting it.
 
-Capture has a bounded 20-second save budget, including the existing two-pass
-provider inspection (ten-second bound). It compares original-session pane data
+Capture has a bounded 20-second save budget, including two-pass provider
+inspection and read-only footer checks within a shared ten-second bound. No
+resident worker or parallel process is added per pane. An unavailable observation
+or exhausted budget defers the save; check freshness before a planned reboot.
+Capture compares original-session pane data
 before/after inspection, ignoring temporary grouped-view churn. Changes to an
 original session lifetime, pane PID, cwd or layout reject the save and preserve
 the previous checkpoint. Failed observations do not become successful empty

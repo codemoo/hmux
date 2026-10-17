@@ -36,7 +36,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
     let mut q: Request = serde_json::from_slice(&raw)?;
     let reference = q.reference;
-    let resolver = Arc::new(move |pids: Vec<i32>| {
+    let resolver = Arc::new(move |pids: Vec<i32>, _| {
         let reference = reference.clone();
         Box::pin(async move {
             Ok(pids

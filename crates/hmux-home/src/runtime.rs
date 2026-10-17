@@ -206,7 +206,7 @@ impl HomeRuntime {
         if let Ok(usage) = crate::usage_config::Options::capture(home, path) {
             prepared = prepared.with_usage(usage);
         }
-        let mut resolver: crate::recovery::Resolver = Arc::new(|panes| {
+        let mut resolver: crate::recovery::Resolver = Arc::new(|panes, _| {
             Box::pin(async move {
                 if panes.is_empty() {
                     Ok(Default::default())
@@ -219,7 +219,11 @@ impl HomeRuntime {
             let lsof = find_optional_tool(path, "lsof", &["/usr/sbin/lsof", "/usr/bin/lsof"]);
             if let Ok(inspector) = Inspector::new(home.to_path_buf(), ps, lsof) {
                 let inspector = Arc::new(inspector);
-                resolver = crate::recovery_binding::resolver(inspector.clone());
+                resolver = crate::recovery_binding::resolver(
+                    inspector.clone(),
+                    catalog.clone(),
+                    config_state_dir.clone(),
+                );
                 prepared = prepared
                     .with_inspector(inspector)
                     .with_completion_notifications();

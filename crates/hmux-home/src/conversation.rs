@@ -223,6 +223,7 @@ impl Job {
                 if automatic == Status::Unavailable {
                     if let Some(base) = base {
                         let probe = status_probe::Probe {
+                            selector: None,
                             reporter: self.reporter.as_ref(),
                             identity: &self.identity,
                             pane: first,

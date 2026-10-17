@@ -171,6 +171,7 @@ esac
     }
     fn run(&self) -> Result<(), Error> {
         Probe {
+            selector: None,
             reporter: None,
             identity: &self.identity,
             pane: 80,
@@ -563,6 +564,7 @@ while True:
         std::thread::sleep(Duration::from_millis(30));
     }
     Probe {
+        selector: None,
         reporter: None,
         identity: &f.identity,
         pane: pane_pid,
@@ -622,6 +624,7 @@ while True:
     let base = Binding::unavailable(Provider::Codex, 90);
     let cleanup_stop = CancellationToken::new();
     let probe = Probe {
+        selector: None,
         reporter: None,
         identity: &f.identity,
         pane: pane_pid,
@@ -760,4 +763,78 @@ while True:
     ]);
     std::thread::sleep(Duration::from_millis(150));
     assert_eq!(fs::read(f.dir.join("received")).unwrap(), b"/status\r");
+}
+
+#[test]
+fn recovery_footer_is_current_even_when_old_status_panels_remain() {
+    let _serial = SERIAL.lock().unwrap();
+    let f = Fixture::new();
+    let base = Binding::unavailable(Provider::Codex, 90);
+    let probe = Probe {
+        selector: None,
+        reporter: None,
+        identity: &f.identity,
+        pane: 80,
+        base: &base,
+        reader: &f.reader,
+        inspector: &f.inspector,
+        state_dir: &f.dir,
+        stop: &f.stop,
+        deadline: Instant::now() + Duration::from_secs(10),
+        runtime: f.runtime.handle(),
+    };
+    // Footer UUID, not an old transcript Session label, owns recovery.
+    let second = "01234567-89ab-7cde-8fab-0123456789ac";
+    let path = f
+        .path
+        .with_file_name(format!("rollout-second-{second}.jsonl"));
+    fs::write(&path, format!("{{\"type\":\"session_meta\",\"payload\":{{\"id\":\"{second}\",\"source\":\"cli\"}}}}\n")).unwrap();
+    for id in [ID, second] {
+        fs::write(
+            f.dir.join("before"),
+            format!("Session: {ID}\n\n› Ask Codex to do anything\n\n  {id}\n"),
+        )
+        .unwrap();
+        assert_eq!(probe.run_footer().unwrap().record_id, id);
+    }
+    assert!(!f.dir.join("sent").exists());
+    // Missing footer never writes a slash command or any other input.
+    fs::write(
+        f.dir.join("before"),
+        "output\n\n› Ask Codex to do anything\n\nmodel\n",
+    )
+    .unwrap();
+    assert!(probe.run_footer().is_err());
+    assert!(!f.dir.join("sent").exists());
+    assert!(conversation_link::load(&f.dir, &f.identity)
+        .unwrap()
+        .is_none());
+}
+
+#[test]
+fn recovery_footer_never_replaces_drafts_or_approvals() {
+    let _serial = SERIAL.lock().unwrap();
+    for screen in [
+        "output\n\n› draft\n\n",
+        "Approval required\n\n› Ask Codex to do anything\n\n",
+    ] {
+        let f = Fixture::new();
+        fs::write(f.dir.join("before"), screen).unwrap();
+        let base = Binding::unavailable(Provider::Codex, 90);
+        let p = Probe {
+            selector: None,
+            reporter: None,
+            identity: &f.identity,
+            pane: 80,
+            base: &base,
+            reader: &f.reader,
+            inspector: &f.inspector,
+            state_dir: &f.dir,
+            stop: &f.stop,
+            deadline: Instant::now() + Duration::from_secs(5),
+            runtime: f.runtime.handle(),
+        };
+        assert!(p.run_footer().is_err());
+        assert!(!f.dir.join("sent").exists());
+    }
 }

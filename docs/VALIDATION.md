@@ -59,6 +59,45 @@ candidates; Home reconnected, the automatic checkpoint advanced with 29 sessions
 and public root 200/anonymous API 401 checks passed. PWA CSP and no-store headers
 were verified. This activation does not validate an OS reboot.
 
+## Post-reboot provider checkpoint safety (2026-10-17)
+
+Codex background-server clients may expose no per-client rollout descriptor. A
+missing or failed observation previously became an empty resume map, allowing a
+later save to erase known provider references. Ordinary saves now require complete,
+stable two-pass authority and preserve the previous checkpoint byte-for-byte on
+failure. A read-only, twice-checked UUID footer can provide current authority when
+configured; cached links, old status panels, launch arguments and process continuity
+are not sufficient. Recovery sends no slash commands or other terminal input.
+
+Restore uses the former soft two-pass observation path, verifies completed pane
+mappings, and fills missing references from its exact saved launch IDs. A completed
+same-boot journal or a first installation with no journal allows Home to connect
+before a background refresh; pending/cross-boot recovery remains synchronous.
+
+Home library checks passed 247 tests with four opt-in checks ignored. Rust
+formatting and strict Clippy passed for Home, agent and web targets. The separate
+isolated real-tmux reader check and all 13 conversation peer checks passed.
+The final fail-fast refinement passed all 18 focused recovery checks and strict
+Clippy again. These checks use the installed stable Rust toolchain, not the pinned
+toolchain. The isolated installed Codex 0.163.0 fixture
+confirmed the UUID-only footer configuration and the no-argument settings dialog;
+inline `/statusline session-id` is not a verified configuration command.
+
+Live recovery coverage remains incomplete: the maintained host had 30 original
+panes but only one saved provider reference and no visible UUID footer. Existing
+clients were not restarted or configured by automatic terminal input. This work
+does not establish that all current conversations will survive another reboot.
+Private provider-environment inheritance was separately verified in an isolated
+clean tmux server; credentials and operator configuration are not in the repository.
+See [recovery](RECOVERY.md) for the current binding prerequisites.
+
+The maintained macOS Home/helper release was rebuilt and activated with rollback
+backups. Installed binaries match the candidates; all 30 original tmux lifetimes
+and Home configuration were preserved. A failed live save left checkpoint bytes
+unchanged, while Home stayed running and reconnected. Gateway and web assets were
+not redeployed. This is a safeguard deployment, not full conversation-recovery or
+OS-reboot acceptance.
+
 ## macOS checkpoint continuity (2026-10-17)
 
 The maintained Home checkpoint stopped updating for five days. A manual save

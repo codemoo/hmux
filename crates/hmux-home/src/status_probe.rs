@@ -193,6 +193,7 @@ pub(crate) struct Probe<'a> {
     pub reporter: Option<&'a observation::Reporter>,
     pub identity: &'a SessionIdentity,
     pub pane: i32,
+    pub selector: Option<&'a str>,
     pub base: &'a Binding,
     pub reader: &'a TmuxCatalogReader,
     pub inspector: &'a Inspector,
@@ -201,7 +202,12 @@ pub(crate) struct Probe<'a> {
     pub deadline: Instant,
     pub runtime: &'a tokio::runtime::Handle,
 }
+#[path = "recovery_footer.rs"]
+mod recovery_footer;
 impl Probe<'_> {
+    fn selector(&self) -> &str {
+        self.selector.unwrap_or(&self.identity.id)
+    }
     fn command(&self, target: &Target, args: Vec<String>) -> Result<Vec<u8>, Error> {
         inspection::check(self.stop, self.deadline)?;
         let raw = self
@@ -343,7 +349,7 @@ impl Probe<'_> {
             .terminal_target()
             .map_err(|_| Error::Unavailable)?;
         *reason = Reason::ProbePane;
-        let pane = self.metadata(&target, &self.identity.id)?;
+        let pane = self.metadata(&target, self.selector())?;
         let before = self.screen(&target, &pane)?;
         *reason = Reason::ProbePrompt;
         if !empty_prompt(&before, &pane) {
@@ -375,7 +381,7 @@ impl Probe<'_> {
         let width;
         let gate=critical.runtime.block_on(async {tokio::select! {biased;_ = critical.stop.cancelled()=>Err(Error::Cancelled),_ = tokio::time::sleep_until(critical.deadline.into())=>Err(Error::Cancelled),guard = input.gate.lock()=>Ok(guard)}})?;
         *reason = Reason::ProbeChanged;
-        if critical.metadata(&target, &self.identity.id)? != pane
+        if critical.metadata(&target, self.selector())? != pane
             || critical.screen(&target, &pane)? != before
             || !input.quiet()
             || input.epoch.load(Ordering::SeqCst) != epoch
@@ -397,7 +403,7 @@ impl Probe<'_> {
         let (pane, before) = if width.is_some() {
             let until = critical.deadline;
             loop {
-                let current = critical.metadata(&target, &self.identity.id)?;
+                let current = critical.metadata(&target, self.selector())?;
                 let screen = critical.screen(&target, &current)?;
                 if current.id == pane.id && empty_prompt(&screen, &current) {
                     // Resize reflow can reveal an older status panel. Establish
@@ -442,7 +448,7 @@ impl Probe<'_> {
                 "if-shell".into(),
                 "-F".into(),
                 "-t".into(),
-                self.identity.id.clone(),
+                self.selector().into(),
                 pane.guard(),
                 send,
             ],
@@ -455,7 +461,7 @@ impl Probe<'_> {
                 _ = tokio::time::sleep(Duration::from_millis(120)) => Ok(())
             }
         })?;
-        let typed = critical.metadata(&target, &self.identity.id)?;
+        let typed = critical.metadata(&target, self.selector())?;
         let typed_screen = critical.screen(&target, &typed)?;
         if !same_input_owner(&pane, &typed)
             || !owned_prompt(&typed_screen, &typed)
@@ -485,7 +491,7 @@ impl Probe<'_> {
                 "if-shell".into(),
                 "-F".into(),
                 "-t".into(),
-                self.identity.id.clone(),
+                self.selector().into(),
                 typed.guard(),
                 format!("send-keys -t {} Enter", typed.id),
             ],
@@ -514,7 +520,7 @@ impl Probe<'_> {
         drop(width);
         *reason = Reason::ProbeProcess;
         self.current(&stamp)?;
-        let after = self.metadata(&target, &self.identity.id)?;
+        let after = self.metadata(&target, self.selector())?;
         if after.id != pane.id {
             return Err(Error::Unavailable);
         }

@@ -373,7 +373,14 @@ fn validate_state(s: &DiskState) -> Result<(), Error> {
 
 pub type ResolveFuture =
     Pin<Box<dyn Future<Output = Result<BTreeMap<i32, ResumeReference>, Error>> + Send>>;
-pub type Resolver = Arc<dyn Fn(Vec<i32>) -> ResolveFuture + Send + Sync>;
+/// Ordinary checkpoints require complete current authority. The first restored
+/// checkpoint can also retain exact launch references from the verified journal.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum ResolvePurpose {
+    Checkpoint,
+    Restored,
+}
+pub type Resolver = Arc<dyn Fn(Vec<i32>, ResolvePurpose) -> ResolveFuture + Send + Sync>;
 /// One checkpoint loop per connected Home. Shutdown waits for an admitted save.
 struct CancelOnDrop(CancellationToken);
 impl Drop for CancelOnDrop {
@@ -617,12 +624,17 @@ impl Store {
     /// Boot synchronization completes before catalog service starts. The returned
     /// owner checkpoints every 30 seconds and must be shut down with the connector.
     pub async fn prepare_checkpoint(&self, parent: CancellationToken) -> Result<Checkpoint, Error> {
-        let started = Instant::now();
-        let result = self
-            .transaction(Operation::Sync, Some(parent.clone()))
-            .await;
-        self.report_checkpoint(result.as_ref().err().copied(), started);
-        result?;
+        // A completed same-boot journal can serve immediately. Refreshing
+        // dozens of daemon clients belongs to the shared background owner.
+        let deferred = self.can_defer_refresh().await?;
+        if !deferred {
+            let started = Instant::now();
+            let result = self
+                .transaction(Operation::Sync, Some(parent.clone()))
+                .await;
+            self.report_checkpoint(result.as_ref().err().copied(), started);
+            result?;
+        }
         if parent.is_cancelled() {
             return Err(Error::Cancelled);
         }
@@ -630,7 +642,7 @@ impl Store {
         let stop = parent.child_token();
         let cancelled = stop.clone();
         let task = tokio::spawn(async move {
-            let mut wait = Duration::from_secs(30);
+            let mut wait = Duration::from_secs(if deferred { 5 } else { 30 });
             let mut last_failure = None;
             let mut last_report = Instant::now();
             loop {
@@ -661,6 +673,22 @@ impl Store {
             stop,
             task: Some(task),
         })
+    }
+    async fn can_defer_refresh(&self) -> Result<bool, Error> {
+        let store = self.clone();
+        let runtime = tokio::runtime::Handle::current();
+        tokio::task::spawn_blocking(move || {
+            let dir = store.dir()?;
+            let _lock = dir
+                .lock_for(OsStr::new("state.lock"), LOCK)
+                .map_err(|_| Error::Busy)?;
+            let boot = runtime.block_on(store.boot_id())?;
+            // No journal means no boot restoration obligation. Initial observation
+            // can retry in the background without preventing first connection.
+            Ok(Self::read(&dir)?.is_none_or(|s| s.boot_id == boot && s.pending.is_none()))
+        })
+        .await
+        .map_err(|_| Error::Unavailable)?
     }
     pub async fn sync(&self) -> Result<(), Error> {
         self.transaction(Operation::Sync, None).await
@@ -832,6 +860,14 @@ impl Store {
         }
     }
     async fn capture(&self) -> Result<Snapshot, Error> {
+        self.capture_observed(ResolvePurpose::Checkpoint).await
+    }
+    // Restore can merge its intended explicit launch references after checking
+    // every mapped pane, even before the provider opens/paints its transcript.
+    async fn capture_restored(&self) -> Result<Snapshot, Error> {
+        self.capture_observed(ResolvePurpose::Restored).await
+    }
+    async fn capture_observed(&self, purpose: ResolvePurpose) -> Result<Snapshot, Error> {
         let mut catalog = self.basic().await?;
         let metadata = sessionstate::Store::new(self.state_dir.clone());
         metadata
@@ -947,7 +983,7 @@ impl Store {
             pids.push(pid);
         }
         self.check_cancel()?;
-        let bindings = (self.resolver)(pids).await?;
+        let bindings = (self.resolver)(pids, purpose).await?;
         self.check_cancel()?;
         for (pid, r) in bindings {
             if !r.valid() {
@@ -1232,7 +1268,7 @@ mod tests {
             PathBuf::from("/bin/sh"),
             None,
             CommandRunner::new(1).unwrap(),
-            Arc::new(|_| Box::pin(async { Ok(BTreeMap::new()) })),
+            Arc::new(|_, _| Box::pin(async { Ok(BTreeMap::new()) })),
         )
         .unwrap();
         let mut catalog = Catalog::default();
@@ -1297,7 +1333,7 @@ esac
             tool,
             None,
             CommandRunner::new(2).unwrap(),
-            Arc::new(|_| Box::pin(async { Ok(BTreeMap::new()) })),
+            Arc::new(|_, _| Box::pin(async { Ok(BTreeMap::new()) })),
         )
         .unwrap()
         .with_boot_id(Arc::new(move || {
@@ -1311,6 +1347,18 @@ esac
         store.sync().await.unwrap();
         std::fs::write(&mode, "empty").unwrap();
         boot.store(1, Ordering::SeqCst);
+        let store = Store {
+            resolver: Arc::new(|_, purpose| {
+                Box::pin(async move {
+                    if purpose == ResolvePurpose::Restored {
+                        Ok(BTreeMap::new())
+                    } else {
+                        Err(Error::Unavailable)
+                    }
+                })
+            }),
+            ..store
+        };
         store.sync().await.unwrap();
         let state = Store::read(&store.dir().unwrap()).unwrap().unwrap();
         assert!(state.pending.is_none());
@@ -1345,9 +1393,15 @@ esac
         interrupted.boot_id = "darwin-1700000000-123456".into();
         interrupted.checkpoint = sample();
         let mapping = interrupted.mappings[0].clone();
+        let mut intended = sample();
+        intended.sessions[0].windows[0].panes[0].resume = Some(ResumeReference {
+            provider: "codex".into(),
+            session_id: "exact-restored-thread".into(),
+            config_dir: "/synthetic/.codex".into(),
+        });
         interrupted.pending = Some(Pending {
             boot_id: "darwin-1700100000-654321".into(),
-            snapshot: sample(),
+            snapshot: intended,
             completed: BTreeMap::from([(key(&mapping.from), mapping.clone())]),
             intents: BTreeMap::from([(key(&mapping.from), mapping.gate.clone())]),
         });
@@ -1358,6 +1412,15 @@ esac
         upgraded.sync().await.unwrap();
         let mut after = Store::read(&store.dir().unwrap()).unwrap().unwrap();
         assert!(after.pending.is_none());
+        assert_eq!(
+            after.checkpoint.sessions[0].windows[0].panes[0]
+                .resume
+                .as_ref()
+                .unwrap()
+                .session_id,
+            "exact-restored-thread"
+        );
+        assert_eq!(upgraded.save().await, Err(Error::Unavailable));
         assert_eq!(after.mappings.len(), 1);
         assert_eq!(after.mappings[0].from.id, "$1");
         assert_eq!(after.mappings[0].to.id, "$2");
@@ -1387,7 +1450,7 @@ esac
         std::fs::set_permissions(&tool, std::fs::Permissions::from_mode(0o700)).unwrap();
         let n = Arc::new(AtomicUsize::new(0));
         let count = n.clone();
-        let resolver: Resolver = Arc::new(move |pids| {
+        let resolver: Resolver = Arc::new(move |pids, _| {
             assert_eq!(pids, vec![101]);
             let seq = count.fetch_add(1, Ordering::SeqCst);
             Box::pin(async move {
@@ -1410,6 +1473,16 @@ esac
         )
         .unwrap()
         .with_boot_id(Arc::new(|| Ok("boot-a".into())));
+        let initial_unavailable = Store {
+            resolver: Arc::new(|_, _| Box::pin(async { Err(Error::Unavailable) })),
+            ..store.clone()
+        };
+        let checkpoint = initial_unavailable
+            .prepare_checkpoint(CancellationToken::new())
+            .await
+            .unwrap();
+        checkpoint.shutdown().await;
+        assert!(!root.join("state/recovery/state.json").exists());
         store.sync().await.unwrap();
         let dir = store.dir().unwrap();
         let state = Store::read(&dir).unwrap().unwrap();
@@ -1431,6 +1504,33 @@ esac
                 .session_id,
             "session-1"
         );
+        // Observation failures preserve the entire checkpoint byte-for-byte.
+        let broken = Store {
+            resolver: Arc::new(|_, _| Box::pin(async { Err(Error::Unavailable) })),
+            ..store.clone()
+        };
+        let before = std::fs::read(root.join("state/recovery/state.json")).unwrap();
+        assert_eq!(broken.save().await, Err(Error::Unavailable));
+        assert_eq!(
+            std::fs::read(root.join("state/recovery/state.json")).unwrap(),
+            before
+        );
+        // Optional refresh failures cannot take an already synchronized Home offline.
+        let checkpoint = broken
+            .prepare_checkpoint(CancellationToken::new())
+            .await
+            .unwrap();
+        checkpoint.shutdown().await;
+        assert_eq!(
+            std::fs::read(root.join("state/recovery/state.json")).unwrap(),
+            before
+        );
+        assert!(!broken
+            .clone()
+            .with_boot_id(Arc::new(|| Ok("boot-b".into())))
+            .can_defer_refresh()
+            .await
+            .unwrap());
         let other = store.clone().with_boot_id(Arc::new(|| Ok("boot-b".into())));
         assert_eq!(other.save().await, Err(Error::Changed));
         // A clock-adjusted legacy timestamp upgrades only with a surviving
@@ -1448,7 +1548,7 @@ esac
         );
         // A valid two-pass provider inspection can exceed five seconds.
         let slow = Store {
-            resolver: Arc::new(|_| {
+            resolver: Arc::new(|_, _| {
                 Box::pin(async {
                     tokio::time::sleep(Duration::from_millis(5200)).await;
                     Ok(BTreeMap::new())

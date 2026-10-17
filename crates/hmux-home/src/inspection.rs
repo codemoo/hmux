@@ -37,6 +37,7 @@ pub enum Error {
 pub(crate) enum ScanPurpose {
     Metadata,
     Conversation,
+    Recovery,
     Completion,
 }
 
@@ -257,6 +258,9 @@ impl Inspector {
             ))?;
             Snapshot::parse(&raw).map_err(|_| Error::Unavailable)?
         };
+        if purpose == ScanPurpose::Recovery && panes.iter().any(|p| !graph.nodes.contains_key(p)) {
+            return Err(Error::Unavailable);
+        }
         let mut owners = BTreeSet::new();
         let mut selected = BTreeMap::new();
         for &pane in panes {
@@ -288,6 +292,14 @@ impl Inspector {
         let mut budget = DiscoveryBudget::default();
         let initial = self.discover(&codex, &mut budget, stop, deadline, runtime);
         check(stop, deadline)?;
+        // A failed or incomplete observation must not erase checkpointed IDs.
+        // An observed owner with zero JSONL descriptors remains a valid result.
+        if purpose == ScanPurpose::Recovery {
+            let observed = initial.as_ref().map_err(|error| *error)?;
+            if codex.iter().any(|pid| !observed.contains_key(pid)) {
+                return Err(Error::Unavailable);
+            }
+        }
         if purpose == ScanPurpose::Conversation && matches!(initial, Err(Error::Busy)) {
             return Err(Error::Busy);
         }
@@ -306,6 +318,12 @@ impl Inspector {
         }
         let wrapper_files = self.discover(&wrappers, &mut budget, stop, deadline, runtime);
         check(stop, deadline)?;
+        if purpose == ScanPurpose::Recovery {
+            let observed = wrapper_files.as_ref().map_err(|error| *error)?;
+            if wrappers.iter().any(|pid| !observed.contains_key(pid)) {
+                return Err(Error::Unavailable);
+            }
+        }
         if purpose == ScanPurpose::Conversation && matches!(wrapper_files, Err(Error::Busy)) {
             return Err(Error::Busy);
         }

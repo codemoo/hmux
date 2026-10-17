@@ -38,7 +38,7 @@ impl Store {
             self.start_empty_server().await?;
         }
         self.restore_snapshot(dir, state).await?;
-        let mut live = self.capture().await?;
+        let mut live = self.capture_restored().await?;
         let pending = state.pending.as_ref().ok_or(Error::Invalid)?;
         if !pending.snapshot.sessions.is_empty() && live.sessions.is_empty() {
             return Err(Error::Changed);
@@ -860,6 +860,30 @@ pub(super) fn workspace_lineages(
 mod tests {
     use super::*;
     use std::os::unix::fs::PermissionsExt;
+    #[test]
+    fn same_directory_panes_resume_independent_exact_threads() {
+        let tools = BTreeMap::from([("codex".into(), "/synthetic/bin/codex".into())]);
+        for id in ["thread-a", "thread-b"] {
+            let pane = SavedPane {
+                index: 0,
+                cwd: "/synthetic/shared".into(),
+                active: true,
+                resume: Some(ResumeReference {
+                    provider: "codex".into(),
+                    session_id: id.into(),
+                    config_dir: "/synthetic/.codex".into(),
+                }),
+            };
+            let mut args = Vec::new();
+            gated(&mut args, &pane, &tools, "/synthetic/ready");
+            assert_eq!(
+                &args[args.len() - 3..],
+                &["/synthetic/bin/codex", "resume", id]
+            );
+            assert!(args.iter().any(|s| s == "CODEX_HOME=/synthetic/.codex"));
+            assert!(!args.iter().any(|s| s == "--last"));
+        }
+    }
     fn fixture() -> (Store, PathBuf) {
         let mut random = [0u8; 8];
         getrandom::fill(&mut random).unwrap();
@@ -873,7 +897,7 @@ mod tests {
             PathBuf::from("/bin/sh"),
             None,
             CommandRunner::new(1).unwrap(),
-            Arc::new(|_| Box::pin(async { Ok(BTreeMap::new()) })),
+            Arc::new(|_, _| Box::pin(async { Ok(BTreeMap::new()) })),
         )
         .unwrap();
         (store, root)
