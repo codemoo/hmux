@@ -33,6 +33,7 @@ const SEP: &str = "|:hmux-recovery-v1:|";
 const PANE_FORMAT: &str = "#{session_id}|:hmux-recovery-v1:|#{window_id}|:hmux-recovery-v1:|#{window_index}|:hmux-recovery-v1:|#{window_name}|:hmux-recovery-v1:|#{window_layout}|:hmux-recovery-v1:|#{window_active}|:hmux-recovery-v1:|#{pane_id}|:hmux-recovery-v1:|#{pane_index}|:hmux-recovery-v1:|#{pane_active}|:hmux-recovery-v1:|#{pane_current_path}|:hmux-recovery-v1:|#{pane_pid}";
 const LOCK: Duration = Duration::from_secs(2);
 const OP: Duration = Duration::from_secs(90);
+const SAVE: Duration = Duration::from_secs(20);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
@@ -410,6 +411,7 @@ pub struct Store {
     admission: Arc<Semaphore>,
     operation_cancel: Option<CancellationToken>,
     operation_deadline: Option<Instant>,
+    reporter: Option<crate::observation::Reporter>,
 }
 impl Store {
     pub fn new(
@@ -435,6 +437,7 @@ impl Store {
             admission: Arc::new(Semaphore::new(1)),
             operation_cancel: None,
             operation_deadline: None,
+            reporter: None,
         })
     }
     /// Synthetic reboot fixtures can supply a deterministic boot identity.
@@ -443,6 +446,10 @@ impl Store {
         boot: Arc<dyn Fn() -> Result<String, Error> + Send + Sync>,
     ) -> Self {
         self.boot = Some(boot);
+        self
+    }
+    pub fn with_reporter(mut self, reporter: crate::observation::Reporter) -> Self {
+        self.reporter = Some(reporter);
         self
     }
     fn check_cancel(&self) -> Result<(), Error> {
@@ -504,7 +511,7 @@ impl Store {
         #[cfg(target_os = "macos")]
         {
             let spec = CommandSpec::new("/usr/sbin/sysctl", 1024, Duration::from_secs(5))
-                .args(["-n", "kern.boottime"]);
+                .args(["-n", "kern.bootsessionuuid"]);
             let (sender, receiver) = tokio::sync::oneshot::channel();
             let work = self.runner.run_cancelable(spec, receiver);
             tokio::pin!(work);
@@ -513,7 +520,7 @@ impl Store {
             } else {
                 work.await.map_err(|_| Error::Unavailable)?.stdout
             };
-            darwin_boot_id(&raw)
+            darwin_boot_uuid(&raw)
         }
         #[cfg(not(any(target_os = "linux", target_os = "macos")))]
         {
@@ -531,6 +538,58 @@ impl Store {
         } else {
             Err(Error::Invalid)
         }
+    }
+    // Legacy kern.boottime includes a wall-clock-adjusted microsecond value.
+    // An exact surviving tmux birth identity proves continuity without guessing
+    // from a timestamp tolerance. Otherwise keep reboot recovery authoritative.
+    async fn migrate_legacy_boot(&self, state: &mut DiskState, boot: &str) -> Result<(), Error> {
+        if boot.starts_with("darwin-uuid-")
+            && state
+                .pending
+                .as_ref()
+                .is_some_and(|p| legacy_darwin_boot(&p.boot_id))
+        {
+            let live = self.basic().await?.sessions.unwrap_or_default();
+            let pending = state.pending.as_ref().ok_or(Error::Invalid)?;
+            let mut continuous = false;
+            for mapping in pending.completed.values() {
+                if live.iter().any(|s| {
+                    s.id == mapping.to.id
+                        && s.created_at == mapping.to.created_at
+                        && (s.name == mapping.name
+                            || s.name == restore::temporary_name(&mapping.gate))
+                }) {
+                    self.verify_panes(mapping).await?;
+                    continuous = true;
+                }
+            }
+            // Never discard an unresolved legacy journal on an ID-format
+            // change. With no verified survivor, an old binary can finish it.
+            if !continuous {
+                return Err(Error::Changed);
+            }
+            state.pending.as_mut().ok_or(Error::Invalid)?.boot_id = boot.into();
+        }
+        if !legacy_darwin_boot(&state.boot_id) || !boot.starts_with("darwin-uuid-") {
+            return Ok(());
+        }
+        let live = self.basic().await?.sessions.unwrap_or_default();
+        let continuous = state.checkpoint.sessions.iter().any(|saved| {
+            live.iter().any(|current| {
+                current.id == saved.identity.id
+                    && current.created_at == saved.identity.created_at
+                    && current.name == saved.name
+            })
+        });
+        if continuous {
+            let old = std::mem::replace(&mut state.boot_id, boot.into());
+            if let Some(pending) = &mut state.pending {
+                if pending.boot_id == old {
+                    pending.boot_id = boot.into();
+                }
+            }
+        }
+        Ok(())
     }
     /// Read the last committed mapping without taking the writer lock.
     pub fn apply(&self, catalog: &mut Catalog) -> Result<(), Error> {
@@ -558,8 +617,12 @@ impl Store {
     /// Boot synchronization completes before catalog service starts. The returned
     /// owner checkpoints every 30 seconds and must be shut down with the connector.
     pub async fn prepare_checkpoint(&self, parent: CancellationToken) -> Result<Checkpoint, Error> {
-        self.transaction(Operation::Sync, Some(parent.clone()))
-            .await?;
+        let started = Instant::now();
+        let result = self
+            .transaction(Operation::Sync, Some(parent.clone()))
+            .await;
+        self.report_checkpoint(result.as_ref().err().copied(), started);
+        result?;
         if parent.is_cancelled() {
             return Err(Error::Cancelled);
         }
@@ -568,14 +631,25 @@ impl Store {
         let cancelled = stop.clone();
         let task = tokio::spawn(async move {
             let mut wait = Duration::from_secs(30);
+            let mut last_failure = None;
+            let mut last_report = Instant::now();
             loop {
                 tokio::select! {
                     _ = cancelled.cancelled() => break,
                     _ = tokio::time::sleep(wait) => {}
                 }
+                let started = Instant::now();
                 let result = store
                     .transaction(Operation::Save, Some(cancelled.clone()))
                     .await;
+                let failure = result.as_ref().err().copied();
+                let report =
+                    failure != last_failure || last_report.elapsed() >= Duration::from_secs(300);
+                if report {
+                    store.report_checkpoint(failure, started);
+                    last_report = Instant::now();
+                }
+                last_failure = failure;
                 wait = if result.is_err() {
                     Duration::from_secs(5)
                 } else {
@@ -596,6 +670,21 @@ impl Store {
     }
     pub async fn save(&self) -> Result<(), Error> {
         self.transaction(Operation::Save, None).await
+    }
+    fn report_checkpoint(&self, failure: Option<Error>, started: Instant) {
+        use crate::observation::{Event, Reason, Stage};
+        if let Some(reporter) = &self.reporter {
+            let reason = match failure {
+                None => Reason::Published,
+                Some(Error::Invalid) => Reason::Parse,
+                Some(Error::Unavailable) => Reason::Unavailable,
+                Some(Error::Busy) => Reason::Busy,
+                Some(Error::Changed) => Reason::SessionChanged,
+                Some(Error::Cancelled) => Reason::Cancelled,
+                Some(Error::Command) => Reason::QueryFailure,
+            };
+            reporter(Event::new(Stage::Checkpoint, None, reason, started));
+        }
     }
     pub async fn save_cancelable(&self, stop: CancellationToken) -> Result<(), Error> {
         self.transaction(Operation::Save, Some(stop)).await
@@ -623,7 +712,7 @@ impl Store {
         s.operation_deadline = Some(
             Instant::now()
                 + if matches!(op, Operation::Save) {
-                    Duration::from_secs(5)
+                    SAVE
                 } else {
                     Duration::from_secs(30)
                 },
@@ -657,6 +746,7 @@ impl Store {
                     }
                     _ => {
                         let mut current = state.take().ok_or(Error::Unavailable)?;
+                        s.migrate_legacy_boot(&mut current, &boot).await?;
                         if matches!(op, Operation::Save)
                             && (current.boot_id != boot || current.pending.is_some())
                         {
@@ -892,7 +982,7 @@ impl Store {
                 MAX_STATE * 2,
             )
             .await?;
-        if raw != raw_again {
+        if included_panes(&raw, &by_id)? != included_panes(&raw_again, &by_id)? {
             return Err(Error::Changed);
         }
         let mut shot = Snapshot {
@@ -910,18 +1000,55 @@ impl Store {
 }
 
 #[cfg(any(target_os = "macos", test))]
-fn darwin_boot_id(raw: &[u8]) -> Result<String, Error> {
+fn darwin_boot_uuid(raw: &[u8]) -> Result<String, Error> {
     let text = std::str::from_utf8(raw).map_err(|_| Error::Invalid)?;
-    let (_, fields) = text.split_once("sec = ").ok_or(Error::Invalid)?;
-    let (seconds, tail) = fields.split_once(", usec = ").ok_or(Error::Invalid)?;
-    let micros = &tail[..tail.bytes().take_while(u8::is_ascii_digit).count()];
-    if !(1..=20).contains(&seconds.len())
-        || !seconds.bytes().all(|b| b.is_ascii_digit())
-        || !(1..=6).contains(&micros.len())
+    let uuid = text.trim();
+    if uuid.len() != 36
+        || !uuid.bytes().enumerate().all(|(i, b)| {
+            if [8, 13, 18, 23].contains(&i) {
+                b == b'-'
+            } else {
+                b.is_ascii_hexdigit()
+            }
+        })
     {
         return Err(Error::Invalid);
     }
-    Ok(format!("darwin-{seconds}-{micros}"))
+    Ok(format!("darwin-uuid-{}", uuid.to_ascii_lowercase()))
+}
+fn legacy_darwin_boot(raw: &str) -> bool {
+    let Some((seconds, micros)) = raw.strip_prefix("darwin-").and_then(|v| v.split_once('-'))
+    else {
+        return false;
+    };
+    (1..=20).contains(&seconds.len())
+        && seconds.bytes().all(|b| b.is_ascii_digit())
+        && (1..=6).contains(&micros.len())
+        && micros.bytes().all(|b| b.is_ascii_digit())
+}
+// Excluded grouped browser views cannot invalidate an otherwise stable capture.
+// Retain every original row field, including PID/cwd/layout, and normalize order.
+fn included_panes<'a>(
+    raw: &'a [u8],
+    sessions: &BTreeMap<String, SavedSession>,
+) -> Result<Vec<&'a str>, Error> {
+    let raw = std::str::from_utf8(raw).map_err(|_| Error::Invalid)?;
+    let mut included = Vec::new();
+    if raw.lines().count() > 8192 {
+        return Err(Error::Invalid);
+    }
+    for row in raw.lines() {
+        let row = row.trim_end_matches('\r');
+        let fields: Vec<_> = row.split(SEP).collect();
+        if fields.len() != 11 {
+            return Err(Error::Invalid);
+        }
+        if sessions.contains_key(fields[0]) {
+            included.push(row);
+        }
+    }
+    included.sort_unstable();
+    Ok(included)
 }
 #[derive(Clone, Copy)]
 enum Operation {
@@ -983,23 +1110,61 @@ mod tests {
         }
     }
     #[test]
-    fn parses_darwin_boot_identity_with_kernel_suffix() {
+    fn darwin_boot_session_uuid_is_canonical_and_timestamp_is_decode_only() {
         assert_eq!(
-            darwin_boot_id(b"{ sec = 1700000000, usec = 123456 } Tue Nov 14 00:00:00 2023\n"),
-            Ok("darwin-1700000000-123456".into())
-        );
-        assert_eq!(
-            darwin_boot_id(b"{ sec = 1, usec = 0 }\n"),
-            Ok("darwin-1-0".into())
+            darwin_boot_uuid(b"ABCDEF12-3456-7890-ABCD-EF1234567890\n"),
+            Ok("darwin-uuid-abcdef12-3456-7890-abcd-ef1234567890".into())
         );
         for raw in [
-            b"{ sec = , usec = 0 }".as_slice(),
-            b"{ sec = 1, usec = 1234567 }",
-            b"{ sec = 1, usec = }",
-            b"sysctl: unavailable",
+            b"{ sec = 1, usec = 0 }".as_slice(),
+            b"not-a-uuid",
+            b"abcdef12-3456-7890-abcd-ef123456789Z",
+            b"abcdef12X3456-7890-abcd-ef1234567890",
         ] {
-            assert_eq!(darwin_boot_id(raw), Err(Error::Invalid));
+            assert_eq!(darwin_boot_uuid(raw), Err(Error::Invalid));
         }
+        assert!(legacy_darwin_boot("darwin-1700000000-123456"));
+        assert!(!legacy_darwin_boot(
+            "darwin-uuid-abcdef12-3456-7890-abcd-ef1234567890"
+        ));
+        assert!(!legacy_darwin_boot("darwin-1700000000-1234567"));
+    }
+    #[test]
+    fn browser_view_changes_do_not_invalidate_original_panes() {
+        let sessions = BTreeMap::from([("$1".into(), sample().sessions.remove(0))]);
+        let original = [
+            "$1",
+            "@1",
+            "0",
+            "window",
+            "b1e2,80x24,0,0,2",
+            "1",
+            "%1",
+            "0",
+            "1",
+            "/tmp",
+            "100",
+        ]
+        .join(SEP);
+        let view = original.replacen("$1", "$2", 1);
+        let before = format!("{original}\n{view}\n");
+        let after = format!("{original}\n");
+        assert_eq!(
+            included_panes(before.as_bytes(), &sessions).unwrap(),
+            included_panes(after.as_bytes(), &sessions).unwrap()
+        );
+        for altered in [
+            original.replace("100", "101"),
+            original.replace("/tmp", "/other"),
+            original.replace("%1", "%2"),
+            original.replace("80x24", "81x24"),
+        ] {
+            assert_ne!(
+                included_panes(before.as_bytes(), &sessions).unwrap(),
+                included_panes(altered.as_bytes(), &sessions).unwrap()
+            );
+        }
+        assert_eq!(included_panes(b"invalid", &sessions), Err(Error::Invalid));
     }
     #[test]
     fn snapshot_preserves_full_creation_display_name() {
@@ -1174,6 +1339,43 @@ esac
                 .id,
             "$1"
         );
+        // Upgrade during an interrupted old-format recovery: restored target
+        // and its gate/panes survive, but the original checkpoint does not.
+        let mut interrupted = state;
+        interrupted.boot_id = "darwin-1700000000-123456".into();
+        interrupted.checkpoint = sample();
+        let mapping = interrupted.mappings[0].clone();
+        interrupted.pending = Some(Pending {
+            boot_id: "darwin-1700100000-654321".into(),
+            snapshot: sample(),
+            completed: BTreeMap::from([(key(&mapping.from), mapping.clone())]),
+            intents: BTreeMap::from([(key(&mapping.from), mapping.gate.clone())]),
+        });
+        Store::write(&store.dir().unwrap(), &mut interrupted).unwrap();
+        let upgraded = store.clone().with_boot_id(Arc::new(|| {
+            Ok("darwin-uuid-abcdef12-3456-7890-abcd-ef1234567890".into())
+        }));
+        upgraded.sync().await.unwrap();
+        let mut after = Store::read(&store.dir().unwrap()).unwrap().unwrap();
+        assert!(after.pending.is_none());
+        assert_eq!(after.mappings.len(), 1);
+        assert_eq!(after.mappings[0].from.id, "$1");
+        assert_eq!(after.mappings[0].to.id, "$2");
+        // Unresolved legacy intent has no exact target evidence. Preserve it.
+        after.boot_id = "darwin-1700000000-123456".into();
+        after.pending = Some(Pending {
+            boot_id: "darwin-1700100000-654321".into(),
+            snapshot: sample(),
+            completed: BTreeMap::new(),
+            intents: BTreeMap::new(),
+        });
+        Store::write(&store.dir().unwrap(), &mut after).unwrap();
+        let before = std::fs::read(root.join("state/recovery/state.json")).unwrap();
+        assert_eq!(upgraded.sync().await, Err(Error::Changed));
+        assert_eq!(
+            std::fs::read(root.join("state/recovery/state.json")).unwrap(),
+            before
+        );
         let _ = std::fs::remove_dir_all(root);
     }
     #[tokio::test]
@@ -1231,6 +1433,41 @@ esac
         );
         let other = store.clone().with_boot_id(Arc::new(|| Ok("boot-b".into())));
         assert_eq!(other.save().await, Err(Error::Changed));
+        // A clock-adjusted legacy timestamp upgrades only with a surviving
+        // exact session lifetime. Save does not recreate closed sessions.
+        let mut state = Store::read(&dir).unwrap().unwrap();
+        state.boot_id = "darwin-1700000000-999999".into();
+        Store::write(&dir, &mut state).unwrap();
+        let upgraded = store.clone().with_boot_id(Arc::new(|| {
+            Ok("darwin-uuid-abcdef12-3456-7890-abcd-ef1234567890".into())
+        }));
+        upgraded.save().await.unwrap();
+        assert_eq!(
+            Store::read(&dir).unwrap().unwrap().boot_id,
+            "darwin-uuid-abcdef12-3456-7890-abcd-ef1234567890"
+        );
+        // A valid two-pass provider inspection can exceed five seconds.
+        let slow = Store {
+            resolver: Arc::new(|_| {
+                Box::pin(async {
+                    tokio::time::sleep(Duration::from_millis(5200)).await;
+                    Ok(BTreeMap::new())
+                })
+            }),
+            ..upgraded.clone()
+        };
+        slow.save().await.unwrap();
+        // No exact survivor: legacy state is retained for real boot recovery.
+        let mut state = Store::read(&dir).unwrap().unwrap();
+        state.boot_id = "darwin-1700000000-999999".into();
+        state.checkpoint.sessions[0].identity.created_at = 99;
+        Store::write(&dir, &mut state).unwrap();
+        let before = std::fs::read(root.join("state/recovery/state.json")).unwrap();
+        assert_eq!(upgraded.save().await, Err(Error::Changed));
+        assert_eq!(
+            std::fs::read(root.join("state/recovery/state.json")).unwrap(),
+            before
+        );
         let _ = std::fs::remove_dir_all(root);
     }
 }

@@ -20,6 +20,7 @@ pub enum Stage {
     ViewCleanup,
     Usage,
     StatusProbe,
+    Checkpoint,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -110,6 +111,7 @@ impl fmt::Display for Event {
             Stage::ViewCleanup => "view-cleanup",
             Stage::Usage => "usage",
             Stage::StatusProbe => "status-probe",
+            Stage::Checkpoint => "checkpoint",
         };
         let reason = match self.reason {
             Reason::Busy => "busy",

@@ -272,6 +272,10 @@ impl Driver for Production {
     type Connected = transport::Connection;
     async fn prepare_home(&mut self, stop: &CancellationToken) -> Result<(), Error> {
         if let Some(recovery) = &self.recovery {
+            let recovery = match &self.reporter {
+                Some(reporter) => recovery.clone().with_reporter(reporter.clone()),
+                None => recovery.clone(),
+            };
             self.checkpoint = Some(
                 recovery
                     .prepare_checkpoint(stop.clone())

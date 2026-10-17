@@ -38,9 +38,10 @@ binding, including clearing unavailable/ambiguous references.
 
 ## When it saves
 
-A Home stream checkpoints on connection and approximately every 30 seconds while
-connected. Multiple clients share the same locked Home state. With no HMux
-connection, it does not continuously record changes. Before a planned reboot,
+A Home connector checkpoints before its first catalog and approximately every
+30 seconds while running, including temporary Gateway/network disconnections.
+Multiple browsers share that same locked checkpoint owner. Without a running
+Home connector, it does not continuously record changes. Before a planned reboot,
 make a fresh checkpoint on Home:
 
 ```sh
@@ -58,6 +59,31 @@ For manual Home maintenance:
 change. `restore` explicitly requests recovery from the saved checkpoint. Existing
 session names are never overwritten, attached, detached or killed. Within the
 same boot, ordinary checkpointing does not recreate deliberately closed sessions.
+
+macOS uses `kern.bootsessionuuid`, which remains stable through wall-clock
+corrections; the old `kern.boottime` value could change microseconds without a
+reboot and silently prevent later saves. Legacy timestamp checkpoints migrate
+only when a saved tmux session's exact ID, birth time and name still survive.
+Without that continuity evidence, normal boot recovery applies and a plain save
+does not overwrite the older checkpoint. Linux retains its kernel boot UUID.
+An interrupted legacy recovery upgrades its pending journal separately only after
+verifying an existing restored target and its exact pane map. An unresolved legacy
+journal without that evidence is preserved with a `Changed` error; finish it with
+the previous binary before upgrading rather than deleting it.
+
+Capture has a bounded 20-second save budget, including the existing two-pass
+provider inspection (ten-second bound). It compares original-session pane data
+before/after inspection, ignoring temporary grouped-view churn. Changes to an
+original session lifetime, pane PID, cwd or layout reject the save and preserve
+the previous checkpoint. Failed observations do not become successful empty
+provider bindings.
+
+Home logs fixed `stage=checkpoint` categories at initialization, on save failure
+category changes/recovery and at most every five minutes for an unchanged result.
+`reason=published` confirms a committed checkpoint; failures retry after five
+seconds without stopping terminals. Diagnostic records contain no session labels,
+paths, provider IDs or transcript contents. Check `recovery/state.json`'s
+`updated_at` privately when verifying freshness; do not publish its contents.
 
 Recovery first saves a private construction intent, then creates an owned temporary
 tmux session. All panes wait on a private Home readiness file until the complete

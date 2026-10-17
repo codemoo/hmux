@@ -499,7 +499,7 @@ impl Store {
             .write_atomic_private(OsStr::new("ready"), b"ready\n")
             .map_err(|_| Error::Unavailable)
     }
-    async fn verify_panes(&self, m: &Mapping) -> Result<(), Error> {
+    pub(super) async fn verify_panes(&self, m: &Mapping) -> Result<(), Error> {
         let f = fields(
             &self
                 .command(
@@ -607,7 +607,7 @@ fn fields(raw: &[u8], count: usize) -> Result<Vec<String>, Error> {
     }
     Ok(f)
 }
-fn temporary_name(gate: &str) -> String {
+pub(super) fn temporary_name(gate: &str) -> String {
     format!(
         "hmux-recovery-{}",
         Path::new(gate)

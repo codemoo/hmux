@@ -1,6 +1,6 @@
 # Validation status
 
-Evidence summary updated 2026-10-14. Deployment observations describe one maintained
+Evidence summary updated 2026-10-17. Deployment observations describe one maintained
 installation, not every HMux deployment. [Rust runtime status](RUST_MIGRATION.md)
 owns the remaining acceptance queue; [Rust verification](../tests/RUST.md) owns
 runnable checks. Detailed investigations, earlier CI failures and per-change
@@ -28,6 +28,45 @@ parallel build resumed with two build jobs. These are automated fixture results,
 not physical-device or long-running stability acceptance. Earlier CI outcomes
 are checkpoint-specific; see the dated record rather than inferring current CI
 status from a prior local result.
+
+## macOS checkpoint continuity (2026-10-17)
+
+The maintained Home checkpoint stopped updating for five days. A manual save
+failed immediately with `Changed`: macOS `kern.boottime` retained its seconds but
+changed microseconds by 451,548 without rebooting. Save treated that timestamp
+change as a different boot and preserved the old checkpoint indefinitely.
+
+macOS now uses its stable boot-session UUID. Legacy checkpoints migrate using an
+exact surviving tmux identity/name; interrupted legacy journals independently
+verify restored target identities and pane maps or fail without discarding their
+journal. Save has a 20-second budget compatible with the existing ten-second
+two-pass inspection. Capture compares original pane rows, excluding grouped-view
+churn. Existing Home diagnostics report checkpoint commits, failures and recovery
+with fixed categories and throttling. See [recovery](RECOVERY.md).
+
+Focused recovery checks passed 12 tests, including a provider observation lasting
+5.2 seconds, old-checkpoint migration, interrupted recovery mapping preservation,
+unresolved-journal preservation and original/view comparison. Strict Clippy and
+Rust formatting passed. The Home suite passed 240 tests with four opt-in checks
+ignored; terminal integration passed nine tests. Final refinements reran focused
+recovery checks and all 240 Home tests. The separately built production connector
+passed the opt-in isolated WSS test with both codecs, reconnect, signal cleanup
+and private-input checks. These synthetic tests do not reboot the maintained Mac.
+
+The native macOS release was built and the candidate helper saved the actual
+checkpoint successfully in under one second. Home/helper were replaced with
+timestamped binary/state backups and rollback checks. Home reconnected; all 30
+original tmux lifetimes, 12 existing conversation links and configuration were
+preserved. The new UUID checkpoint contains all 30 current original sessions.
+Its timestamp subsequently advanced through the automatic loop without a manual
+save. The measured snapshot contained 13 verified Codex resume references and one
+Claude reference; the remaining panes restore as shells rather than guessing
+conversation IDs. No running shell/tool commands are replayed. Public Gateway
+200/anonymous API 401 checks passed. Gateway/web assets were not replaced.
+
+Actual macOS update/reboot/login recovery remains a separate user validation;
+the registered per-user LaunchAgent starts after GUI login and requires an awake
+host. This change does not alter sleep, login or system update policy.
 
 ## Conversation formulas (2026-10-14)
 

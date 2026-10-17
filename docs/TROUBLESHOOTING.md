@@ -181,6 +181,12 @@ switching threads inside the same CLI; this does not restart the provider.
 The Home connector must have saved a checkpoint before reboot and must be restarted
 afterwards. Before planned maintenance use `hmux-agent recovery save`. For errors,
 run `hmux-agent recovery sync` locally and check directories/provider installations.
+Inspect fixed `stage=checkpoint` records in the Home service log and the private
+checkpoint's `updated_at`. A timestamp not advancing beyond a few save intervals
+requires investigation before reboot. Current macOS builds use a stable boot
+session UUID; older timestamp-based builds could stop saving after a clock
+correction even without a reboot. Upgrade while original sessions still survive
+so the exact-lifetime migration can refresh the checkpoint safely.
 Do not delete checkpoints as a first repair step. Provider authentication/project
 trust prompts still apply. See [RECOVERY.md](RECOVERY.md).
 
