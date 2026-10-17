@@ -282,9 +282,11 @@ stop the service, timestamp-backup/remove the session file and restart.
 ## New-session workspaces
 
 Home installation selects each profile's workspace base (new-install default:
-`~/.hmux`; existing custom bases are retained). Creating a session allocates a new
-child folder from its name and a unique folder/profile-prefixed tmux name. Repeated
-names never attach to existing work or reuse existing directories. Codex/Claude
+`~/.hmux`; existing custom bases are retained). New sessions start in that base by
+default. The **Create folder automatically** checkbox (Korean: **폴더 자동 생성**)
+starts unchecked; checking it allocates a private child folder from the session
+name. Both modes generate a unique tmux name and never attach to existing work.
+With folder creation enabled, repeated names never reuse existing children. Codex/Claude
 exit returns to an interactive shell, including for resumed sessions. See
 [Operations](OPERATIONS.md#build-and-install) for naming and installation flags.
 
@@ -597,8 +599,8 @@ See [Usage source fallback](PROVIDERS.md#usage-source-fallback).
 
 The name entered in the new-session dialog is saved as the session's display
 alias and used for its tab and list title, preserving Unicode, spaces and
-punctuation (outer whitespace is trimmed). The workspace folder and unique tmux
-name still use the safe generated name. Leaving the name empty retains automatic
+punctuation (outer whitespace is trimmed). The optional workspace child folder and
+unique tmux name use the safe generated name. Leaving the name empty retains automatic
 naming. The alias is persisted with the launch profile on Home, so it survives
 browser refreshes and reconnects and can be changed later from session settings.
 

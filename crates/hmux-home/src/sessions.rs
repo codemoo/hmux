@@ -180,7 +180,9 @@ impl Job {
                 // Validate display metadata before allocating or starting tmux.
                 sessionstate::validate_alias(alias).map_err(|_| Error::Invalid)?;
                 check(&self.stop, deadline)?;
-                let allocated = plan.allocate().map_err(|_| Error::Unavailable)?;
+                let allocated = plan
+                    .allocate(q.create_directory.unwrap_or(false))
+                    .map_err(|_| Error::Unavailable)?;
                 check(&self.stop, deadline)?;
                 let mut args: Vec<OsString> = [
                     "new-session",

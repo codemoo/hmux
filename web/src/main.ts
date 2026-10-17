@@ -1806,8 +1806,8 @@ async function createDialog() {
     text(
       "p",
       msg(
-        "Creates a folder named after the session under the configured workspace path.",
-        "설정된 작업 경로 아래에 세션 이름으로 새 폴더를 만듭니다.",
+        "Starts in the configured workspace path. Enable automatic folder creation to use a new subfolder.",
+        "기본 작업 경로에서 시작합니다. 폴더 자동 생성을 켜면 세션 이름으로 하위 폴더를 만듭니다.",
       ),
       "muted",
     ),
@@ -1822,6 +1822,15 @@ async function createDialog() {
   const select = document.createElement("select");
   l.append(select);
   form.append(l);
+  const folderLabel = text("label", "", "create-folder-option");
+  const createDirectory = document.createElement("input");
+  createDirectory.type = "checkbox";
+  createDirectory.checked = false;
+  folderLabel.append(
+    createDirectory,
+    text("span", msg("Create folder automatically", "폴더 자동 생성")),
+  );
+  form.append(folderLabel);
   const error = text("p", "", "error");
   const save = text(
     "button",
@@ -1857,6 +1866,7 @@ async function createDialog() {
       const result = await action("create", undefined, {
         name: name.value,
         profile: select.value,
+        create_directory: createDirectory.checked,
       });
       await openCreatedSession(result);
     } catch (e) {

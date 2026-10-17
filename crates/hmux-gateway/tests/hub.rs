@@ -1096,6 +1096,7 @@ async fn malformed_typed_request_is_rejected_before_home_action() {
     invalid.payload = Some(p::request::Payload::Create(p::CreateRequest {
         profile: Some("shell".into()),
         name: None,
+        create_directory: None,
     }));
     assert!(matches!(
         hub.request(generation, invalid).await,

@@ -159,18 +159,29 @@ Coordinate connector restart separately; restore binary backup bytes with execut
 mode if rolling back. Configuration errors stop before normal binary activation; fix
 the configuration error and rerun.
 
-Each inventory profile's `default_directory` is the **base**, not the session CWD.
-A new session creates a private child directory derived from the entered name:
+Each inventory profile's `default_directory` is the workspace base and the default
+session CWD. New sessions start directly in that directory unless **Create folder
+automatically** is checked in the web dialog (`create_directory: true` in the create
+action). The checkbox starts unchecked for every new session; omitted/false action
+values use the base. A missing base is created on first use.
+
+Upgrade Gateway and Home before serving the updated web assets: older strict
+JSON/protobuf validators reject the new `create_directory` field. Roll back web
+assets before reverting the native binaries.
+
+When enabled, Home creates a private child directory derived from the entered name:
 letters (including Korean), numbers, hyphens and underscores remain; spaces and
 other punctuation become hyphens. Empty names use the profile ID. Names are bounded
-for filesystem/tmux limits. Existing folders, files and symlinks are never reused;
-a short random suffix distinguishes a repeated name. The tmux name combines the
-actual child folder, a bounded profile ID and a random suffix. Two creates with
-the same input always create separate workspaces and sessions. `create --dry-run`
-only validates and prints the proposed folder slug; it reserves nothing.
+for filesystem/tmux limits. Existing child folders, files and symlinks are never
+reused; a short random suffix distinguishes a repeated name. Both modes create a
+unique tmux name from the safe session-name slug, a bounded profile ID and a random
+suffix. `create --dry-run` only validates and prints the proposed slug; it reserves
+nothing.
 
-For example, `My Project` with the Codex profile creates `<base>/My-Project` and
-`My-Project-codex-<suffix>` in tmux. The base is created on first use if missing.
+For example, `My Project` with the Codex profile starts in `<base>` by default.
+Checking the box uses `<base>/My-Project` instead. The tmux name is
+`My-Project-codex-<suffix>` in both cases (with a collision suffix on the child
+when necessary).
 Codex and Claude profiles whose command starts with `codex` or `claude` return to
 an interactive Home shell in the same directory after normal exit, failure or
 Ctrl+C. The same lifecycle applies to recovered provider sessions; ordinary shell

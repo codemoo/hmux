@@ -292,7 +292,7 @@ async fn both_codecs_create_unique_children_persist_metadata_and_check_fresh_ali
                 request(
                     &format!("create{n}"),
                     p::Operation::Create,
-                    serde_json::json!({"profile":"codex","name":"  한글 ../ project  "}),
+                    serde_json::json!({"profile":"codex","name":"  한글 ../ project  ","create_directory":true}),
                     None,
                 ),
             )
@@ -470,6 +470,42 @@ async fn created_display_names_survive_reconnect_with_unicode_and_automatic_name
 }
 
 #[tokio::test]
+async fn both_codecs_default_and_explicit_false_use_base_without_children() {
+    let _serial = SERIAL.lock().await;
+    for protocol in [Negotiated::JsonV1, Negotiated::ProtobufV2] {
+        let f = Fixture::new(&tmux_script());
+        let (stop, owner, mut g, _) = boot(&f, protocol).await;
+        for (i, payload) in [
+            serde_json::json!({"profile":"codex","name":"Shared work"}),
+            serde_json::json!({"profile":"codex","name":"Shared work","create_directory":false}),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            send(
+                &mut g,
+                protocol,
+                request(&format!("shared{i}"), p::Operation::Create, payload, None),
+            )
+            .await;
+            assert_eq!(
+                response(&mut g, protocol, p::Operation::Create).await.error,
+                ""
+            );
+            assert_eq!(
+                fs::read_to_string(f.dir.join("directory")).unwrap().trim(),
+                f.dir.join("work").to_str().unwrap()
+            );
+            assert_eq!(fs::read_dir(f.dir.join("work")).unwrap().count(), 0);
+        }
+        let m = metadata(&f, "sessions.json");
+        assert_ne!(m["sessions"]["$1"]["name"], m["sessions"]["$2"]["name"]);
+        assert_eq!(m["sessions"]["$1"]["alias"], "Shared work");
+        close(stop, owner).await;
+    }
+}
+
+#[tokio::test]
 async fn failed_create_keeps_new_session_and_directory_and_invalid_requests_have_no_side_effects() {
     let _serial = SERIAL.lock().await;
     let f = Fixture::new(&tmux_script());
@@ -514,7 +550,7 @@ async fn failed_create_keeps_new_session_and_directory_and_invalid_requests_have
         request(
             "bad-result",
             p::Operation::Create,
-            serde_json::json!({"profile":"codex","name":"owned"}),
+            serde_json::json!({"profile":"codex","name":"owned","create_directory":true}),
             None,
         ),
     )
@@ -542,7 +578,7 @@ async fn failed_create_keeps_new_session_and_directory_and_invalid_requests_have
         request(
             "metadata-busy",
             p::Operation::Create,
-            serde_json::json!({"profile":"codex","name":"owned"}),
+            serde_json::json!({"profile":"codex","name":"owned","create_directory":true}),
             None,
         ),
     )
@@ -576,7 +612,7 @@ async fn cancel_busy_create_reaps_only_query_child_and_preserves_independent_pro
         request(
             "slow",
             p::Operation::Create,
-            serde_json::json!({"profile":"codex"}),
+            serde_json::json!({"profile":"codex","create_directory":true}),
             None,
         ),
     )
@@ -594,7 +630,7 @@ async fn cancel_busy_create_reaps_only_query_child_and_preserves_independent_pro
         request(
             "busy",
             p::Operation::Create,
-            serde_json::json!({"profile":"codex"}),
+            serde_json::json!({"profile":"codex","create_directory":true}),
             None,
         ),
     )
@@ -695,7 +731,7 @@ async fn real_tmux_provider_exit_and_ctrl_c_leave_owned_interactive_shells() {
                 request(
                     &name,
                     p::Operation::Create,
-                    serde_json::json!({"profile":provider,"name":name}),
+                    serde_json::json!({"profile":provider,"name":name,"create_directory":true}),
                     None,
                 ),
             )

@@ -1,4 +1,5 @@
-# Base directories: each new session gets its own child folder here.
+# New sessions start in these base directories.
+# Enable "Create folder automatically" in the web dialog for a new child folder.
 schema_version = 1
 revision = "example"
 

@@ -55,7 +55,7 @@ impl fmt::Debug for Plan {
     }
 }
 
-/// A newly created 0700 child. Dropping it never deletes or reuses the folder.
+/// A selected workspace and unique session name. Dropping it never deletes files.
 pub struct Allocated {
     pub profile: Profile,
     pub directory: PathBuf,
@@ -159,9 +159,9 @@ impl Plan {
 }
 
 impl Plan {
-    /// Create one new child through the pinned administrator-selected base.
-    /// Existing files, directories and symlinks cause a new candidate name.
-    pub fn allocate(self) -> Result<Allocated, Error> {
+    /// Use the administrator-selected base, optionally creating a private child.
+    /// Existing child files, directories and symlinks cause a new candidate name.
+    pub fn allocate(self, create_directory: bool) -> Result<Allocated, Error> {
         match fs::metadata(&self.base) {
             Ok(metadata) if !metadata.is_dir() => return Err(Error::Workspace),
             Ok(_) => {}
@@ -184,13 +184,21 @@ impl Plan {
             )
             .map_err(|_| Error::Workspace)?,
         );
+        if !create_directory {
+            return Ok(Allocated {
+                name: format!(
+                    "{}-{}-{}",
+                    self.folder,
+                    workspace_slug(&self.profile.id, MAX_PROFILE_SLUG_SCALARS),
+                    random_suffix()?,
+                ),
+                profile: self.profile,
+                directory: self.base,
+                command: self.command,
+            });
+        }
         for attempt in 0..ALLOCATION_ATTEMPTS {
-            let mut random = [0u8; 6];
-            getrandom::fill(&mut random).map_err(|_| Error::Entropy)?;
-            let suffix = random
-                .iter()
-                .map(|byte| format!("{byte:02x}"))
-                .collect::<String>();
+            let suffix = random_suffix()?;
             let child = if attempt == 0 {
                 self.folder.clone()
             } else {
@@ -217,6 +225,12 @@ impl Plan {
         }
         Err(Error::Collision)
     }
+}
+
+fn random_suffix() -> Result<String, Error> {
+    let mut random = [0u8; 6];
+    getrandom::fill(&mut random).map_err(|_| Error::Entropy)?;
+    Ok(random.iter().map(|byte| format!("{byte:02x}")).collect())
 }
 
 impl Allocated {

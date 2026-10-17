@@ -97,7 +97,7 @@ message Response {
     StageResult staged = 16;
   }
 }
-message CreateRequest { optional string profile = 1; optional string name = 2; }
+message CreateRequest { optional string profile = 1; optional string name = 2; optional bool create_directory = 3; }
 message AliasRequest { optional string alias = 1; }
 message HiddenRequest { bool hidden = 1; }
 message WorkspaceRequest { WorkspaceChange change = 1; }

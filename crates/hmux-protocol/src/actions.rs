@@ -181,6 +181,8 @@ struct Create {
     profile: Option<String>,
     #[serde(default)]
     name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    create_directory: Option<bool>,
 }
 #[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -420,6 +422,7 @@ pub fn request_from_json(
             P::Create(p::CreateRequest {
                 profile: v.profile,
                 name: v.name,
+                create_directory: v.create_directory,
             })
         }
         p::Operation::Alias => {
@@ -489,6 +492,7 @@ fn request_payload_unchecked(v: &p::Request) -> Result<Bytes, Error> {
             &Create {
                 profile: v.profile.clone(),
                 name: v.name.clone(),
+                create_directory: v.create_directory,
             },
             ACTION_MAX,
         ),

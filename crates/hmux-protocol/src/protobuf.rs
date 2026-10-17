@@ -158,7 +158,7 @@ fn field(schema: Schema, tag: u32) -> Option<(Field, usize)> {
         (Response, 16) => Nested(StageResult),
         (Response, 3) => Text(128),
         (CreateRequest, 1 | 2) | (AliasRequest, 1) => Text(16 << 10),
-        (HiddenRequest, 1) => Bool,
+        (HiddenRequest, 1) | (CreateRequest, 3) => Bool,
         (WorkspaceRequest, 1) => Nested(WorkspaceChange),
         (WorkspaceChange, 1) => Text(80),
         (WorkspaceChange, 2) => Uint64,

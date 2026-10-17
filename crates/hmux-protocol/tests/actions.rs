@@ -32,6 +32,62 @@ fn request_shapes_and_workspace_revision_are_exact() {
     assert!(actions::request_from_json(O::Workspace,br#"{"change":{"operation_id":"1234567890abcdef","revision":18446744073709551616,"base":[],"tabs":[]}}"#).is_err());
 }
 #[test]
+fn create_directory_choice_survives_both_codecs_and_rejects_non_booleans() {
+    for option in [None, Some(false), Some(true)] {
+        let mut value = serde_json::json!({"profile":"shell","name":"Shared work"});
+        if let Some(option) = option {
+            value["create_directory"] = option.into();
+        }
+        let request = p::Request {
+            id: "create-choice".into(),
+            operation: p::Operation::Create as i32,
+            session: None,
+            payload: Some(
+                actions::request_from_json(
+                    p::Operation::Create,
+                    &serde_json::to_vec(&value).unwrap(),
+                )
+                .unwrap(),
+            ),
+        };
+        let envelope = p::Envelope {
+            version: pb::VERSION,
+            body: Some(p::envelope::Body::Request(Box::new(request))),
+        };
+        let binary = pb::decode(
+            pb::encode(&envelope, Direction::ToHome).unwrap(),
+            Direction::ToHome,
+        )
+        .unwrap();
+        let json = legacy::from_json(
+            legacy::to_json(envelope, Direction::ToHome).unwrap(),
+            Direction::ToHome,
+        )
+        .unwrap();
+        for decoded in [binary, json] {
+            let Some(p::envelope::Body::Request(decoded)) = decoded.body else {
+                panic!("request")
+            };
+            let restored: serde_json::Value =
+                serde_json::from_slice(&actions::request_payload(&decoded).unwrap()).unwrap();
+            assert_eq!(restored, value);
+        }
+    }
+    for invalid in [
+        serde_json::json!("false"),
+        serde_json::json!(0),
+        serde_json::json!([]),
+    ] {
+        let value = serde_json::json!({"profile":"shell","create_directory":invalid});
+        assert!(actions::request_from_json(
+            p::Operation::Create,
+            &serde_json::to_vec(&value).unwrap()
+        )
+        .is_err());
+    }
+}
+
+#[test]
 fn response_context_and_strict_json_prevent_shape_inference() {
     let create = actions::response_from_json(
         br#"{"id":"$1","created_at":42,"reused":false}"#,

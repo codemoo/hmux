@@ -29,6 +29,36 @@ not physical-device or long-running stability acceptance. Earlier CI outcomes
 are checkpoint-specific; see the dated record rather than inferring current CI
 status from a prior local result.
 
+## Optional new-session folders (2026-10-17)
+
+New sessions use the configured workspace base by default. The web dialog's
+**Create folder automatically** checkbox starts unchecked each time; enabling it
+retains private child allocation and collision handling. JSON and protobuf carry
+an optional `create_directory` boolean; omitted/false uses the base. Tab aliases,
+unique tmux names, provider exit-to-shell behavior and existing bases are retained.
+Gateway and Home must understand the field before new web assets are served.
+
+Home library checks passed 241 tests (four opt-in checks ignored), final session
+peer checks passed eight tests, and the opt-in isolated real-tmux provider exit
+and Ctrl+C check passed separately. Both codecs cover omitted/false with no child,
+explicit true, duplicate names, metadata and cancellation. Gateway library checks
+passed 114 tests with five opt-in checks ignored. Strict Clippy and Rust formatting
+passed; all 62 protocol tests passed and generated protobuf types match the pinned
+generator. Web TypeScript,
+formatting, 221 tests and production build passed. A synthetic Chromium fixture
+verified the default and selected request values, English/Korean copy, reset on
+reopen, and a 390px layout with no horizontal overflow. This is not physical-device
+acceptance. The initial broader run stopped on an old child-folder assumption in
+the cancellation fixture; final session tests explicitly select folder mode for
+that scenario and passed. A full workspace/integration rerun was not performed.
+
+The maintained Linux Gateway, macOS Home/helper and web assets were activated with
+rollback backups. All 29 pre-activation original tmux lifetimes and Home service
+configuration were preserved. Installed binaries and served assets match the
+candidates; Home reconnected, the automatic checkpoint advanced with 29 sessions,
+and public root 200/anonymous API 401 checks passed. PWA CSP and no-store headers
+were verified. This activation does not validate an OS reboot.
+
 ## macOS checkpoint continuity (2026-10-17)
 
 The maintained Home checkpoint stopped updating for five days. A manual save

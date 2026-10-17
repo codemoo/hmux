@@ -146,7 +146,7 @@ fn command_argv_is_literal_and_provider_wrapper_matches_go() {
     let allocated = fixture
         .prepare(&single, "shell", "one")
         .unwrap()
-        .allocate()
+        .allocate(true)
         .unwrap();
     assert_eq!(
         allocated.command,
@@ -259,7 +259,7 @@ fn concurrent_allocation_never_reuses_an_occupied_child_or_follows_its_symlink()
             thread::spawn(move || {
                 let plan = fixture.prepare(&inventory, "shell", "same").unwrap();
                 start.wait();
-                plan.allocate().unwrap()
+                plan.allocate(true).unwrap()
             })
         })
         .collect();
@@ -306,4 +306,40 @@ fn concurrent_allocation_never_reuses_an_occupied_child_or_follows_its_symlink()
     assert_eq!(fs::read_dir(base).unwrap().count(), 9);
     assert_eq!(fs::read_dir(&outside).unwrap().count(), 1);
     assert_eq!(fs::read(outside.join("sentinel")).unwrap(), b"unchanged");
+}
+
+#[test]
+fn shared_base_does_not_create_children_and_keeps_session_names_unique() {
+    let fixture = Fixture::new();
+    fixture.executable("synthetic-tool");
+    let base = fixture.0.join("work");
+    let inventory = fixture.inventory("shell", vec!["synthetic-tool".into()], base.clone());
+    let first = fixture
+        .prepare(&inventory, "shell", "My Project")
+        .unwrap()
+        .allocate(false)
+        .unwrap();
+    let second = fixture
+        .prepare(&inventory, "shell", "My Project")
+        .unwrap()
+        .allocate(false)
+        .unwrap();
+    assert_eq!(first.directory, base);
+    assert_eq!(second.directory, base);
+    assert_ne!(first.name, second.name);
+    assert!(first.name.starts_with("My-Project-shell-"));
+    assert_eq!(fs::read_dir(&base).unwrap().count(), 0);
+    let child = fixture
+        .prepare(&inventory, "shell", "My Project")
+        .unwrap()
+        .allocate(true)
+        .unwrap();
+    assert_eq!(child.directory, base.join("My-Project"));
+    let third = fixture
+        .prepare(&inventory, "shell", "My Project")
+        .unwrap()
+        .allocate(false)
+        .unwrap();
+    assert_eq!(third.directory, base);
+    assert_eq!(fs::read_dir(&base).unwrap().count(), 1);
 }
